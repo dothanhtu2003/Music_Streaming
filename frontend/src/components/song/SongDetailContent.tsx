@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePlayer } from "@/components/player/PlayerProvider";
 import { usePlaylists } from "@/components/playlist/PlaylistProvider";
+import { WaveformPlayer } from "@/components/song/WaveformPlayer";
 import { getSongRequest } from "@/lib/api";
 import {
   formatDuration,
   formatPlayCount,
   getAlbumTitle,
+  getSongAudioUrl,
   getGenreName,
   getSongCoverUrl,
 } from "@/lib/song-format";
+import { usePlayerStore } from "@/stores/player-store";
 import type { Song } from "@/types/music";
 
 type SongDetailContentProps = {
@@ -57,7 +59,10 @@ function SongCover({ song }: { song: Song }) {
 }
 
 export function SongDetailContent({ songId }: SongDetailContentProps) {
-  const { currentSong, isPlaying, playSong } = usePlayer();
+  const currentSong = usePlayerStore((state) => state.currentSong);
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const playSong = usePlayerStore((state) => state.playSong);
+  const togglePlay = usePlayerStore((state) => state.togglePlay);
   const { openAddSongModal } = usePlaylists();
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
@@ -162,10 +167,17 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
             <div className="mt-6 flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => playSong(song, [song])}
+                onClick={() => {
+                  if (currentSong?.id === song.id) {
+                    togglePlay();
+                    return;
+                  }
+
+                  playSong(song, [song]);
+                }}
                 className="rounded-lg bg-green-500 px-5 py-3 text-sm font-semibold text-green-950 transition hover:bg-green-400"
               >
-                {currentSong?.id === song.id && isPlaying ? "Playing" : "Play"}
+                {currentSong?.id === song.id && isPlaying ? "Pause" : "Play"}
               </button>
               <button
                 type="button"
@@ -176,6 +188,14 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
               </button>
             </div>
           </div>
+        </div>
+
+        <div className="mt-6 border-t border-zinc-800 pt-5">
+          <WaveformPlayer
+            song={song}
+            audioUrl={getSongAudioUrl(song) ?? ""}
+            queue={[song]}
+          />
         </div>
       </section>
     </div>

@@ -1,24 +1,23 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { NowPlayingHero } from "@/components/NowPlayingHero";
+import { HorizontalSongCarousel } from "@/components/song/HorizontalSongCarousel";
 import { RecentlyPlayedList } from "@/components/song/RecentlyPlayedList";
-import { SongList } from "@/components/song/SongList";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { StatCard } from "@/components/ui/StatCard";
 import { getRecentlyPlayedRequest, getSongsRequest } from "@/lib/api";
-import { playlists } from "@/lib/mock-data";
 import {
   getLocalRecentlyPlayed,
   RECENTLY_PLAYED_UPDATED_EVENT,
 } from "@/lib/recently-played-storage";
+import { usePlayerStore } from "@/stores/player-store";
 import type { RecentlyPlayedSong, Song, SongPagination } from "@/types/music";
 
 const SONG_LIMIT = 9;
 
 export default function Home() {
   const { accessToken, isLoading: authLoading } = useAuth();
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const [songs, setSongs] = useState<Song[]>([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState<RecentlyPlayedSong[]>([]);
   const [pagination, setPagination] = useState<SongPagination | null>(null);
@@ -147,73 +146,62 @@ export default function Home() {
     : false;
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-6 shadow-2xl shadow-black/30 sm:p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-green-400">
-              Fresh picks
-            </p>
-            <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl">
-              Music Streaming
-            </h1>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-zinc-400 sm:text-base">
-              Browse songs from the backend API, search the catalog, and play
-              songs in the bottom player.
-            </p>
+    <div className="space-y-8 page-fade-in">
+      {currentSong ? (
+        <NowPlayingHero song={currentSong} />
+      ) : (
+        <section className="hero-fade-in relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-gradient-to-r from-zinc-950 via-zinc-900 to-black p-6 shadow-2xl sm:p-10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.1),transparent_45%)]" />
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-green-500">
+                Welcome back
+              </p>
+              <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-5xl bg-clip-text">
+                Listen to your favorite tracks
+              </h1>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-zinc-400 sm:text-base">
+                Discover, play, and save your music. Browse songs from the catalog, create playlists, and build your personal collection.
+              </p>
+            </div>
+            {/* <Link
+              href="/search"
+              className="inline-flex w-fit items-center rounded-full bg-green-500 px-6 py-3 text-sm font-bold text-green-950 transition hover:bg-green-400 hover:scale-105 shadow-lg shadow-green-500/10"
+            >
+              Exploresongs
+            </Link> */}
           </div>
-          <Link
-            href="/search"
-            className="inline-flex w-fit items-center rounded-lg bg-green-500 px-4 py-3 text-sm font-semibold text-green-950 transition hover:bg-green-400"
-          >
-            Explore songs
-          </Link>
-        </div>
-      </section>
+        </section>
+      )}
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <StatCard
-          label="Songs"
-          value={pagination ? String(pagination.totalItems) : "..."}
-          helper="Loaded from API"
-        />
-        <StatCard label="Page" value={String(pagination?.page ?? 1)} helper="Current page" />
-        <StatCard
-          label="Playlists"
-          value={String(playlists.length)}
-          helper="Personal collections"
-        />
-      </section>
+      {/* Conditionally Render Recently Played Section */}
+      {!recentlyLoading && recentlyPlayed.length > 0 && (
+        <section className="space-y-4">
+          <div className="border-b border-zinc-900 pb-2">
+            <h2 className="text-xl font-bold text-white tracking-tight">Recently Played</h2>
+            <p className="text-xs text-zinc-500">Your latest played songs, kept newest first.</p>
+          </div>
+          <RecentlyPlayedList
+            songs={recentlyPlayed}
+            loading={recentlyLoading || authLoading}
+            error={recentlyError}
+          />
+        </section>
+      )}
 
-      <section className="space-y-4">
-        <PageHeader
-          eyebrow="History"
-          title="Recently Played"
-          description="Your latest played songs are kept newest first."
-        />
-        <RecentlyPlayedList
-          songs={recentlyPlayed}
-          loading={recentlyLoading || authLoading}
-          error={recentlyError}
-        />
-      </section>
-
-      <section className="space-y-4">
-        <PageHeader
-          eyebrow="Catalog"
-          title="Latest songs"
-          description="Songs are loaded from GET /api/songs."
-        />
-        <SongList
-          songs={songs}
-          loading={loading}
-          error={error}
-          emptyMessage="No songs available yet."
-          canLoadMore={canLoadMore}
-          loadingMore={loadingMore}
-          onLoadMore={handleLoadMore}
-        />
-      </section>
+      <HorizontalSongCarousel
+        title="Latest Songs"
+        subtitle="Fresh songs loaded from the backend database."
+        songs={songs}
+        loading={loading}
+        error={error}
+        emptyTitle="No songs available yet."
+        emptyDescription="Upload or add songs from the dashboard to see them here."
+        canLoadMore={canLoadMore}
+        loadingMore={loadingMore}
+        onLoadMore={handleLoadMore}
+      />
     </div>
   );
+
 }

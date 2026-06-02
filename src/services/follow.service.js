@@ -7,7 +7,11 @@ const { validateUuid } = require("../utils/query.utils");
  * The parameter could be a User ID or an Artist ID.
  * Returns the corresponding User ID, or throws an error.
  */
-const resolveTargetUserId = async (targetId, currentUserId) => {
+const resolveTargetUserId = async (
+  targetId,
+  currentUserId,
+  { allowSelf = false } = {}
+) => {
   validateUuid(targetId, "userId");
 
   // 1. Check if the targetId belongs to a user in the users table
@@ -18,7 +22,7 @@ const resolveTargetUserId = async (targetId, currentUserId) => {
 
   if (userResult.rows[0]) {
     const targetUser = userResult.rows[0];
-    if (targetUser.id === currentUserId) {
+    if (!allowSelf && targetUser.id === currentUserId) {
       throw new AppError("Cannot follow yourself", 400);
     }
     return targetUser.id;
@@ -37,7 +41,7 @@ const resolveTargetUserId = async (targetId, currentUserId) => {
 
   // If the artist already has a linked user_id
   if (artist.user_id) {
-    if (artist.user_id === currentUserId) {
+    if (!allowSelf && artist.user_id === currentUserId) {
       throw new AppError("Cannot follow yourself", 400);
     }
     return artist.user_id;
@@ -54,7 +58,7 @@ const resolveTargetUserId = async (targetId, currentUserId) => {
     throw new AppError("This artist is not linked to any active user account", 400);
   }
 
-  if (matchedUser.id === currentUserId) {
+  if (!allowSelf && matchedUser.id === currentUserId) {
     throw new AppError("Cannot follow yourself", 400);
   }
 
@@ -65,6 +69,34 @@ const resolveTargetUserId = async (targetId, currentUserId) => {
   );
 
   return matchedUser.id;
+};
+
+const getFollowStatus = async (followerId, targetId) => {
+  const followingId = await resolveTargetUserId(targetId, followerId, {
+    allowSelf: true,
+  });
+
+  if (followingId === followerId) {
+    return {
+      followed: false,
+      isSelf: true,
+      followingId,
+    };
+  }
+
+  const result = await pool.query(
+    `SELECT id
+     FROM follows
+     WHERE "followerId" = $1 AND "followingId" = $2
+     LIMIT 1`,
+    [followerId, followingId]
+  );
+
+  return {
+    followed: Boolean(result.rows[0]),
+    isSelf: false,
+    followingId,
+  };
 };
 
 /**
@@ -167,5 +199,6 @@ const getFollowing = async (followerId) => {
 module.exports = {
   toggleFollow,
   unfollow,
+  getFollowStatus,
   getFollowing,
 };

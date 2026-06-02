@@ -3,6 +3,12 @@ const { successResponse } = require("../utils/apiResponse");
 
 const saveRecentlyPlayed = async (req, res, next) => {
   try {
+    if (!req.user) {
+      return successResponse(res, "Recently played skipped for guest user", {
+        saved: false,
+      });
+    }
+
     const song = await recentlyPlayedService.saveRecentlyPlayed(
       req.user.id,
       req.body

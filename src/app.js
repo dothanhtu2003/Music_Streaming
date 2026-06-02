@@ -7,6 +7,7 @@ const { rateLimit } = require("express-rate-limit");
 const env = require("./config/env");
 const routes = require("./routes");
 const AppError = require("./utils/appError");
+const { errorResponse } = require("./utils/apiResponse");
 const {
   notFoundHandler,
   errorHandler,
@@ -16,9 +17,12 @@ const app = express();
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 100,
+  limit: 1000,
   standardHeaders: "draft-8",
   legacyHeaders: false,
+  handler(req, res) {
+    return errorResponse(res, "Too many requests. Please try again later.", 429);
+  },
 });
 
 const corsOptions = {

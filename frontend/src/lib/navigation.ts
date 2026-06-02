@@ -6,8 +6,8 @@ export type NavItem = {
 export const mainNav: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Search", href: "/search" },
-  { label: "Liked", href: "/liked" },
   { label: "Playlists", href: "/playlists" },
+  { label: "Liked Songs", href: "/liked" },
   { label: "Profile", href: "/profile" },
 ];
 

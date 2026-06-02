@@ -44,6 +44,8 @@ const songFromClause = `
   LEFT JOIN albums al ON al.id = s.album_id
   LEFT JOIN genres g ON g.id = s.genre_id
 `;
+const waveformMaxChannels = 2;
+const waveformMaxPeaksPerChannel = 2000;
 
 const formatSong = (song) => {
   return {
@@ -163,6 +165,52 @@ const validateSongInput = async (data = {}, isUpdate = false) => {
   }
 
   return fields;
+};
+
+const validateWaveformDuration = (value) => {
+  const duration = Number(value);
+
+  if (!Number.isFinite(duration) || duration <= 0 || duration > 86400) {
+    throw new AppError("waveform duration must be between 0 and 86400 seconds", 400);
+  }
+
+  return duration;
+};
+
+const validateWaveformPeaks = (peaks) => {
+  if (!Array.isArray(peaks) || peaks.length === 0) {
+    throw new AppError("peaks must be a non-empty array", 400);
+  }
+
+  if (peaks.length > waveformMaxChannels) {
+    throw new AppError(`peaks can contain at most ${waveformMaxChannels} channels`, 400);
+  }
+
+  return peaks.map((channel, channelIndex) => {
+    if (!Array.isArray(channel) || channel.length === 0) {
+      throw new AppError(`peaks channel ${channelIndex + 1} must be a non-empty array`, 400);
+    }
+
+    if (channel.length > waveformMaxPeaksPerChannel) {
+      throw new AppError(
+        `peaks channel ${channelIndex + 1} can contain at most ${waveformMaxPeaksPerChannel} values`,
+        400
+      );
+    }
+
+    return channel.map((value, peakIndex) => {
+      const peak = Number(value);
+
+      if (!Number.isFinite(peak) || peak < -1 || peak > 1) {
+        throw new AppError(
+          `peaks channel ${channelIndex + 1} value ${peakIndex + 1} must be between -1 and 1`,
+          400
+        );
+      }
+
+      return peak;
+    });
+  });
 };
 
 const slugifyGenreName = (name) => {
@@ -406,6 +454,63 @@ const getSongById = async (id) => {
   return getSongByIdRecord(id);
 };
 
+const formatWaveformCache = (row) => {
+  const peaks = row.waveform_peaks ?? null;
+  const duration =
+    row.waveform_duration === null || row.waveform_duration === undefined
+      ? null
+      : Number(row.waveform_duration);
+
+  return {
+    song_id: row.id,
+    peaks,
+    duration,
+    cached: Array.isArray(peaks) && peaks.length > 0 && Number.isFinite(duration),
+    updated_at: row.updated_at,
+  };
+};
+
+const getSongWaveform = async (id) => {
+  validateUuid(id);
+
+  const result = await pool.query(
+    `SELECT id, waveform_peaks, waveform_duration, updated_at
+     FROM songs
+     WHERE id = $1 AND is_active = TRUE
+     LIMIT 1`,
+    [id]
+  );
+
+  if (result.rowCount === 0) {
+    throw new AppError("Song not found", 404);
+  }
+
+  return formatWaveformCache(result.rows[0]);
+};
+
+const saveSongWaveform = async (id, data = {}) => {
+  validateUuid(id);
+
+  const peaks = validateWaveformPeaks(data.peaks);
+  const duration = validateWaveformDuration(data.duration);
+
+  const result = await pool.query(
+    `UPDATE songs
+     SET waveform_peaks = $2::jsonb,
+         waveform_duration = $3,
+         updated_at = NOW()
+     WHERE id = $1 AND is_active = TRUE
+     RETURNING id, waveform_peaks, waveform_duration, updated_at`,
+    [id, JSON.stringify(peaks), duration]
+  );
+
+  if (result.rowCount === 0) {
+    throw new AppError("Song not found", 404);
+  }
+
+  return formatWaveformCache(result.rows[0]);
+};
+
 const createSong = async (data) => {
   const fields = await validateSongInput(data);
 
@@ -574,6 +679,8 @@ module.exports = {
   getSongs,
   searchSongs,
   getSongById,
+  getSongWaveform,
+  saveSongWaveform,
   createSong,
   createUploadedSong,
   updateSong,

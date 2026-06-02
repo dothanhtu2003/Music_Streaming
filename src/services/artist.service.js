@@ -1,4 +1,5 @@
 const { pool } = require("../db/pool");
+const songService = require("./song.service");
 const AppError = require("../utils/appError");
 const {
   buildPagination,
@@ -94,6 +95,15 @@ const getArtistById = async (id) => {
   return formatArtist(artist);
 };
 
+const getArtistSongs = async (id, query = {}) => {
+  await getArtistById(id);
+
+  return songService.getSongs({
+    ...query,
+    artist_id: id,
+  });
+};
+
 const createArtist = async (data) => {
   const fields = validateArtistInput(data);
 
@@ -160,6 +170,7 @@ const deleteArtist = async (id) => {
 module.exports = {
   getArtists,
   getArtistById,
+  getArtistSongs,
   createArtist,
   updateArtist,
   deleteArtist,

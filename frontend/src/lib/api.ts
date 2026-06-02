@@ -17,12 +17,31 @@ import type {
   RecentlyPlayedSong,
   Song,
   SongPagination,
+  SongWaveform,
   SongWritePayload,
   UserPlaylist,
   FollowedArtist,
 } from "@/types/music";
+import {
+  clearTokens,
+  notifyAuthTokenCleared,
+} from "@/lib/auth-storage";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
+
+export class ApiRequestError extends Error {
+  statusCode: number;
+
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.statusCode = statusCode;
+  }
+}
+
+export function isUnauthorizedError(error: unknown) {
+  return error instanceof ApiRequestError && error.statusCode === 401;
+}
 
 type ApiResponse<T> = {
   success: boolean;
@@ -37,6 +56,20 @@ type RequestOptions = {
   body?: unknown;
   accessToken?: string | null;
 };
+
+function getResponseErrorMessage(response: Response, responseText: string) {
+  const trimmedText = responseText.trim();
+
+  if (trimmedText && !trimmedText.startsWith("<") && trimmedText.length <= 180) {
+    return trimmedText;
+  }
+
+  if (response.status === 429) {
+    return "Too many requests. Please try again later.";
+  }
+
+  return response.statusText || "Request failed. Please try again.";
+}
 
 type ListenSongResult = {
   song: Song;
@@ -131,12 +164,27 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}) {
     cache: "no-store",
   });
 
-  const result = (await response.json().catch(() => null)) as
-    | ApiResponse<T>
-    | null;
+  const responseText = await response.text();
+  let result: ApiResponse<T> | null = null;
+
+  try {
+    result = responseText
+      ? (JSON.parse(responseText) as ApiResponse<T>)
+      : null;
+  } catch {
+    result = null;
+  }
 
   if (!response.ok || !result?.success) {
-    throw new Error(result?.message ?? "Request failed. Please try again.");
+    const message =
+      result?.message ?? getResponseErrorMessage(response, responseText);
+
+    if (response.status === 401 && options.accessToken) {
+      clearTokens();
+      notifyAuthTokenCleared();
+    }
+
+    throw new ApiRequestError(message, response.status);
   }
 
   return result;
@@ -251,6 +299,40 @@ export async function getSongRequest(id: string) {
 
   if (!response.data) {
     throw new Error("Song response is missing data.");
+  }
+
+  return response.data;
+}
+
+export async function getSongWaveformRequest(id: string) {
+  if (!id) {
+    throw new Error("Song id is required.");
+  }
+
+  const response = await apiRequest<SongWaveform>(`/songs/${id}/waveform`);
+
+  if (!response.data) {
+    throw new Error("Waveform response is missing data.");
+  }
+
+  return response.data;
+}
+
+export async function saveSongWaveformRequest(
+  id: string,
+  payload: { peaks: number[][]; duration: number },
+) {
+  if (!id) {
+    throw new Error("Song id is required.");
+  }
+
+  const response = await apiRequest<SongWaveform>(`/songs/${id}/waveform`, {
+    method: "POST",
+    body: payload,
+  });
+
+  if (!response.data) {
+    throw new Error("Waveform cache response is missing data.");
   }
 
   return response.data;
@@ -1035,6 +1117,36 @@ export async function getArtistRequest(id: string) {
 
   if (!response.data) {
     throw new Error("Artist response is missing data.");
+  }
+
+  return response.data;
+}
+
+export async function getArtistSongsRequest(id: string, page = 1, limit = 10) {
+  const response = await apiRequest<Song[]>(
+    `/artists/${id}/songs${buildQuery({ page, limit })}`,
+  );
+
+  return {
+    items: response.data ?? [],
+    pagination: getPagination(response, page, limit),
+  };
+}
+
+export async function getFollowStatusRequest(
+  artistId: string,
+  accessToken: string,
+) {
+  const response = await apiRequest<{
+    followed: boolean;
+    isSelf: boolean;
+    followingId: string;
+  }>(`/follow/status/${artistId}`, {
+    accessToken,
+  });
+
+  if (!response.data) {
+    throw new Error("Follow status response is missing data.");
   }
 
   return response.data;

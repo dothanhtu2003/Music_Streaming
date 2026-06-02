@@ -1,12 +1,13 @@
 const express = require("express");
 const recentlyPlayedController = require("../controllers/recently-played.controller");
-const { authMiddleware } = require("../middlewares/auth.middleware");
+const {
+  authMiddleware,
+  optionalAuthMiddleware,
+} = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
-router.use(authMiddleware);
-
-router.post("/", recentlyPlayedController.saveRecentlyPlayed);
-router.get("/", recentlyPlayedController.getMyRecentlyPlayed);
+router.post("/", optionalAuthMiddleware, recentlyPlayedController.saveRecentlyPlayed);
+router.get("/", authMiddleware, recentlyPlayedController.getMyRecentlyPlayed);
 
 module.exports = router;

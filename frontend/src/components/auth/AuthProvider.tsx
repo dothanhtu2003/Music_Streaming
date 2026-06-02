@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  AUTH_TOKEN_CLEARED_EVENT,
   getStoredAccessToken,
   getStoredRefreshToken,
   saveTokens,
@@ -58,6 +59,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setAccessToken(null);
     setUser(null);
   }, []);
+
+  useEffect(() => {
+    const handleTokenCleared = () => {
+      clearAuthState();
+      setError(null);
+    };
+
+    window.addEventListener(AUTH_TOKEN_CLEARED_EVENT, handleTokenCleared);
+
+    return () => {
+      window.removeEventListener(AUTH_TOKEN_CLEARED_EVENT, handleTokenCleared);
+    };
+  }, [clearAuthState]);
 
   const fetchCurrentUser = useCallback(async () => {
     const token = getStoredAccessToken();

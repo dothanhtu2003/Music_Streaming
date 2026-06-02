@@ -79,11 +79,14 @@ CREATE TABLE IF NOT EXISTS songs (
   file_url TEXT NOT NULL,
   cover_url TEXT,
   duration_sec INTEGER NOT NULL DEFAULT 0,
+  waveform_peaks JSONB,
+  waveform_duration NUMERIC,
   play_count BIGINT NOT NULL DEFAULT 0,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT songs_duration_sec_check CHECK (duration_sec >= 0),
+  CONSTRAINT songs_waveform_duration_check CHECK (waveform_duration IS NULL OR waveform_duration >= 0),
   CONSTRAINT songs_play_count_check CHECK (play_count >= 0),
   CONSTRAINT songs_artist_id_fk
     FOREIGN KEY (artist_id)

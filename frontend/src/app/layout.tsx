@@ -1,21 +1,16 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { FollowProvider } from "@/components/follow/FollowProvider";
 import { LikeProvider } from "@/components/like/LikeProvider";
-import { AppShell } from "@/components/layout/AppShell";
 import { PlayerProvider } from "@/components/player/PlayerProvider";
 import { PlaylistProvider } from "@/components/playlist/PlaylistProvider";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -31,16 +26,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
+      className={`${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-black text-zinc-100">
         <AuthProvider>
           <FollowProvider>
             <LikeProvider>
               <PlaylistProvider>
-                <PlayerProvider>
-                  <AppShell>{children}</AppShell>
-                </PlayerProvider>
+                <PlayerProvider>{children}</PlayerProvider>
               </PlaylistProvider>
             </LikeProvider>
           </FollowProvider>

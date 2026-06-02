@@ -8,6 +8,7 @@ const router = express.Router();
 router.use(authMiddleware);
 
 router.get("/following", followController.getFollowing);
+router.get("/status/:artistId", followController.getFollowStatus);
 router.post("/:userId", followController.toggleFollow);
 router.delete("/:userId", followController.unfollow);
 

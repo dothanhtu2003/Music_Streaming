@@ -1,46 +1,37 @@
+"use client";
+
 import { SongCard } from "@/components/song/SongCard";
+import { SongCardSkeleton } from "@/components/ui/Skeletons";
 import type { Song } from "@/types/music";
+
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type SongListProps = {
   songs: Song[];
   loading?: boolean;
   error?: string | null;
   emptyMessage?: string;
+  emptyDescription?: string;
   canLoadMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
 };
-
-function SongSkeleton() {
-  return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
-      <div className="flex gap-4">
-        <div className="h-20 w-20 rounded-lg bg-zinc-800" />
-        <div className="flex-1 space-y-3">
-          <div className="h-4 w-2/3 rounded bg-zinc-800" />
-          <div className="h-3 w-1/2 rounded bg-zinc-800" />
-          <div className="h-3 w-3/4 rounded bg-zinc-800" />
-          <div className="h-8 w-16 rounded bg-zinc-800" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function SongList({
   songs,
   loading = false,
   error = null,
   emptyMessage = "No songs found.",
+  emptyDescription = "Try another search or add songs from the dashboard.",
   canLoadMore = false,
   loadingMore = false,
   onLoadMore,
 }: SongListProps) {
   if (loading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <SongSkeleton key={index} />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        {Array.from({ length: 10 }).map((_, index) => (
+          <SongCardSkeleton key={index} />
         ))}
       </div>
     );
@@ -48,7 +39,7 @@ export function SongList({
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-5 text-sm text-red-300">
+      <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 text-sm text-red-300">
         {error}
       </div>
     );
@@ -56,32 +47,30 @@ export function SongList({
 
   if (songs.length === 0) {
     return (
-      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-8 text-center">
-        <p className="text-sm font-medium text-white">{emptyMessage}</p>
-        <p className="mt-2 text-xs text-zinc-500">
-          Try another keyword or add songs from the admin area.
-        </p>
-      </div>
+      <EmptyState
+        title={emptyMessage}
+        description={emptyDescription}
+      />
     );
   }
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {songs.map((song) => (
           <SongCard key={song.id} song={song} queue={songs} />
         ))}
       </div>
 
       {canLoadMore && onLoadMore && (
-        <div className="flex justify-center">
+        <div className="flex justify-center pt-4">
           <button
             type="button"
             onClick={onLoadMore}
             disabled={loadingMore}
-            className="rounded-lg border border-zinc-700 px-4 py-3 text-sm font-semibold text-zinc-200 transition hover:border-green-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-full border border-zinc-800 px-6 py-2.5 text-xs font-semibold text-zinc-300 transition hover:border-green-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loadingMore ? "Loading..." : "Load more"}
+            {loadingMore ? "Loading..." : "Load more songs"}
           </button>
         </div>
       )}

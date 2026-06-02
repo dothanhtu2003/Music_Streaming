@@ -31,8 +31,22 @@ const getFollowing = async (req, res, next) => {
   }
 };
 
+const getFollowStatus = async (req, res, next) => {
+  try {
+    const result = await followService.getFollowStatus(
+      req.user.id,
+      req.params.artistId
+    );
+
+    return successResponse(res, "Follow status fetched successfully", result, 200);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   toggleFollow,
   unfollow,
+  getFollowStatus,
   getFollowing,
 };

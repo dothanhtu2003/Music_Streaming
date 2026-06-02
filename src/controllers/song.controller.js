@@ -39,6 +39,26 @@ const getSongById = async (req, res, next) => {
   }
 };
 
+const getSongWaveform = async (req, res, next) => {
+  try {
+    const waveform = await songService.getSongWaveform(req.params.id);
+
+    return successResponse(res, "Song waveform fetched successfully", waveform);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const saveSongWaveform = async (req, res, next) => {
+  try {
+    const waveform = await songService.saveSongWaveform(req.params.id, req.body);
+
+    return successResponse(res, "Song waveform cached successfully", waveform);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const createSong = async (req, res, next) => {
   try {
     const song = await songService.createSong(req.body);
@@ -117,6 +137,8 @@ module.exports = {
   getSongs,
   searchSongs,
   getSongById,
+  getSongWaveform,
+  saveSongWaveform,
   createSong,
   uploadSong,
   updateSong,

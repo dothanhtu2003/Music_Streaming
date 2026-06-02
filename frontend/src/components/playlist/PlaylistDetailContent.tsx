@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { usePlayer } from "@/components/player/PlayerProvider";
 import { PlaylistForm } from "@/components/playlist/PlaylistForm";
 import {
   usePlaylists,
@@ -17,13 +16,11 @@ import {
   resolveApiAssetUrl,
   uploadTrackToPlaylistRequest,
 } from "@/lib/api";
-import {
-  formatDuration,
-  formatPlayCount,
-  getGenreName,
-  getSongCoverUrl,
-} from "@/lib/song-format";
-import type { PlaylistDetail, PlaylistSong } from "@/types/music";
+import { SongListItem } from "@/components/song/SongListItem";
+import { WaveformPlayer } from "@/components/song/WaveformPlayer";
+import { getSongAudioUrl } from "@/lib/song-format";
+import { usePlayerStore } from "@/stores/player-store";
+import type { PlaylistDetail } from "@/types/music";
 
 type PlaylistDetailContentProps = {
   playlistId: string;
@@ -56,27 +53,6 @@ function isCoverFile(file: File) {
   );
 }
 
-function SongCover({ song }: { song: PlaylistSong }) {
-  const coverUrl = getSongCoverUrl(song);
-
-  if (coverUrl) {
-    return (
-      <div
-        className="h-14 w-14 shrink-0 rounded-lg bg-cover bg-center"
-        style={{ backgroundImage: `url(${coverUrl})` }}
-        aria-label={`${song.title} cover`}
-      />
-    );
-  }
-
-  return (
-    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-green-500 to-zinc-900">
-      <span className="text-sm font-black text-white/90">
-        {song.title.slice(0, 1)}
-      </span>
-    </div>
-  );
-}
 
 function PlaylistCover({ playlist }: { playlist: PlaylistDetail }) {
   const coverUrl = resolveApiAssetUrl(playlist.cover_url);
@@ -348,7 +324,8 @@ export function PlaylistDetailContent({
 }: PlaylistDetailContentProps) {
   const router = useRouter();
   const { accessToken } = useAuth();
-  const { playSong } = usePlayer();
+  const currentSong = usePlayerStore((state) => state.currentSong);
+  const playSong = usePlayerStore((state) => state.playSong);
   const {
     refreshPlaylists,
     showNotice,
@@ -358,7 +335,6 @@ export function PlaylistDetailContent({
   } = usePlaylists();
   const [playlist, setPlaylist] = useState<PlaylistDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [actionSongId, setActionSongId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -417,7 +393,6 @@ export function PlaylistDetailContent({
       return;
     }
 
-    setActionSongId(songId);
     setError(null);
 
     try {
@@ -443,8 +418,6 @@ export function PlaylistDetailContent({
 
       setError(message);
       showNotice({ type: "error", text: message });
-    } finally {
-      setActionSongId(null);
     }
   };
 
@@ -465,7 +438,6 @@ export function PlaylistDetailContent({
     nextSongs[currentIndex] = nextSongs[nextIndex];
     nextSongs[nextIndex] = currentSong;
 
-    setActionSongId(songId);
     setError(null);
 
     try {
@@ -492,8 +464,6 @@ export function PlaylistDetailContent({
 
       setError(message);
       showNotice({ type: "error", text: message });
-    } finally {
-      setActionSongId(null);
     }
   };
 
@@ -614,81 +584,119 @@ export function PlaylistDetailContent({
     );
   }
 
+  const playlistWaveformSong =
+    playlist.songs.find((song) => song.id === currentSong?.id) ??
+    playlist.songs[0] ??
+    null;
+
   return (
-    <div className="space-y-6">
-      <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-6">
-        <Link href="/playlists" className="text-sm text-green-400 hover:text-green-300">
-          Back to playlists
-        </Link>
-        <div className="mt-6 flex flex-col gap-6 md:flex-row md:items-end">
-          <PlaylistCover playlist={playlist} />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium uppercase tracking-[0.18em] text-green-400">
-              Playlist
-            </p>
-            <h1 className="mt-2 text-3xl font-bold text-white sm:text-5xl">
-              {playlist.title}
-            </h1>
-            <p className="mt-3 text-sm text-zinc-400">
-              By {playlist.owner_name || "Unknown owner"} -{" "}
-              {playlist.track_count} tracks -{" "}
-              {playlist.is_public ? "Public" : "Private"}
-            </p>
-            {playlist.description && (
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-zinc-400">
-                {playlist.description}
-              </p>
-            )}
-            <div className="mt-6 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={playlist.songs.length === 0}
-                onClick={handlePlayAll}
-                className="rounded-lg bg-green-500 px-4 py-3 text-sm font-semibold text-green-950 transition hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
-              >
-                Play all
-              </button>
-              {playlist.is_owner && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setUploadOpen(true)}
-                    className="rounded-lg border border-green-500/70 px-4 py-3 text-sm font-semibold text-green-300 transition hover:bg-green-500/10"
-                  >
-                    Upload new track
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditOpen(true)}
-                    className="rounded-lg border border-zinc-700 px-4 py-3 text-sm font-semibold text-zinc-200 transition hover:border-green-500 hover:text-white"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    disabled={actionId === playlist.id}
-                    onClick={() => {
-                      void handleDeletePlaylist();
-                    }}
-                    className="rounded-lg border border-red-500/50 px-4 py-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {actionId === playlist.id ? "Deleting..." : "Delete"}
-                  </button>
-                </>
+    <div className="space-y-8">
+      {/* Premium Spotify-style Playlist Banner */}
+      <section className="relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-gradient-to-b from-zinc-900/80 via-zinc-950 to-black p-6 shadow-2xl sm:p-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.08),transparent_40%)]" />
+        
+        <div className="relative">
+          <Link
+            href="/playlists"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-green-500 hover:text-green-400 transition"
+          >
+            ← Back to playlists
+          </Link>
+          
+          <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-end">
+            <div className="transition-transform duration-300 hover:scale-[1.02]">
+              <PlaylistCover playlist={playlist} />
+            </div>
+            
+            <div className="min-w-0 flex-1">
+              <span className="text-xs font-bold uppercase tracking-[0.2em] text-green-500">
+                Playlist
+              </span>
+              <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl truncate">
+                {playlist.title}
+              </h1>
+              
+              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+                <span className="font-semibold text-zinc-200">
+                  {playlist.owner_name || "Unknown owner"}
+                </span>
+                <span className="text-zinc-600">•</span>
+                <span>{playlist.track_count} tracks</span>
+                <span className="text-zinc-600">•</span>
+                <span className="rounded-full bg-zinc-900 border border-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
+                  {playlist.is_public ? "Public" : "Private"}
+                </span>
+              </div>
+              
+              {playlist.description && (
+                <p className="mt-4 max-w-2xl text-xs leading-relaxed text-zinc-400 sm:text-sm">
+                  {playlist.description}
+                </p>
               )}
+              
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  disabled={playlist.songs.length === 0}
+                  onClick={handlePlayAll}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-green-500 px-6 py-3 text-xs font-bold text-green-950 transition hover:bg-green-400 hover:scale-105 shadow-lg shadow-green-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  Play All
+                </button>
+                
+                {playlist.is_owner && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setUploadOpen(true)}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-green-500/30 px-5 py-3 text-xs font-bold text-green-400 transition hover:bg-green-500/10 hover:border-green-500/50"
+                    >
+                      Upload new track
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditOpen(true)}
+                      className="inline-flex items-center justify-center rounded-full border border-zinc-800 px-5 py-3 text-xs font-bold text-zinc-300 transition hover:border-zinc-700 hover:text-white"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      disabled={actionId === playlist.id}
+                      onClick={() => {
+                        void handleDeletePlaylist();
+                      }}
+                      className="inline-flex items-center justify-center rounded-full border border-red-500/20 px-5 py-3 text-xs font-bold text-red-400 transition hover:bg-red-500/10 hover:border-red-500/40 disabled:opacity-50"
+                    >
+                      {actionId === playlist.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
+
+          {playlistWaveformSong && (
+            <div className="mt-6 border-t border-zinc-800/80 pt-5">
+              <WaveformPlayer
+                song={playlistWaveformSong}
+                audioUrl={getSongAudioUrl(playlistWaveformSong) ?? ""}
+                queue={playlist.songs}
+              />
+            </div>
+          )}
         </div>
       </section>
 
       {error && (
-        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-300">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-300">
           {error}
         </div>
       )}
 
       {playlist.songs.length === 0 ? (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-8 text-center">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-10 text-center">
           <p className="text-sm font-medium text-white">
             No tracks in this playlist yet.
           </p>
@@ -697,77 +705,35 @@ export function PlaylistDetailContent({
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {playlist.songs.map((song, index) => (
-            <article
-              key={song.id}
-              className="flex flex-col gap-4 rounded-lg border border-zinc-800 bg-zinc-950 p-4 sm:flex-row sm:items-center"
-            >
-              <Link
-                href={`/songs/${song.id}`}
-                className="flex min-w-0 flex-1 items-center gap-4"
-              >
-                <SongCover song={song} />
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-semibold text-white">
-                    {song.title}
-                  </span>
-                  <span className="block truncate text-xs text-zinc-400">
-                    {song.artist.name} - {getGenreName(song)} -{" "}
-                    {formatDuration(song.duration_sec)} -{" "}
-                    {formatPlayCount(song.play_count)} plays
-                  </span>
-                </span>
-              </Link>
+        <div className="space-y-4">
+          {/* Column Headers (Spotify style, desktop only) */}
+          <div className="hidden items-center justify-between gap-4 px-16 py-2 text-xs font-bold uppercase tracking-wider text-zinc-500 border-b border-zinc-900 md:flex">
+            <div className="flex-1 pl-4">Title</div>
+            <div className="min-w-[200px] flex gap-6">
+              <span className="w-24">Genre</span>
+              <span className="w-28">Plays</span>
+            </div>
+            <div className="flex items-center gap-4 shrink-0 pr-12">
+              <span>Time</span>
+            </div>
+          </div>
 
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => playSong(song, playlist.songs)}
-                  className="rounded-lg bg-green-500 px-3 py-2 text-xs font-semibold text-green-950 transition hover:bg-green-400"
-                >
-                  Play
-                </button>
-                {playlist.is_owner && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={index === 0 || actionSongId === song.id}
-                      onClick={() => {
-                        void moveSong(song.id, "up");
-                      }}
-                      className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-green-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Up
-                    </button>
-                    <button
-                      type="button"
-                      disabled={
-                        index === playlist.songs.length - 1 ||
-                        actionSongId === song.id
-                      }
-                      onClick={() => {
-                        void moveSong(song.id, "down");
-                      }}
-                      className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-green-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Down
-                    </button>
-                    <button
-                      type="button"
-                      disabled={actionSongId === song.id}
-                      onClick={() => {
-                        void handleRemoveSong(song.id);
-                      }}
-                      className="rounded-lg border border-red-500/50 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {actionSongId === song.id ? "Removing..." : "Remove"}
-                    </button>
-                  </>
-                )}
-              </div>
-            </article>
-          ))}
+          {/* Row List */}
+          <div className="flex flex-col gap-1">
+            {playlist.songs.map((song, index) => (
+              <SongListItem
+                key={song.id}
+                song={song}
+                queue={playlist.songs}
+                index={index}
+                isPlaylistOwner={playlist.is_owner}
+                canReorder={playlist.is_owner}
+                onRemove={handleRemoveSong}
+                onMoveUp={() => moveSong(song.id, "up")}
+                onMoveDown={() => moveSong(song.id, "down")}
+              />
+            ))}
+          </div>
         </div>
       )}
 

@@ -8,6 +8,7 @@ const {
 const router = express.Router();
 
 router.get("/", artistController.getArtists);
+router.get("/:id/songs", artistController.getArtistSongs);
 router.get("/:id", artistController.getArtistById);
 router.post("/", authMiddleware, requireRole("admin"), artistController.createArtist);
 router.put("/:id", authMiddleware, requireRole("admin"), artistController.updateArtist);

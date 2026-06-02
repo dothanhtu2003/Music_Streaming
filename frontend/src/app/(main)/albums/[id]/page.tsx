@@ -1,5 +1,7 @@
 import { SongCard } from "@/components/song/SongCard";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PlaylistIcon } from "@/components/ui/Icons";
 import { getAlbumById, songs } from "@/lib/mock-data";
 
 type AlbumDetailPageProps = {
@@ -13,7 +15,7 @@ export default async function AlbumDetailPage({ params }: AlbumDetailPageProps) 
   const visibleSongs = albumSongs.length ? albumSongs : songs.slice(0, 3);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 page-fade-in">
       <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-6">
         <p className="text-sm font-medium uppercase tracking-[0.18em] text-green-400">
           Album
@@ -28,11 +30,19 @@ export default async function AlbumDetailPage({ params }: AlbumDetailPageProps) 
 
       <section className="space-y-4">
         <PageHeader title="Track list" description="Static album track preview." />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {visibleSongs.map((song) => (
-            <SongCard key={song.id} song={song} queue={visibleSongs} compact />
-          ))}
-        </div>
+        {visibleSongs.length === 0 ? (
+          <EmptyState
+            icon={<PlaylistIcon size={24} />}
+            title="Empty Album"
+            description="There are no songs in this album."
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {visibleSongs.map((song) => (
+              <SongCard key={song.id} song={song} queue={visibleSongs} compact />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

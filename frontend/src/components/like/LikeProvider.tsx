@@ -83,15 +83,30 @@ export function LikeProvider({ children }: LikeProviderProps) {
     setError(null);
 
     try {
-      const result = await getMyLikedSongsRequest(
+      const firstResult = await getMyLikedSongsRequest(
         accessToken,
         1,
         LIKED_SONG_LIMIT,
       );
+      const allLikedSongs = [...firstResult.items];
 
-      setLikedSongs(result.items);
-      setLikedSongIds(new Set(result.items.map((song) => song.id)));
-      setPagination(result.pagination);
+      for (
+        let page = 2;
+        page <= firstResult.pagination.totalPages;
+        page += 1
+      ) {
+        const nextResult = await getMyLikedSongsRequest(
+          accessToken,
+          page,
+          LIKED_SONG_LIMIT,
+        );
+
+        allLikedSongs.push(...nextResult.items);
+      }
+
+      setLikedSongs(allLikedSongs);
+      setLikedSongIds(new Set(allLikedSongs.map((song) => song.id)));
+      setPagination(firstResult.pagination);
     } catch (likedError) {
       const message = getErrorMessage(
         likedError,

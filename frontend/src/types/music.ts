@@ -28,6 +28,14 @@ export type Song = {
   } | null;
 };
 
+export type SongWaveform = {
+  song_id: string;
+  peaks: number[][] | null;
+  duration: number | null;
+  cached: boolean;
+  updated_at?: string | null;
+};
+
 export type LikedSong = Song & {
   like_id: string;
   liked_at: string;

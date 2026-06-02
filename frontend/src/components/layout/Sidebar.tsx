@@ -39,7 +39,7 @@ export function Sidebar() {
   const navItems = isAuthenticated ? [...mainNav, ...authNav] : mainNav;
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r border-zinc-800 bg-zinc-950 px-4 pb-28 pt-5 lg:flex lg:flex-col">
+    <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r border-zinc-800 bg-zinc-950 px-4 pb-28 pt-5 md:flex md:flex-col">
       <Link href="/" className="flex items-center gap-3 px-2">
         <span className="grid h-10 w-10 place-items-center rounded-lg bg-green-500 text-lg font-black text-green-950">
           M

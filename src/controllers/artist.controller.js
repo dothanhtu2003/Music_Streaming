@@ -23,6 +23,18 @@ const getArtistById = async (req, res, next) => {
   }
 };
 
+const getArtistSongs = async (req, res, next) => {
+  try {
+    const result = await artistService.getArtistSongs(req.params.id, req.query);
+
+    return successResponse(res, "Artist songs fetched successfully", result.items, 200, {
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const createArtist = async (req, res, next) => {
   try {
     const artist = await artistService.createArtist(req.body);
@@ -56,6 +68,7 @@ const deleteArtist = async (req, res, next) => {
 module.exports = {
   getArtists,
   getArtistById,
+  getArtistSongs,
   createArtist,
   updateArtist,
   deleteArtist,

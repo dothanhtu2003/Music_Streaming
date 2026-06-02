@@ -1,0 +1,432 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useFollow } from "@/components/follow/FollowProvider";
+import { useLikes } from "@/components/like/LikeProvider";
+import { usePlaylists } from "@/components/playlist/PlaylistProvider";
+import { PlayIcon } from "@/components/ui/Icons";
+import {
+  getRecentlyPlayedRequest,
+  getSongsRequest,
+  resolveApiAssetUrl,
+} from "@/lib/api";
+import {
+  RECENTLY_PLAYED_UPDATED_EVENT,
+  getLocalRecentlyPlayed,
+} from "@/lib/recently-played-storage";
+import { formatPlayCount, getSongCoverUrl } from "@/lib/song-format";
+import { usePlayerStore } from "@/stores/player-store";
+import type { RecentlyPlayedSong, Song, UserPlaylist } from "@/types/music";
+
+type DiscoveryArtist = {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  userId: string | null;
+  songCount: number;
+  playCount: number;
+};
+
+type SidebarSectionProps = {
+  title: string;
+  href?: string;
+  children: React.ReactNode;
+};
+
+function SidebarSection({ title, href, children }: SidebarSectionProps) {
+  return (
+    <section className="space-y-2.5 border-b border-zinc-900/70 pb-5 last:border-b-0">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
+          {title}
+        </h2>
+        {href && (
+          <Link
+            href={href}
+            className="text-[11px] font-semibold text-zinc-500 transition hover:text-green-400"
+          >
+            View all
+          </Link>
+        )}
+      </div>
+      <div className="space-y-2">{children}</div>
+    </section>
+  );
+}
+
+function CoverImage({
+  url,
+  fallback,
+  rounded = "rounded-lg",
+}: {
+  url: string | null;
+  fallback: string;
+  rounded?: string;
+}) {
+  if (url) {
+    return (
+      <div
+        role="img"
+        aria-label={fallback}
+        className={`h-10 w-10 shrink-0 bg-zinc-900 bg-cover bg-center ${rounded}`}
+        style={{ backgroundImage: `url(${url})` }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`grid h-10 w-10 shrink-0 place-items-center bg-gradient-to-br from-green-500 to-zinc-900 text-sm font-black text-white ${rounded}`}
+    >
+      {fallback.slice(0, 1).toUpperCase()}
+    </div>
+  );
+}
+
+function TrackItem({
+  song,
+  queue,
+  meta,
+}: {
+  song: Song;
+  queue: Song[];
+  meta?: string;
+}) {
+  const playSong = usePlayerStore((state) => state.playSong);
+  const coverUrl = getSongCoverUrl(song);
+
+  return (
+    <div className="group flex items-center gap-3 rounded-lg p-1.5 transition hover:bg-zinc-900/70">
+      <button
+        type="button"
+        onClick={() => playSong(song, queue)}
+        className="relative shrink-0 focus:outline-none"
+        aria-label={`Play ${song.title}`}
+      >
+        <CoverImage url={coverUrl} fallback={song.title} />
+        <span className="absolute inset-0 grid place-items-center rounded-lg bg-black/45 text-white opacity-0 transition group-hover:opacity-100">
+          <PlayIcon size={13} className="ml-0.5" />
+        </span>
+      </button>
+
+      <div className="min-w-0 flex-1">
+        <Link href={`/songs/${song.id}`}>
+          <h3 className="truncate text-sm font-semibold text-zinc-100 transition hover:text-green-400">
+            {song.title}
+          </h3>
+        </Link>
+        <p className="truncate text-xs text-zinc-500">{song.artist.name}</p>
+        <p className="text-[11px] text-zinc-600">
+          {meta ?? `${formatPlayCount(song.play_count)} plays`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ArtistItem({ artist }: { artist: DiscoveryArtist }) {
+  const { user } = useAuth();
+  const { actionId, isFollowing, toggleFollow } = useFollow();
+  const followed = isFollowing(artist.id);
+  const loading = actionId === artist.id;
+  const isSelf =
+    Boolean(user?.id && artist.userId && user.id === artist.userId) ||
+    user?.username?.toLowerCase() === artist.name.toLowerCase();
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg p-1.5 transition hover:bg-zinc-900/70">
+      <Link href={`/artists/${artist.id}`} className="shrink-0">
+        <CoverImage
+          url={artist.avatarUrl}
+          fallback={artist.name}
+          rounded="rounded-full"
+        />
+      </Link>
+
+      <div className="min-w-0 flex-1">
+        <Link href={`/artists/${artist.id}`}>
+          <h3 className="truncate text-sm font-semibold text-zinc-100 transition hover:text-green-400">
+            {artist.name}
+          </h3>
+        </Link>
+        <p className="truncate text-[11px] text-zinc-500">
+          {artist.songCount} songs - {formatPlayCount(artist.playCount)} plays
+        </p>
+      </div>
+
+      {!isSelf && (
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => void toggleFollow(artist.id, artist.name)}
+          className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+            followed
+              ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+              : "bg-green-500 text-green-950 hover:bg-green-400"
+          }`}
+        >
+          {loading ? "..." : followed ? "Following" : "Follow"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function PlaylistItem({ playlist }: { playlist: UserPlaylist }) {
+  const coverUrl = resolveApiAssetUrl(
+    playlist.custom_cover_url ?? playlist.cover_url,
+  );
+  const trackCount = playlist.track_count ?? playlist.song_count ?? 0;
+
+  return (
+    <Link
+      href={`/playlists/${playlist.id}`}
+      className="flex items-center gap-3 rounded-lg p-1.5 transition hover:bg-zinc-900/70"
+    >
+      <CoverImage url={coverUrl} fallback={playlist.title || playlist.name} />
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate text-sm font-semibold text-zinc-100 transition hover:text-green-400">
+          {playlist.title || playlist.name}
+        </h3>
+        <p className="truncate text-xs text-zinc-500">
+          {trackCount} tracks - {playlist.is_public ? "Public" : "Private"}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+function DiscoverySkeleton() {
+  return (
+    <aside className="hidden w-72 shrink-0 xl:block" aria-label="Discovery">
+      <div
+        data-right-sidebar-scroll
+        className="sticky top-20 max-h-[calc(100vh-12rem)] space-y-5 overflow-y-auto dark-scrollbar no-scrollbar pr-1"
+      >
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="space-y-3">
+            <div className="h-3 w-32 rounded bg-zinc-900" />
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((__, itemIndex) => (
+                <div
+                  key={itemIndex}
+                  className="flex items-center gap-3 rounded-lg p-1.5"
+                >
+                  <div className="h-10 w-10 rounded-lg bg-zinc-900" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-3/4 rounded bg-zinc-900" />
+                    <div className="h-2 w-1/2 rounded bg-zinc-900" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+function buildArtists(songs: Song[]) {
+  const artists = new Map<string, DiscoveryArtist>();
+
+  songs.forEach((song) => {
+    const currentArtist = artists.get(song.artist.id);
+    const avatarUrl =
+      resolveApiAssetUrl(song.artist.avatar_url) ?? getSongCoverUrl(song);
+
+    if (!currentArtist) {
+      artists.set(song.artist.id, {
+        id: song.artist.id,
+        name: song.artist.name,
+        avatarUrl,
+        userId: song.artist.user_id ?? null,
+        songCount: 1,
+        playCount: song.play_count,
+      });
+      return;
+    }
+
+    currentArtist.songCount += 1;
+    currentArtist.playCount += song.play_count;
+    currentArtist.avatarUrl = currentArtist.avatarUrl ?? avatarUrl;
+  });
+
+  return Array.from(artists.values()).sort(
+    (firstArtist, secondArtist) =>
+      secondArtist.playCount - firstArtist.playCount ||
+      secondArtist.songCount - firstArtist.songCount,
+  );
+}
+
+export function RightSidebar() {
+  const { accessToken, isLoading: authLoading } = useAuth();
+  const { likedSongs } = useLikes();
+  const { playlists } = usePlaylists();
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [recentlyPlayed, setRecentlyPlayed] = useState<RecentlyPlayedSong[]>(
+    [],
+  );
+  const [loadingSongs, setLoadingSongs] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void getSongsRequest(1, 24)
+      .then((result) => {
+        if (isMounted) {
+          setSongs(result.items);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setSongs([]);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoadingSongs(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadLocalHistory = () => {
+      if (isMounted) {
+        setRecentlyPlayed(getLocalRecentlyPlayed());
+      }
+    };
+
+    if (authLoading) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    if (!accessToken) {
+      loadLocalHistory();
+      window.addEventListener(RECENTLY_PLAYED_UPDATED_EVENT, loadLocalHistory);
+
+      return () => {
+        isMounted = false;
+        window.removeEventListener(
+          RECENTLY_PLAYED_UPDATED_EVENT,
+          loadLocalHistory,
+        );
+      };
+    }
+
+    void getRecentlyPlayedRequest(accessToken)
+      .then((items) => {
+        if (isMounted) {
+          setRecentlyPlayed(items);
+        }
+      })
+      .catch(loadLocalHistory);
+
+    window.addEventListener(RECENTLY_PLAYED_UPDATED_EVENT, loadLocalHistory);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(
+        RECENTLY_PLAYED_UPDATED_EVENT,
+        loadLocalHistory,
+      );
+    };
+  }, [accessToken, authLoading]);
+
+  const artists = useMemo(() => buildArtists(songs).slice(0, 4), [songs]);
+  const popularTracks = useMemo(
+    () =>
+      [...songs]
+        .sort((firstSong, secondSong) => secondSong.play_count - firstSong.play_count)
+        .slice(0, 4),
+    [songs],
+  );
+  const recentLiked = likedSongs.slice(0, 3);
+  const recentHistory = recentlyPlayed.slice(0, 3);
+  const userPlaylists = playlists.slice(0, 3);
+  const hasContent =
+    artists.length > 0 ||
+    recentLiked.length > 0 ||
+    recentHistory.length > 0 ||
+    userPlaylists.length > 0 ||
+    popularTracks.length > 0;
+
+  if (loadingSongs && !hasContent) {
+    return <DiscoverySkeleton />;
+  }
+
+  return (
+    <aside className="hidden w-72 shrink-0 xl:block" aria-label="Discovery">
+      <div
+        data-right-sidebar-scroll
+        className="sticky top-20 max-h-[calc(100vh-12rem)] space-y-5 overflow-y-auto dark-scrollbar no-scrollbar pr-1"
+      >
+        {artists.length > 0 && (
+          <SidebarSection title="Artists you should follow">
+            {artists.map((artist) => (
+              <ArtistItem key={artist.id} artist={artist} />
+            ))}
+          </SidebarSection>
+        )}
+
+        {recentLiked.length > 0 && (
+          <SidebarSection title="Recently Liked" href="/liked">
+            {recentLiked.map((song) => (
+              <TrackItem
+                key={song.id}
+                song={song}
+                queue={recentLiked}
+                meta={`${formatPlayCount(song.play_count)} plays`}
+              />
+            ))}
+          </SidebarSection>
+        )}
+
+        {recentHistory.length > 0 && (
+          <SidebarSection title="Recently played">
+            {recentHistory.map((song) => (
+              <TrackItem
+                key={`${song.id}-${song.played_at}`}
+                song={song}
+                queue={recentHistory}
+                meta="From your history"
+              />
+            ))}
+          </SidebarSection>
+        )}
+
+        {userPlaylists.length > 0 && (
+          <SidebarSection title="Your playlists" href="/playlists">
+            {userPlaylists.map((playlist) => (
+              <PlaylistItem key={playlist.id} playlist={playlist} />
+            ))}
+          </SidebarSection>
+        )}
+
+        {popularTracks.length > 0 && (
+          <SidebarSection title="Popular tracks" href="/search">
+            {popularTracks.map((song) => (
+              <TrackItem key={song.id} song={song} queue={popularTracks} />
+            ))}
+          </SidebarSection>
+        )}
+
+        {!hasContent && (
+          <div className="rounded-2xl border border-zinc-900 bg-zinc-950/50 p-4 text-sm text-zinc-500">
+            Discovery updates as you play, like, and create playlists.
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}

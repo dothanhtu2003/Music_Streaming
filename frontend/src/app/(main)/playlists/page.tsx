@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
+import { MoreIcon, PlayIcon, TrashIcon, UserIcon, PlaylistIcon } from "@/components/ui/Icons";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { usePlayer } from "@/components/player/PlayerProvider";
+import { LibraryTabs } from "@/components/library/LibraryTabs";
+import { PlaylistCardSkeleton } from "@/components/ui/Skeletons";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   emptyPlaylistFormValue,
   PlaylistForm,
@@ -14,17 +17,8 @@ import {
 } from "@/components/playlist/PlaylistProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getPlaylistRequest, resolveApiAssetUrl } from "@/lib/api";
+import { usePlayerStore } from "@/stores/player-store";
 import type { UserPlaylist } from "@/types/music";
-
-function PlaylistSkeleton() {
-  return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
-      <div className="aspect-square rounded-lg bg-zinc-800" />
-      <div className="mt-4 h-5 w-2/3 rounded bg-zinc-800" />
-      <div className="mt-3 h-4 w-1/3 rounded bg-zinc-800" />
-    </div>
-  );
-}
 
 function PlaylistCover({ playlist }: { playlist: UserPlaylist }) {
   const coverUrl = resolveApiAssetUrl(playlist.cover_url);
@@ -109,9 +103,140 @@ function PlaylistModal({
   );
 }
 
+type PlaylistCardProps = {
+  playlist: UserPlaylist;
+  onPlay: (playlist: UserPlaylist) => void;
+  onEdit: (playlist: UserPlaylist) => void;
+  onDelete: (playlist: UserPlaylist) => void;
+  actionId: string | null;
+};
+
+function PlaylistCard({
+  playlist,
+  onPlay,
+  onEdit,
+  onDelete,
+  actionId,
+}: PlaylistCardProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [menuOpen]);
+
+  return (
+    <article
+      className="group relative rounded-xl bg-zinc-900/40 p-4 transition-all duration-300 hover:bg-zinc-900 border border-zinc-900/10 hover:border-zinc-800 shadow-lg flex flex-col justify-between"
+    >
+      <div className="relative">
+        {/* Cover image wrapper */}
+        <div className="relative aspect-square w-full overflow-hidden rounded-lg shadow-md">
+          <Link href={`/playlists/${playlist.id}`} className="block w-full h-full">
+            <PlaylistCover playlist={playlist} />
+          </Link>
+          {playlist.track_count > 0 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onPlay(playlist);
+              }}
+              className="absolute bottom-3 right-3 flex h-10 w-10 translate-y-2 items-center justify-center rounded-full bg-green-500 text-green-950 opacity-0 shadow-xl transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 hover:scale-105 hover:bg-green-400 focus:outline-none"
+              title="Play playlist"
+            >
+              <PlayIcon size={16} className="ml-0.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Playlist metadata */}
+        <div className="mt-4 min-w-0">
+          <h3 className="truncate text-sm font-bold text-white hover:text-green-400 transition">
+            <Link href={`/playlists/${playlist.id}`}>{playlist.title}</Link>
+          </h3>
+          <p className="mt-1 truncate text-xs text-zinc-400">
+            By {playlist.owner_name || "You"}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between border-t border-zinc-900 pt-3">
+        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+          {playlist.track_count} tracks • {playlist.is_public ? "Public" : "Private"}
+        </span>
+
+        {/* 3-dots actions dropdown menu */}
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition focus:outline-none"
+            title="Playlist Actions"
+          >
+            <MoreIcon size={14} />
+          </button>
+
+          {menuOpen && (
+            <div className="absolute right-0 bottom-full mb-1 z-50 w-44 origin-bottom-right rounded-xl border border-zinc-800 bg-zinc-950 p-1 shadow-2xl ring-1 ring-black ring-opacity-5">
+              <Link
+                href={`/playlists/${playlist.id}`}
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-zinc-300 transition hover:bg-zinc-900 hover:text-white"
+              >
+                <UserIcon size={14} />
+                View Tracks
+              </Link>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onEdit(playlist);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-zinc-300 transition hover:bg-zinc-900 hover:text-white"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                Edit Details
+              </button>
+              
+              <hr className="my-1 border-zinc-900" />
+              
+              <button
+                type="button"
+                disabled={actionId === playlist.id}
+                onClick={() => {
+                  setMenuOpen(false);
+                  void onDelete(playlist);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-400 transition hover:bg-zinc-900 hover:text-red-300 disabled:opacity-50"
+              >
+                <TrashIcon size={14} />
+                {actionId === playlist.id ? "Deleting..." : "Delete playlist"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function PlaylistsPage() {
   const { accessToken } = useAuth();
-  const { playSong } = usePlayer();
+  const playSong = usePlayerStore((state) => state.playSong);
   const {
     playlists,
     pagination,
@@ -185,7 +310,9 @@ export default function PlaylistsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
+      <LibraryTabs />
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <PageHeader
           eyebrow="Library"
@@ -204,7 +331,7 @@ export default function PlaylistsPage() {
       {isLoading && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, index) => (
-            <PlaylistSkeleton key={index} />
+            <PlaylistCardSkeleton key={index} />
           ))}
         </div>
       )}
@@ -225,12 +352,13 @@ export default function PlaylistsPage() {
       )}
 
       {!isLoading && !error && playlists.length === 0 && (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-8 text-center">
-          <p className="text-sm font-medium text-white">No playlists yet.</p>
-          <p className="mt-2 text-xs text-zinc-500">
-            Create a playlist, then add tracks from Home or song details.
-          </p>
-        </div>
+        <EmptyState
+          icon={<PlaylistIcon size={24} />}
+          title="No playlists yet"
+          description="Create a playlist, then add tracks from Home or song details."
+          actionLabel="Create playlist"
+          onAction={() => setCreateOpen(true)}
+        />
       )}
 
       {!isLoading && !error && playlists.length > 0 && (
@@ -240,68 +368,17 @@ export default function PlaylistsPage() {
           </p>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {playlists.map((playlist) => (
-              <article
+              <PlaylistCard
                 key={playlist.id}
-                className="rounded-lg border border-zinc-800 bg-zinc-950 p-4 transition hover:border-green-500/70 hover:bg-zinc-900"
-              >
-                <Link href={`/playlists/${playlist.id}`}>
-                  <PlaylistCover playlist={playlist} />
-                </Link>
-                <div className="mt-4 min-w-0">
-                  <Link href={`/playlists/${playlist.id}`}>
-                    <h2 className="truncate text-lg font-semibold text-white hover:text-green-300">
-                      {playlist.title}
-                    </h2>
-                  </Link>
-                  <p className="mt-1 truncate text-sm text-zinc-400">
-                    {playlist.owner_name || "You"}
-                  </p>
-                  <p className="mt-2 text-xs text-zinc-500">
-                    {playlist.track_count} tracks -{" "}
-                    {playlist.is_public ? "Public" : "Private"}
-                  </p>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={playlist.track_count === 0}
-                    onClick={() => {
-                      void handlePlay(playlist);
-                    }}
-                    className="rounded-lg bg-green-500 px-3 py-2 text-xs font-semibold text-green-950 transition hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
-                  >
-                    Play
-                  </button>
-                  <Link
-                    href={`/playlists/${playlist.id}`}
-                    className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-green-500 hover:text-white"
-                  >
-                    View
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setEditingPlaylist({
-                        ...playlist,
-                        cover_url: playlist.custom_cover_url ?? playlist.cover_url,
-                      })
-                    }
-                    className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-green-500 hover:text-white"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    disabled={actionId === playlist.id}
-                    onClick={() => {
-                      void handleDelete(playlist);
-                    }}
-                    className="rounded-lg border border-red-500/50 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {actionId === playlist.id ? "Deleting..." : "Delete"}
-                  </button>
-                </div>
-              </article>
+                playlist={playlist}
+                onPlay={handlePlay}
+                onEdit={(p) => setEditingPlaylist({
+                  ...p,
+                  cover_url: p.custom_cover_url ?? p.cover_url,
+                })}
+                onDelete={handleDelete}
+                actionId={actionId}
+              />
             ))}
           </div>
         </div>

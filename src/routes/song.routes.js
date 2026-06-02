@@ -11,6 +11,8 @@ const router = express.Router();
 
 router.get("/", songController.getSongs);
 router.get("/search", songController.searchSongs);
+router.get("/:id/waveform", songController.getSongWaveform);
+router.post("/:id/waveform", songController.saveSongWaveform);
 router.get("/:id", songController.getSongById);
 router.post("/upload", authMiddleware, uploadTrack, songController.uploadSong);
 router.post("/:id/listen", optionalAuthMiddleware, songController.listenToSong);

@@ -76,7 +76,8 @@ const optionalAuthMiddleware = async (req, res, next) => {
     const token = getBearerToken(req.headers.authorization);
 
     if (!token) {
-      throw new AppError("Access token is invalid or expired", 401);
+      req.user = null;
+      return next();
     }
 
     const payload = verifyAccessToken(token);
@@ -87,9 +88,12 @@ const optionalAuthMiddleware = async (req, res, next) => {
   } catch (error) {
     if (
       error.name === "JsonWebTokenError" ||
-      error.name === "TokenExpiredError"
+      error.name === "TokenExpiredError" ||
+      error.statusCode === 401 ||
+      error.statusCode === 403
     ) {
-      return next(new AppError("Access token is invalid or expired", 401));
+      req.user = null;
+      return next();
     }
 
     return next(error);
