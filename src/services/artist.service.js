@@ -1,0 +1,166 @@
+const { pool } = require("../db/pool");
+const AppError = require("../utils/appError");
+const {
+  buildPagination,
+  buildUpdateSet,
+  normalizeSearch,
+  parsePagination,
+  validateOptionalString,
+  validateRequiredString,
+  validateUuid,
+} = require("../utils/query.utils");
+
+const artistFields = "id, name, bio, avatar_url, user_id, created_at, updated_at";
+
+const formatArtist = (artist) => {
+  return {
+    id: artist.id,
+    name: artist.name,
+    bio: artist.bio,
+    avatar_url: artist.avatar_url,
+    user_id: artist.user_id,
+    created_at: artist.created_at,
+    updated_at: artist.updated_at,
+  };
+};
+
+const validateArtistInput = (data = {}, isUpdate = false) => {
+  const fields = {};
+
+  if (!isUpdate || Object.prototype.hasOwnProperty.call(data, "name")) {
+    fields.name = validateRequiredString(data.name, "name", 150);
+  }
+
+  if (!isUpdate || Object.prototype.hasOwnProperty.call(data, "bio")) {
+    fields.bio = validateOptionalString(data.bio, "bio", 5000);
+  }
+
+  if (!isUpdate || Object.prototype.hasOwnProperty.call(data, "avatar_url")) {
+    fields.avatar_url = validateOptionalString(
+      data.avatar_url,
+      "avatar_url",
+      1000
+    );
+  }
+
+  return fields;
+};
+
+const getArtists = async (query) => {
+  const { page, limit, offset } = parsePagination(query);
+  const search = normalizeSearch(query.q || query.search);
+
+  const countResult = await pool.query(
+    `SELECT COUNT(*) AS total
+     FROM artists
+     WHERE ($1::text IS NULL OR name ILIKE $1)`,
+    [search]
+  );
+
+  const result = await pool.query(
+    `SELECT ${artistFields}
+     FROM artists
+     WHERE ($1::text IS NULL OR name ILIKE $1)
+     ORDER BY created_at DESC
+     LIMIT $2 OFFSET $3`,
+    [search, limit, offset]
+  );
+
+  const totalItems = Number(countResult.rows[0].total);
+
+  return {
+    items: result.rows.map(formatArtist),
+    pagination: buildPagination(totalItems, page, limit),
+  };
+};
+
+const getArtistById = async (id) => {
+  validateUuid(id);
+
+  const result = await pool.query(
+    `SELECT ${artistFields}
+     FROM artists
+     WHERE id = $1
+     LIMIT 1`,
+    [id]
+  );
+
+  const artist = result.rows[0];
+
+  if (!artist) {
+    throw new AppError("Artist not found", 404);
+  }
+
+  return formatArtist(artist);
+};
+
+const createArtist = async (data) => {
+  const fields = validateArtistInput(data);
+
+  const result = await pool.query(
+    `INSERT INTO artists (name, bio, avatar_url)
+     VALUES ($1, $2, $3)
+     RETURNING ${artistFields}`,
+    [fields.name, fields.bio, fields.avatar_url]
+  );
+
+  return formatArtist(result.rows[0]);
+};
+
+const updateArtist = async (id, data) => {
+  validateUuid(id);
+
+  const fields = validateArtistInput(data, true);
+  const { setClause, values } = buildUpdateSet(fields);
+
+  const result = await pool.query(
+    `UPDATE artists
+     SET ${setClause}
+     WHERE id = $1
+     RETURNING ${artistFields}`,
+    [id, ...values]
+  );
+
+  const artist = result.rows[0];
+
+  if (!artist) {
+    throw new AppError("Artist not found", 404);
+  }
+
+  return formatArtist(artist);
+};
+
+const deleteArtist = async (id) => {
+  validateUuid(id);
+
+  try {
+    const result = await pool.query(
+      `DELETE FROM artists
+       WHERE id = $1
+       RETURNING ${artistFields}`,
+      [id]
+    );
+
+    const artist = result.rows[0];
+
+    if (!artist) {
+      throw new AppError("Artist not found", 404);
+    }
+
+    return formatArtist(artist);
+  } catch (error) {
+    if (error.code === "23503") {
+      throw new AppError("Cannot delete artist because it is used by albums or songs", 409);
+    }
+
+    throw error;
+  }
+};
+
+module.exports = {
+  getArtists,
+  getArtistById,
+  createArtist,
+  updateArtist,
+  deleteArtist,
+};

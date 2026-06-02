@@ -1,0 +1,126 @@
+const songService = require("../services/song.service");
+const {
+  getUploadedFile,
+  removeUploadedFiles,
+} = require("../middlewares/upload.middleware");
+const { successResponse } = require("../utils/apiResponse");
+
+const getSongs = async (req, res, next) => {
+  try {
+    const result = await songService.getSongs(req.query);
+
+    return successResponse(res, "Songs fetched successfully", result.items, 200, {
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const searchSongs = async (req, res, next) => {
+  try {
+    const result = await songService.searchSongs(req.query);
+
+    return successResponse(res, "Songs searched successfully", result.items, 200, {
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getSongById = async (req, res, next) => {
+  try {
+    const song = await songService.getSongById(req.params.id);
+
+    return successResponse(res, "Song fetched successfully", song);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const createSong = async (req, res, next) => {
+  try {
+    const song = await songService.createSong(req.body);
+
+    return successResponse(res, "Song created successfully", song, 201);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const uploadSong = async (req, res, next) => {
+  const audioFile = getUploadedFile(req, "audio");
+  const coverFile = getUploadedFile(req, "cover");
+  const uploadedFiles = [audioFile, coverFile].filter(Boolean);
+
+  try {
+    const song = await songService.createUploadedSong(
+      {
+        title: req.body.title,
+        genre: req.body.genre,
+        description: req.body.description,
+        file_url: audioFile ? `/uploads/audio/${audioFile.filename}` : "",
+        cover_url: coverFile ? `/uploads/covers/${coverFile.filename}` : null,
+      },
+      req.user
+    );
+
+    return successResponse(res, "Song uploaded successfully", song, 201);
+  } catch (error) {
+    await removeUploadedFiles(uploadedFiles);
+    return next(error);
+  }
+};
+
+const updateSong = async (req, res, next) => {
+  try {
+    const song = await songService.updateSong(req.params.id, req.body);
+
+    return successResponse(res, "Song updated successfully", song);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const deleteSong = async (req, res, next) => {
+  try {
+    const song = await songService.deleteSong(req.params.id);
+
+    return successResponse(res, "Song deleted successfully", song);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const incrementPlayCount = async (req, res, next) => {
+  try {
+    const song = await songService.incrementPlayCount(req.params.id);
+
+    return successResponse(res, "Song play count increased successfully", song);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const listenToSong = async (req, res, next) => {
+  try {
+    const result = await songService.listenToSong(req.params.id, req.user?.id);
+
+    return successResponse(res, "Song listened successfully", result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+module.exports = {
+  getSongs,
+  searchSongs,
+  getSongById,
+  createSong,
+  uploadSong,
+  updateSong,
+  deleteSong,
+  incrementPlayCount,
+  listenToSong,
+};
