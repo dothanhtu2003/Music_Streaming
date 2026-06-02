@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { NowPlayingHero } from "@/components/NowPlayingHero";
-import { HorizontalSongCarousel } from "@/components/song/HorizontalSongCarousel";
 import { RecentlyPlayedList } from "@/components/song/RecentlyPlayedList";
+import { StreamTrackRow } from "@/components/song/StreamTrackRow";
 import { getRecentlyPlayedRequest, getSongsRequest } from "@/lib/api";
 import { getLocalRecentlyPlayed } from "@/lib/recently-played-storage";
 import {
@@ -15,7 +15,7 @@ import {
 import { usePlayerStore } from "@/stores/player-store";
 import type { RecentlyPlayedSong, Song, SongPagination } from "@/types/music";
 
-const SONG_LIMIT = 9;
+const SONG_LIMIT = 10;
 
 export default function Home() {
   const { accessToken, isLoading: authLoading } = useAuth();
@@ -135,7 +135,7 @@ export default function Home() {
           : getLocalRecentlyPlayed();
 
         if (isMounted) {
-          setRecentlyPlayed(items);
+          setRecentlyPlayed(items as RecentlyPlayedSong[]);
         }
       } catch (recentError) {
         if (!isMounted) {
@@ -231,18 +231,68 @@ export default function Home() {
         </section>
       )}
 
-      <HorizontalSongCarousel
-        title="Latest Songs"
-        subtitle="Fresh tracks picked from the latest uploads."
-        songs={songs}
-        loading={loading}
-        error={error}
-        emptyTitle="No songs available yet."
-        emptyDescription="Upload a track or explore music to start building the catalog."
-        canLoadMore={canLoadMore}
-        loadingMore={loadingMore}
-        onLoadMore={handleLoadMore}
-      />
+      <section className="space-y-4">
+        <div className="border-b border-zinc-900 pb-2">
+          <h2 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">
+            Hear what’s trending in the community
+          </h2>
+          <p className="text-xs text-zinc-500">
+            Fresh tracks and new vibes picked straight from the latest uploads.
+          </p>
+        </div>
+
+        {error && (
+          <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 text-sm text-red-300">
+            {error}
+          </div>
+        )}
+
+        {!error && loading && (
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={index}
+                className="flex flex-col gap-4 rounded-xl border border-zinc-900 bg-zinc-950/20 p-4 animate-pulse md:flex-row md:gap-5"
+              >
+                <div className="h-[152px] w-[152px] shrink-0 rounded-lg bg-zinc-900 shimmer mx-auto md:mx-0" />
+                <div className="flex-1 space-y-4 mt-2">
+                  <div className="h-4 w-1/4 rounded bg-zinc-900 shimmer" />
+                  <div className="h-6 w-1/2 rounded bg-zinc-900 shimmer" />
+                  <div className="h-10 w-full rounded bg-zinc-900 shimmer" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!error && !loading && songs.length === 0 && (
+          <div className="rounded-xl border border-zinc-900 bg-zinc-950/20 p-8 text-center text-zinc-500">
+            <p className="font-semibold text-zinc-400">No songs available yet.</p>
+            <p className="mt-1 text-sm text-zinc-500">Upload a track or explore music to start building the catalog.</p>
+          </div>
+        )}
+
+        {!error && !loading && songs.length > 0 && (
+          <div className="space-y-4">
+            {songs.map((song) => (
+              <StreamTrackRow key={song.id} song={song} queue={songs} />
+            ))}
+
+            {canLoadMore && (
+              <div className="flex justify-center pt-4">
+                <button
+                  type="button"
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="rounded-full border border-zinc-800 bg-zinc-950 px-6 py-2.5 text-xs font-bold text-zinc-300 transition hover:border-orange-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loadingMore ? "Loading more..." : "Load more tracks"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
     </div>
   );
 

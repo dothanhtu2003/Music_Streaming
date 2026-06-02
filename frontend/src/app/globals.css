@@ -221,7 +221,7 @@ input[type="range"].slider-premium::-webkit-slider-thumb {
   height: 12px;
   border-radius: 50%;
   background: #ff5500;
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+  box-shadow: 0 0 10px rgba(255, 85, 0, 0.5);
   opacity: 0;
   transition: opacity 150ms ease, transform 150ms ease;
 }
@@ -244,7 +244,7 @@ input[type="range"].slider-premium::-moz-range-thumb {
   border: 0;
   border-radius: 50%;
   background: #ff5500;
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+  box-shadow: 0 0 10px rgba(255, 85, 0, 0.5);
   opacity: 0;
   transition: opacity 150ms ease, transform 150ms ease;
 }

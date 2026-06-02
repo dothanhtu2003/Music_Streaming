@@ -817,7 +817,7 @@ export default function ProfilePage() {
     void getRecentlyPlayedRequest(accessToken)
       .then((items) => {
         if (isMounted) {
-          setRecentlyPlayed(items);
+          setRecentlyPlayed(items as RecentlyPlayedSong[]);
         }
       })
       .catch((historyError) => {

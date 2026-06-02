@@ -403,6 +403,14 @@ export async function saveSongWaveformRequest(
   return response.data;
 }
 
+export async function searchRealtimeSuggestionsRequest(q: string, limit = 5) {
+  const response = await apiRequest<{ songs: Song[]; artists: ArtistRecord[] }>(
+    `/search${buildQuery({ q, limit })}`
+  );
+
+  return response.data ?? { songs: [], artists: [] };
+}
+
 export async function listenSongRequest(
   id: string,
   accessToken?: string | null,

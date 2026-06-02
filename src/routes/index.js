@@ -13,6 +13,7 @@ const songRoutes = require("./song.routes");
 const uploadRoutes = require("./upload.routes");
 const followRoutes = require("./follow.routes");
 const feedRoutes = require("./feed.routes");
+const searchRoutes = require("./search.routes");
 
 const router = express.Router();
 
@@ -30,5 +31,6 @@ router.use("/songs", songRoutes);
 router.use("/upload", uploadRoutes);
 router.use("/follow", followRoutes);
 router.use("/feed", feedRoutes);
+router.use("/search", searchRoutes);
 
 module.exports = router;
