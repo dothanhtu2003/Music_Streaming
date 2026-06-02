@@ -11,7 +11,7 @@ const {
 const SALT_ROUNDS = 10;
 
 const userSelectFields =
-  "id, email, username, role, is_verified, is_banned, created_at, updated_at";
+  "id, email, username, display_name, bio, avatar_url, role, is_verified, is_banned, created_at, updated_at";
 
 const normalizeEmail = (email) => {
   return String(email || "").trim().toLowerCase();
@@ -33,6 +33,34 @@ const validateUsername = (username) => {
 
 const validatePassword = (password) => {
   return typeof password === "string" && password.length >= 6;
+};
+
+const normalizeOptionalString = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const normalizedValue = String(value).trim();
+
+  return normalizedValue || null;
+};
+
+const validateOptionalUrl = (value, fieldName) => {
+  if (!value) {
+    return;
+  }
+
+  let url;
+
+  try {
+    url = new URL(value);
+  } catch {
+    throw new AppError(`${fieldName} must be a valid URL`, 400);
+  }
+
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new AppError(`${fieldName} must start with http:// or https://`, 400);
+  }
 };
 
 const validateRegisterInput = ({ email, username, password }) => {
@@ -62,6 +90,21 @@ const validateLoginInput = ({ email, password }) => {
   }
 };
 
+const validateProfileInput = ({ displayName, bio }) => {
+  if (!displayName || displayName.length < 2) {
+    throw new AppError("Display name must be at least 2 characters", 400);
+  }
+
+  if (displayName.length > 80) {
+    throw new AppError("Display name must be 80 characters or less", 400);
+  }
+
+  if (bio && bio.length > 300) {
+    throw new AppError("Bio must be 300 characters or less", 400);
+  }
+
+};
+
 const validateRefreshTokenInput = (refreshToken) => {
   if (!refreshToken || typeof refreshToken !== "string") {
     throw new AppError("Refresh token is required", 400);
@@ -73,6 +116,9 @@ const formatUser = (user) => {
     id: user.id,
     email: user.email,
     username: user.username,
+    displayName: user.display_name,
+    bio: user.bio,
+    avatarUrl: user.avatar_url,
     role: user.role,
     isVerified: user.is_verified,
     isBanned: user.is_banned,
@@ -161,7 +207,7 @@ const login = async ({ email, password }) => {
   });
 
   const result = await pool.query(
-    `SELECT id, email, username, password_hash, role, is_verified, is_banned, created_at, updated_at
+    `SELECT ${userSelectFields}, password_hash
      FROM users
      WHERE email = $1
      LIMIT 1`,
@@ -209,6 +255,9 @@ const refresh = async (refreshToken) => {
         u.id,
         u.email,
         u.username,
+        u.display_name,
+        u.bio,
+        u.avatar_url,
         u.role,
         u.is_verified,
         u.is_banned,
@@ -251,6 +300,9 @@ const refresh = async (refreshToken) => {
       id: tokenRecord.id,
       email: tokenRecord.email,
       username: tokenRecord.username,
+      display_name: tokenRecord.display_name,
+      bio: tokenRecord.bio,
+      avatar_url: tokenRecord.avatar_url,
       role: tokenRecord.role,
       is_verified: tokenRecord.is_verified,
       is_banned: tokenRecord.is_banned,
@@ -310,10 +362,73 @@ const getCurrentUser = async (userId) => {
   return formatUser(user);
 };
 
+const updateCurrentUser = async (userId, data) => {
+  const displayName = normalizeOptionalString(
+    data.display_name ?? data.displayName ?? data.username
+  );
+  const bio = normalizeOptionalString(data.bio);
+
+  validateProfileInput({ displayName, bio });
+
+  const result = await pool.query(
+    `UPDATE users
+     SET display_name = $1,
+         bio = $2,
+         updated_at = NOW()
+     WHERE id = $3
+     RETURNING ${userSelectFields}`,
+    [displayName, bio, userId]
+  );
+
+  const user = result.rows[0];
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  return formatUser(user);
+};
+
+const updateCurrentUserAvatar = async (userId, avatarUrl) => {
+  const normalizedAvatarUrl = normalizeOptionalString(avatarUrl);
+
+  if (!normalizedAvatarUrl?.startsWith("/uploads/avatars/")) {
+    throw new AppError("Avatar URL is invalid", 400);
+  }
+
+  const currentResult = await pool.query(
+    `SELECT avatar_url
+     FROM users
+     WHERE id = $1
+     LIMIT 1`,
+    [userId]
+  );
+
+  if (!currentResult.rows[0]) {
+    throw new AppError("User not found", 404);
+  }
+
+  const result = await pool.query(
+    `UPDATE users
+     SET avatar_url = $1,
+         updated_at = NOW()
+     WHERE id = $2
+     RETURNING ${userSelectFields}`,
+    [normalizedAvatarUrl, userId]
+  );
+
+  return {
+    user: formatUser(result.rows[0]),
+    previousAvatarUrl: currentResult.rows[0].avatar_url,
+  };
+};
+
 module.exports = {
   register,
   login,
   refresh,
   logout,
   getCurrentUser,
+  updateCurrentUser,
+  updateCurrentUserAvatar,
 };

@@ -23,7 +23,7 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center text-center rounded-2xl border border-zinc-800/80 bg-zinc-950/40 p-8 md:p-12 max-w-xl mx-auto shadow-xl">
       {icon && (
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 text-green-500 border border-green-500/20 mb-5 shadow-lg shadow-green-500/5 animate-pulse">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-orange-500/10 text-orange-500 border border-orange-500/20 mb-5 shadow-lg shadow-orange-500/5 animate-pulse">
           {icon}
         </div>
       )}
@@ -38,7 +38,7 @@ export function EmptyState({
           {href ? (
             <Link
               href={href}
-              className="inline-flex items-center justify-center rounded-full bg-green-500 px-6 py-2.5 text-xs font-bold text-green-950 transition hover:bg-green-400 hover:scale-105 active:scale-95 shadow-md shadow-green-500/10 focus:outline-none"
+              className="inline-flex items-center justify-center rounded-full bg-orange-500 px-6 py-2.5 text-xs font-bold text-orange-950 transition hover:bg-orange-400 hover:scale-105 active:scale-95 shadow-md shadow-orange-500/10 focus:outline-none"
             >
               {actionLabel}
             </Link>
@@ -46,7 +46,7 @@ export function EmptyState({
             <button
               type="button"
               onClick={onAction}
-              className="inline-flex items-center justify-center rounded-full bg-green-500 px-6 py-2.5 text-xs font-bold text-green-950 transition hover:bg-green-400 hover:scale-105 active:scale-95 shadow-md shadow-green-500/10 focus:outline-none"
+              className="inline-flex items-center justify-center rounded-full bg-orange-500 px-6 py-2.5 text-xs font-bold text-orange-950 transition hover:bg-orange-400 hover:scale-105 active:scale-95 shadow-md shadow-orange-500/10 focus:outline-none"
             >
               {actionLabel}
             </button>

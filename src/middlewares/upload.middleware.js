@@ -7,13 +7,16 @@ const AppError = require("../utils/appError");
 
 const AUDIO_MAX_SIZE = 20 * 1024 * 1024;
 const COVER_MAX_SIZE = 5 * 1024 * 1024;
+const AVATAR_MAX_SIZE = 2 * 1024 * 1024;
 
 const uploadRoot = path.join(__dirname, "../../uploads");
 const audioUploadPath = path.join(uploadRoot, "audio");
 const coverUploadPath = path.join(uploadRoot, "covers");
+const avatarUploadPath = path.join(uploadRoot, "avatars");
 
 fs.mkdirSync(audioUploadPath, { recursive: true });
 fs.mkdirSync(coverUploadPath, { recursive: true });
+fs.mkdirSync(avatarUploadPath, { recursive: true });
 
 const audioMimeTypes = new Set(["audio/mpeg", "audio/mp3"]);
 const coverMimeTypes = new Map([
@@ -23,6 +26,7 @@ const coverMimeTypes = new Map([
 ]);
 const audioExtensions = new Set([".mp3"]);
 const coverExtensions = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+const avatarExtensions = coverExtensions;
 
 const isAudioField = (fieldName) => {
   return fieldName === "audio" || fieldName === "audio_file";
@@ -163,6 +167,21 @@ const createTrackStorage = () => {
   });
 };
 
+const createAvatarStorage = () => {
+  return multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, avatarUploadPath);
+    },
+    filename: (req, file, cb) => {
+      const extension = getCoverExtension(file.mimetype);
+      const userId = req.user?.id || "user";
+      const random = crypto.randomBytes(8).toString("hex");
+
+      cb(null, `${userId}-${Date.now()}-${random}${extension}`);
+    },
+  });
+};
+
 const createFileFilter = (getExtension, allowedExtensions, errorMessage) => {
   return (req, file, cb) => {
     const extension = getExtension(file.mimetype);
@@ -290,6 +309,19 @@ const coverMulter = multer({
   ),
 });
 
+const avatarMulter = multer({
+  storage: createAvatarStorage(),
+  limits: {
+    fileSize: AVATAR_MAX_SIZE,
+    files: 1,
+  },
+  fileFilter: createFileFilter(
+    getCoverExtension,
+    avatarExtensions,
+    "Invalid avatar format. Only JPG, PNG, and WebP images are allowed"
+  ),
+});
+
 const trackMulter = multer({
   storage: createTrackStorage(),
   limits: {
@@ -315,6 +347,14 @@ const uploadCover = [
   ),
 ];
 
+const uploadAvatar = [
+  avatarMulter.single("avatar"),
+  createContentValidator(
+    isCoverHeader,
+    "Invalid avatar content. Only real JPG, PNG, and WebP images are allowed"
+  ),
+];
+
 const uploadTrack = [
   trackMulter.fields([
     { name: "audio", maxCount: 1 },
@@ -328,7 +368,9 @@ const uploadTrack = [
 module.exports = {
   uploadAudio,
   uploadCover,
+  uploadAvatar,
   uploadTrack,
   getUploadedFile,
   removeUploadedFiles,
+  removeUploadedFile,
 };

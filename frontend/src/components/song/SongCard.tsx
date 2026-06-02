@@ -9,6 +9,7 @@ import { HeartIcon, PlayIcon, PauseIcon, PlusIcon } from "@/components/ui/Icons"
 import {
   formatDuration,
   formatPlayCount,
+  getArtistDisplayName,
   getAlbumTitle,
   getGenreName,
   getSongCoverUrl,
@@ -36,8 +37,8 @@ function SongCover({ song, isCurrentSong, isPlaying, onPlay }: { song: Song; isC
           aria-label={`${song.title} cover`}
         />
       ) : (
-        <div className="grid aspect-square w-full place-items-center rounded-xl bg-gradient-to-br from-green-500/20 to-zinc-950 transition-transform duration-500 group-hover:scale-105">
-          <span className="text-4xl font-black text-green-500/70">
+        <div className="grid aspect-square w-full place-items-center rounded-xl bg-gradient-to-br from-orange-500/20 to-zinc-950 transition-transform duration-500 group-hover:scale-105">
+          <span className="text-4xl font-black text-orange-500/70">
             {fallbackLetter}
           </span>
         </div>
@@ -48,13 +49,13 @@ function SongCover({ song, isCurrentSong, isPlaying, onPlay }: { song: Song; isC
         <button
           type="button"
           onClick={onPlay}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500 text-green-950 shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none hover:bg-green-400"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-500 text-orange-950 shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none hover:bg-orange-400"
           aria-label={isCurrentSong && isPlaying ? "Pause song" : "Play song"}
         >
           {isCurrentSong && isPlaying ? (
-            <PauseIcon size={18} className="text-green-950" />
+            <PauseIcon size={18} className="text-orange-950" />
           ) : (
-            <PlayIcon size={18} className="ml-0.5 text-green-950" />
+            <PlayIcon size={18} className="ml-0.5 text-orange-950" />
           )}
         </button>
       </div>
@@ -85,9 +86,10 @@ export function SongCard({ song, queue, compact = false }: SongCardProps) {
   const isCurrentSong = currentSong?.id === song.id;
   const isLiked = isSongLiked(song.id);
   const likeLoading = actionSongId === song.id;
+  const artistName = getArtistDisplayName(song.artist);
   const isSelf =
     Boolean(user?.id && song.artist.user_id && user.id === song.artist.user_id) ||
-    user?.username?.toLowerCase() === song.artist.name.toLowerCase();
+    user?.username?.toLowerCase() === artistName.toLowerCase();
   const isArtistFollowed = isFollowing(song.artist.id);
   const followLoading = actionId === song.artist.id;
 
@@ -106,8 +108,8 @@ export function SongCard({ song, queue, compact = false }: SongCardProps) {
   return (
     <article
       className={cn(
-        "group flex min-w-0 flex-col rounded-2xl border border-zinc-800/80 bg-zinc-950/40 p-3 transition-all duration-300 hover:-translate-y-1 hover:border-green-500/20 hover:bg-zinc-900/60 hover:shadow-2xl hover:shadow-green-500/[0.03]",
-        isCurrentSong && "border-green-500/30 bg-green-500/[0.02]",
+        "group flex min-w-0 flex-col rounded-2xl border border-zinc-800/80 bg-zinc-950/40 p-3 transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/20 hover:bg-zinc-900/60 hover:shadow-2xl hover:shadow-orange-500/[0.03]",
+        isCurrentSong && "border-orange-500/30 bg-orange-500/[0.02]",
       )}
     >
       <div className="relative cursor-pointer" onClick={handlePlay}>
@@ -121,8 +123,8 @@ export function SongCard({ song, queue, compact = false }: SongCardProps) {
               <Link href={`/songs/${song.id}`}>
                 <h3
                   className={cn(
-                    "truncate text-sm font-bold text-white hover:text-green-400 transition-colors duration-200",
-                    isCurrentSong && "text-green-400",
+                    "truncate text-sm font-bold text-white hover:text-orange-400 transition-colors duration-200",
+                    isCurrentSong && "text-orange-400",
                   )}
                 >
                   {song.title}
@@ -141,7 +143,7 @@ export function SongCard({ song, queue, compact = false }: SongCardProps) {
               }}
               className={cn(
                 "shrink-0 transition-all duration-200 focus:outline-none relative hover:scale-110 active:scale-95",
-                isLiked ? "text-green-500" : "text-zinc-500 hover:text-zinc-300",
+                isLiked ? "text-orange-500" : "text-zinc-500 hover:text-zinc-300",
                 likeLoading && "opacity-50"
               )}
               title={isLiked ? "Unlike song" : "Like song"}
@@ -151,8 +153,8 @@ export function SongCard({ song, queue, compact = false }: SongCardProps) {
           </div>
 
           <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-zinc-400">
-            <Link href={`/artists/${song.artist.id}`} className="truncate hover:text-green-400 transition-colors">
-              {song.artist.name}
+            <Link href={`/artists/${song.artist.id}`} className="truncate hover:text-orange-400 transition-colors">
+              {artistName}
             </Link>
             {!isSelf && (
               <>
@@ -163,12 +165,12 @@ export function SongCard({ song, queue, compact = false }: SongCardProps) {
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    void toggleFollow(song.artist.id, song.artist.name);
+                    void toggleFollow(song.artist.id, artistName);
                   }}
                   className={cn(
                     "shrink-0 font-medium transition hover:underline focus:outline-none text-[11px]",
                     isArtistFollowed
-                      ? "text-green-400 hover:text-green-300"
+                      ? "text-orange-400 hover:text-orange-300"
                       : "text-zinc-500 hover:text-zinc-300",
                   )}
                 >
@@ -206,7 +208,7 @@ export function SongCard({ song, queue, compact = false }: SongCardProps) {
             e.stopPropagation();
             openAddSongModal(song);
           }}
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-900/20 py-2 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:border-green-500/30 hover:bg-green-500/5 hover:text-white focus:outline-none flex items-center justify-center gap-1.5"
+          className="w-full rounded-xl border border-zinc-800 bg-zinc-900/20 py-2 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:border-orange-500/30 hover:bg-orange-500/5 hover:text-white focus:outline-none flex items-center justify-center gap-1.5"
         >
           <PlusIcon size={12} />
           Add to playlist

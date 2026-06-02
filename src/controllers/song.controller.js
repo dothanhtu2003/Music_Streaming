@@ -17,6 +17,18 @@ const getSongs = async (req, res, next) => {
   }
 };
 
+const getMySongs = async (req, res, next) => {
+  try {
+    const result = await songService.getSongsByUser(req.user, req.query);
+
+    return successResponse(res, "My songs fetched successfully", result.items, 200, {
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const searchSongs = async (req, res, next) => {
   try {
     const result = await songService.searchSongs(req.query);
@@ -135,6 +147,7 @@ const listenToSong = async (req, res, next) => {
 
 module.exports = {
   getSongs,
+  getMySongs,
   searchSongs,
   getSongById,
   getSongWaveform,

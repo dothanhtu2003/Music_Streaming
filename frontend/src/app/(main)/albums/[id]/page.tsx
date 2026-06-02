@@ -17,7 +17,7 @@ export default async function AlbumDetailPage({ params }: AlbumDetailPageProps) 
   return (
     <div className="space-y-8 page-fade-in">
       <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-6">
-        <p className="text-sm font-medium uppercase tracking-[0.18em] text-green-400">
+        <p className="text-sm font-medium uppercase tracking-[0.18em] text-orange-400">
           Album
         </p>
         <h1 className="mt-2 text-3xl font-bold text-white sm:text-5xl">

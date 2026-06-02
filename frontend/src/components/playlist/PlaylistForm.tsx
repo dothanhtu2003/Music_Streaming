@@ -31,7 +31,7 @@ export function PlaylistForm({ form, onChange }: PlaylistFormProps) {
           value={form.title}
           onChange={(event) => updateForm("title", event.target.value)}
           maxLength={150}
-          className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-green-500"
+          className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500"
           placeholder="My Favorite Set"
         />
       </label>
@@ -42,7 +42,7 @@ export function PlaylistForm({ form, onChange }: PlaylistFormProps) {
           value={form.coverUrl}
           onChange={(event) => updateForm("coverUrl", event.target.value)}
           maxLength={1000}
-          className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-green-500"
+          className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500"
           placeholder="Optional"
         />
       </label>
@@ -54,7 +54,7 @@ export function PlaylistForm({ form, onChange }: PlaylistFormProps) {
           onChange={(event) => updateForm("description", event.target.value)}
           rows={4}
           maxLength={5000}
-          className="mt-2 w-full resize-none rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-green-500"
+          className="mt-2 w-full resize-none rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500"
           placeholder="Short note about this set"
         />
       </label>
@@ -64,7 +64,7 @@ export function PlaylistForm({ form, onChange }: PlaylistFormProps) {
           type="checkbox"
           checked={Boolean(form.isPublic)}
           onChange={(event) => updateForm("isPublic", event.target.checked)}
-          className="accent-green-500"
+          className="accent-orange-500"
         />
         Public playlist
       </label>

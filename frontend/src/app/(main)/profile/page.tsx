@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useFollow } from "@/components/follow/FollowProvider";
 import { useLikes } from "@/components/like/LikeProvider";
@@ -14,19 +14,48 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PlaylistIcon, UserIcon } from "@/components/ui/Icons";
 import {
+  getMySongsRequest,
   getRecentlyPlayedRequest,
-  getSongsRequest,
   resolveApiAssetUrl,
+  uploadCurrentUserAvatarRequest,
+  updateCurrentUserRequest,
 } from "@/lib/api";
 import {
   RECENTLY_PLAYED_UPDATED_EVENT,
   getLocalRecentlyPlayed,
 } from "@/lib/recently-played-storage";
-import { formatPlayCount } from "@/lib/song-format";
+import {
+  SONG_CATALOG_UPDATED_EVENT,
+  consumePendingUploadedSongId,
+  type SongCatalogUpdatedDetail,
+} from "@/lib/song-events";
+import {
+  formatPlayCount,
+  getArtistAvatarUrl,
+  getArtistDisplayName,
+} from "@/lib/song-format";
 import { cn } from "@/lib/utils";
-import type { FollowedArtist, RecentlyPlayedSong, Song, UserPlaylist } from "@/types/music";
+import type {
+  FollowedArtist,
+  RecentlyPlayedSong,
+  Song,
+  UserPlaylist,
+} from "@/types/music";
 
 type ProfileTab = "overview" | "tracks" | "playlists" | "following" | "liked";
+
+type EditableProfile = {
+  username: string;
+  bio: string;
+  avatarUrl: string;
+};
+
+type EditProfileSavePayload = EditableProfile & {
+  avatarFile: File | null;
+};
+
+const AVATAR_MAX_SIZE = 2 * 1024 * 1024;
+const AVATAR_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const profileTabs: Array<{ id: ProfileTab; label: string }> = [
   { id: "overview", label: "Overview" },
@@ -104,7 +133,7 @@ function ProfileTabs({
                 </span>
               )}
               {isActive && (
-                <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-green-400" />
+                <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-orange-400" />
               )}
             </button>
           );
@@ -114,12 +143,223 @@ function ProfileTabs({
   );
 }
 
-function ProfileAvatar({ username }: { username: string }) {
+function ProfileAvatar({
+  username,
+  avatarUrl,
+}: {
+  username: string;
+  avatarUrl: string | null;
+}) {
+  if (avatarUrl) {
+    return (
+      <div
+        className="h-28 w-28 shrink-0 rounded-full border-4 border-black/70 bg-zinc-900 bg-cover bg-center shadow-2xl sm:h-36 sm:w-36 md:h-40 md:w-40"
+        style={{ backgroundImage: `url(${avatarUrl})` }}
+        role="img"
+        aria-label={`${username} avatar`}
+      />
+    );
+  }
+
   return (
-    <div className="grid h-28 w-28 shrink-0 place-items-center rounded-full border-4 border-black/70 bg-gradient-to-br from-green-500 to-zinc-950 shadow-2xl sm:h-36 sm:w-36 md:h-40 md:w-40">
+    <div className="grid h-28 w-28 shrink-0 place-items-center rounded-full border-4 border-black/70 bg-gradient-to-br from-orange-500 to-zinc-950 shadow-2xl sm:h-36 sm:w-36 md:h-40 md:w-40">
       <span className="text-5xl font-black text-white sm:text-6xl">
         {getFallbackLetter(username)}
       </span>
+    </div>
+  );
+}
+
+function EditProfileModal({
+  initialProfile,
+  saving,
+  error,
+  onCancel,
+  onSave,
+}: {
+  initialProfile: EditableProfile;
+  saving: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onSave: (profile: EditProfileSavePayload) => Promise<void>;
+}) {
+  const [form, setForm] = useState<EditableProfile>(initialProfile);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(
+    resolveApiAssetUrl(initialProfile.avatarUrl),
+  );
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarPreviewUrl);
+      }
+    };
+  }, [avatarPreviewUrl]);
+
+  const updateForm = (field: keyof EditableProfile, value: string) => {
+    setForm((currentForm) => ({ ...currentForm, [field]: value }));
+    setFormError(null);
+  };
+
+  const handleAvatarChange = (file: File | null) => {
+    setFormError(null);
+
+    if (!file) {
+      setAvatarFile(null);
+      setAvatarPreviewUrl(resolveApiAssetUrl(initialProfile.avatarUrl));
+      return;
+    }
+
+    if (!AVATAR_MIME_TYPES.has(file.type)) {
+      setAvatarFile(null);
+      setFormError("Avatar must be a JPG, PNG, or WebP image.");
+      return;
+    }
+
+    if (file.size > AVATAR_MAX_SIZE) {
+      setAvatarFile(null);
+      setFormError("Avatar image must be 2MB or smaller.");
+      return;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(file);
+
+    if (avatarPreviewUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(avatarPreviewUrl);
+    }
+
+    setAvatarFile(file);
+    setAvatarPreviewUrl(nextPreviewUrl);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const nextProfile = {
+      username: form.username.trim(),
+      bio: form.bio.trim(),
+      avatarUrl: form.avatarUrl.trim(),
+      avatarFile,
+    };
+
+    if (nextProfile.username.length < 2) {
+      setFormError("Display name must be at least 2 characters.");
+      return;
+    }
+
+    if (nextProfile.username.length > 40) {
+      setFormError("Display name must be 40 characters or less.");
+      return;
+    }
+
+    if (nextProfile.bio.length > 300) {
+      setFormError("Bio must be 300 characters or less.");
+      return;
+    }
+
+    await onSave(nextProfile);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 px-4 pt-20 pb-28 backdrop-blur-sm">
+      <div className="w-full max-w-xl max-h-[calc(100vh-120px)] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-950 p-6 shadow-2xl">
+        <div className="mb-5">
+          <h2 className="text-xl font-black text-white">Edit profile</h2>
+          <p className="text-sm text-zinc-500">
+            Update your public profile details.
+          </p>
+        </div>
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
+              Display name / username
+            </label>
+            <input
+              value={form.username}
+              onChange={(event) => updateForm("username", event.target.value)}
+              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2.5 text-sm font-semibold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400"
+              placeholder="Your display name"
+              maxLength={40}
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
+              Bio
+            </label>
+            <textarea
+              value={form.bio}
+              onChange={(event) => updateForm("bio", event.target.value)}
+              className="mt-2 min-h-28 w-full resize-none rounded-lg border border-zinc-800 bg-black px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400"
+              placeholder="Tell listeners a little about you."
+              maxLength={300}
+            />
+            <p className="mt-1 text-right text-xs text-zinc-600">
+              {form.bio.length}/300
+            </p>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
+              Avatar image
+            </label>
+            <div className="mt-2 flex items-center gap-4 rounded-lg border border-zinc-800 bg-black p-3">
+              {avatarPreviewUrl ? (
+                <div
+                  className="h-16 w-16 shrink-0 rounded-full bg-zinc-900 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${avatarPreviewUrl})` }}
+                  role="img"
+                  aria-label="Avatar preview"
+                />
+              ) : (
+                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-orange-500 to-zinc-950 text-xl font-black text-white">
+                  {getFallbackLetter(form.username)}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(event) => {
+                    handleAvatarChange(event.target.files?.[0] ?? null);
+                  }}
+                  className="block w-full text-sm text-zinc-300 file:mr-3 file:rounded-full file:border-0 file:bg-orange-500 file:px-4 file:py-2 file:text-sm file:font-black file:text-orange-950 hover:file:bg-orange-400"
+                />
+                <p className="mt-2 text-xs text-zinc-600">
+                  JPG, PNG, or WebP. Max 2MB.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {(formError || error) && (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+              {formError || error}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={saving}
+              className="rounded-full border border-zinc-700 bg-black px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-black text-orange-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -192,7 +432,7 @@ function PlaylistCover({ playlist }: { playlist: UserPlaylist }) {
   }
 
   return (
-    <div className="grid aspect-square place-items-center rounded-lg bg-gradient-to-br from-green-500/80 to-zinc-950">
+    <div className="grid aspect-square place-items-center rounded-lg bg-gradient-to-br from-orange-500/80 to-zinc-950">
       <span className="text-4xl font-black text-white">
         {getFallbackLetter(title)}
       </span>
@@ -260,7 +500,7 @@ function PlaylistGrid({
           >
             <PlaylistCover playlist={playlist} />
             <div className="mt-3 min-w-0">
-              <h3 className="truncate text-sm font-bold text-white transition group-hover:text-green-400">
+              <h3 className="truncate text-sm font-bold text-white transition group-hover:text-orange-400">
                 {title}
               </h3>
               <p className="mt-1 truncate text-xs text-zinc-500">
@@ -299,8 +539,8 @@ function FollowingList({
     <div className="grid gap-3 sm:grid-cols-2">
       {following.map((artist) => {
         const targetId = artist.artist_id || artist.user_id;
-        const artistName = artist.name || artist.username || "Artist";
-        const avatarUrl = resolveApiAssetUrl(artist.avatar_url);
+        const artistName = getArtistDisplayName(artist);
+        const avatarUrl = getArtistAvatarUrl(artist);
         const isActionLoading = actionId === targetId;
 
         return (
@@ -320,7 +560,7 @@ function FollowingList({
               <div className="min-w-0">
                 {artist.artist_id ? (
                   <Link href={`/artists/${artist.artist_id}`}>
-                    <h3 className="truncate text-sm font-bold text-white transition hover:text-green-400">
+                    <h3 className="truncate text-sm font-bold text-white transition hover:text-orange-400">
                       {artistName}
                     </h3>
                   </Link>
@@ -367,7 +607,7 @@ function FollowingAvatar({
   }
 
   return (
-    <div className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-green-500 to-zinc-950 text-sm font-black text-white">
+    <div className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-orange-500 to-zinc-950 text-sm font-black text-white">
       {getFallbackLetter(name)}
     </div>
   );
@@ -375,7 +615,13 @@ function FollowingAvatar({
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, accessToken, isLoading: authLoading, logout } = useAuth();
+  const {
+    user,
+    accessToken,
+    isLoading: authLoading,
+    logout,
+    fetchCurrentUser,
+  } = useAuth();
   const { following, toggleFollow, actionId } = useFollow();
   const {
     playlists,
@@ -398,19 +644,19 @@ export default function ProfilePage() {
   const [recentlyPlayedError, setRecentlyPlayedError] = useState<string | null>(
     null,
   );
+  const [profile, setProfile] = useState<EditableProfile>({
+    username: user?.username ?? "User",
+    bio: "",
+    avatarUrl: "",
+  });
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
     if (!user) {
-      queueMicrotask(() => {
-        if (isMounted) {
-          setMyTracks([]);
-          setMyTracksLoading(false);
-          setMyTracksError(null);
-        }
-      });
-
       return () => {
         isMounted = false;
       };
@@ -418,41 +664,118 @@ export default function ProfilePage() {
 
     queueMicrotask(() => {
       if (isMounted) {
-        setMyTracksLoading(true);
-        setMyTracksError(null);
+        setProfile({
+          username: user.displayName || user.username || "User",
+          bio: user.bio ?? "",
+          avatarUrl: user.avatarUrl ?? "",
+        });
       }
     });
 
-    void getSongsRequest(1, 100)
-      .then((result) => {
-        if (!isMounted) return;
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
-        setMyTracks(
-          result.items.filter((song) =>
-            isOwnTrack(song, user.id, user.username),
-          ),
-        );
-      })
-      .catch((tracksError) => {
-        if (!isMounted) return;
+  const loadMyTracks = useCallback(
+    async ({ quiet = false }: { quiet?: boolean } = {}) => {
+      if (!user || !accessToken) {
+        setMyTracks([]);
+        setMyTracksLoading(false);
+        setMyTracksError(null);
+        return;
+      }
 
+      if (!quiet) {
+        setMyTracksLoading(true);
+      }
+
+      setMyTracksError(null);
+
+      try {
+        const result = await getMySongsRequest(accessToken, 1, 100);
+        setMyTracks(result.items);
+      } catch (tracksError) {
         setMyTracks([]);
         setMyTracksError(
           tracksError instanceof Error
             ? tracksError.message
             : "Could not load your tracks.",
         );
-      })
-      .finally(() => {
-        if (isMounted) {
+      } finally {
+        if (!quiet) {
           setMyTracksLoading(false);
         }
-      });
+      }
+    },
+    [accessToken, user],
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (authLoading) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    queueMicrotask(() => {
+      if (isMounted) {
+        void loadMyTracks();
+      }
+    });
 
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [authLoading, loadMyTracks]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!user || !accessToken) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    const pendingUploadedSongId = consumePendingUploadedSongId();
+
+    if (pendingUploadedSongId) {
+      queueMicrotask(() => {
+        if (isMounted) {
+          void loadMyTracks({ quiet: true });
+        }
+      });
+    }
+
+    const handleSongCatalogUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<SongCatalogUpdatedDetail>).detail;
+
+      if (detail?.song && isOwnTrack(detail.song, user.id, user.username)) {
+        setMyTracks((currentTracks) => [
+          detail.song as Song,
+          ...currentTracks.filter((song) => song.id !== detail.song?.id),
+        ]);
+      }
+
+      void loadMyTracks({ quiet: true });
+    };
+
+    window.addEventListener(
+      SONG_CATALOG_UPDATED_EVENT,
+      handleSongCatalogUpdated,
+    );
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(
+        SONG_CATALOG_UPDATED_EVENT,
+        handleSongCatalogUpdated,
+      );
+    };
+  }, [accessToken, loadMyTracks, user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -539,7 +862,8 @@ export default function ProfilePage() {
     return null;
   }
 
-  const username = user.username || "User";
+  const username = profile.username || user.username || "User";
+  const avatarUrl = resolveApiAssetUrl(profile.avatarUrl);
   const roleLabel = user.role || "user";
   const profileLabel = myTracks.length > 0 ? "Artist" : "Profile";
   const canShowArtistActions = roleLabel === "admin" || myTracks.length > 0;
@@ -547,6 +871,49 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     await logout();
     router.push("/");
+  };
+
+  const handleSaveProfile = async (nextProfile: EditProfileSavePayload) => {
+    if (!accessToken) {
+      setProfileError("You need to log in before editing your profile.");
+      return;
+    }
+
+    setProfileSaving(true);
+    setProfileError(null);
+
+    try {
+      let updatedUser = await updateCurrentUserRequest(
+        {
+          displayName: nextProfile.username,
+          bio: nextProfile.bio || null,
+        },
+        accessToken,
+      );
+
+      if (nextProfile.avatarFile) {
+        updatedUser = await uploadCurrentUserAvatarRequest(
+          nextProfile.avatarFile,
+          accessToken,
+        );
+      }
+
+      setProfile({
+        username: updatedUser.displayName || updatedUser.username || "User",
+        bio: updatedUser.bio ?? "",
+        avatarUrl: updatedUser.avatarUrl ?? "",
+      });
+      await fetchCurrentUser();
+      setEditProfileOpen(false);
+    } catch (saveError) {
+      setProfileError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Could not save profile.",
+      );
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   const renderTabContent = () => {
@@ -655,18 +1022,34 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="space-y-6 page-fade-in">
+    <>
+      {editProfileOpen && (
+        <EditProfileModal
+          initialProfile={profile}
+          saving={profileSaving}
+          error={profileError}
+          onCancel={() => {
+            if (!profileSaving) {
+              setEditProfileOpen(false);
+              setProfileError(null);
+            }
+          }}
+          onSave={handleSaveProfile}
+        />
+      )}
+
+      <div className="space-y-6 page-fade-in">
       <section className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/30">
         <div className="relative min-h-[360px] bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.22),_transparent_32%),linear-gradient(135deg,_#18181b_0%,_#09090b_48%,_#020617_100%)]">
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
           <div className="relative z-10 flex min-h-[360px] flex-col justify-end p-4 sm:p-6 lg:p-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-end">
-                <ProfileAvatar username={username} />
+                <ProfileAvatar username={username} avatarUrl={avatarUrl} />
 
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex rounded-full border border-green-400/30 bg-green-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-green-300">
+                    <span className="inline-flex rounded-full border border-orange-400/30 bg-orange-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-orange-300">
                       {profileLabel}
                     </span>
                     <span className="inline-flex rounded-full border border-white/10 bg-black/35 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-300">
@@ -680,13 +1063,20 @@ export default function ProfilePage() {
                   <p className="mt-3 max-w-2xl truncate text-sm leading-6 text-zinc-300">
                     {user.email}
                   </p>
+                  {profile.bio && (
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">
+                      {profile.bio}
+                    </p>
+                  )}
 
                   <div className="mt-5 flex flex-wrap items-center gap-3">
                     <button
                       type="button"
-                      disabled
-                      className="rounded-full border border-zinc-700 bg-black/35 px-5 py-2.5 text-sm font-bold text-zinc-500"
-                      title="Profile editing is not available yet."
+                      onClick={() => {
+                        setProfileError(null);
+                        setEditProfileOpen(true);
+                      }}
+                      className="rounded-full border border-zinc-700 bg-black/35 px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-orange-400/60 hover:bg-orange-500/10 hover:text-orange-200"
                     >
                       Edit profile
                     </button>
@@ -702,7 +1092,7 @@ export default function ProfilePage() {
                     {canShowArtistActions && (
                       <Link
                         href="/upload"
-                        className="rounded-full bg-green-500 px-5 py-2.5 text-sm font-black text-green-950 transition hover:bg-green-400"
+                        className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-black text-orange-950 transition hover:bg-orange-400"
                       >
                         Upload track
                       </Link>
@@ -740,7 +1130,8 @@ export default function ProfilePage() {
 
         <div className="p-4 sm:p-5">{renderTabContent()}</div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }
 

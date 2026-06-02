@@ -32,7 +32,7 @@ export function LibraryTabs() {
             className={cn(
               "shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition",
               isActive
-                ? "bg-green-500 text-green-950"
+                ? "bg-orange-500 text-orange-950"
                 : "text-zinc-400 hover:bg-zinc-900 hover:text-white",
             )}
           >

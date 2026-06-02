@@ -1,6 +1,7 @@
 const { pool } = require("../db/pool");
 const songService = require("./song.service");
 const AppError = require("../utils/appError");
+const { artistLinkedUserJoin } = require("../utils/artist-user.utils");
 const {
   buildPagination,
   buildUpdateSet,
@@ -11,12 +12,24 @@ const {
   validateUuid,
 } = require("../utils/query.utils");
 
+const artistSelect = `
+  ar.id,
+  ar.name,
+  COALESCE(NULLIF(u.display_name, ''), ar.name) AS display_name,
+  COALESCE(NULLIF(u.bio, ''), ar.bio) AS bio,
+  COALESCE(u.avatar_url, ar.avatar_url) AS avatar_url,
+  ar.user_id,
+  ar.created_at,
+  ar.updated_at
+`;
+
 const artistFields = "id, name, bio, avatar_url, user_id, created_at, updated_at";
 
 const formatArtist = (artist) => {
   return {
     id: artist.id,
     name: artist.name,
+    display_name: artist.display_name || artist.name,
     bio: artist.bio,
     avatar_url: artist.avatar_url,
     user_id: artist.user_id,
@@ -53,16 +66,18 @@ const getArtists = async (query) => {
 
   const countResult = await pool.query(
     `SELECT COUNT(*) AS total
-     FROM artists
-     WHERE ($1::text IS NULL OR name ILIKE $1)`,
+     FROM artists ar
+     ${artistLinkedUserJoin}
+     WHERE ($1::text IS NULL OR ar.name ILIKE $1 OR u.username ILIKE $1 OR u.display_name ILIKE $1)`,
     [search]
   );
 
   const result = await pool.query(
-    `SELECT ${artistFields}
-     FROM artists
-     WHERE ($1::text IS NULL OR name ILIKE $1)
-     ORDER BY created_at DESC
+    `SELECT ${artistSelect}
+     FROM artists ar
+     ${artistLinkedUserJoin}
+     WHERE ($1::text IS NULL OR ar.name ILIKE $1 OR u.username ILIKE $1 OR u.display_name ILIKE $1)
+     ORDER BY ar.created_at DESC
      LIMIT $2 OFFSET $3`,
     [search, limit, offset]
   );
@@ -79,9 +94,10 @@ const getArtistById = async (id) => {
   validateUuid(id);
 
   const result = await pool.query(
-    `SELECT ${artistFields}
-     FROM artists
-     WHERE id = $1
+    `SELECT ${artistSelect}
+     FROM artists ar
+     ${artistLinkedUserJoin}
+     WHERE ar.id = $1
      LIMIT 1`,
     [id]
   );
@@ -114,7 +130,7 @@ const createArtist = async (data) => {
     [fields.name, fields.bio, fields.avatar_url]
   );
 
-  return formatArtist(result.rows[0]);
+  return getArtistById(result.rows[0].id);
 };
 
 const updateArtist = async (id, data) => {
@@ -137,7 +153,7 @@ const updateArtist = async (id, data) => {
     throw new AppError("Artist not found", 404);
   }
 
-  return formatArtist(artist);
+  return getArtistById(id);
 };
 
 const deleteArtist = async (id) => {

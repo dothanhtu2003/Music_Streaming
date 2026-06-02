@@ -15,7 +15,11 @@ import {
   getArtistSongsRequest,
   resolveApiAssetUrl,
 } from "@/lib/api";
-import { formatPlayCount } from "@/lib/song-format";
+import {
+  formatPlayCount,
+  getArtistAvatarUrl,
+  getArtistDisplayName,
+} from "@/lib/song-format";
 import { cn } from "@/lib/utils";
 import type { ArtistRecord, Song } from "@/types/music";
 
@@ -158,7 +162,7 @@ function ArtistAvatar({
   }
 
   return (
-    <div className="grid h-28 w-28 shrink-0 place-items-center rounded-full border-4 border-black/70 bg-gradient-to-br from-green-500 to-zinc-950 shadow-2xl sm:h-36 sm:w-36 md:h-40 md:w-40">
+    <div className="grid h-28 w-28 shrink-0 place-items-center rounded-full border-4 border-black/70 bg-gradient-to-br from-orange-500 to-zinc-950 shadow-2xl sm:h-36 sm:w-36 md:h-40 md:w-40">
       <span className="text-5xl font-black text-white sm:text-6xl">
         {getFallbackLetter(name)}
       </span>
@@ -220,7 +224,7 @@ function ProfileTabs({
                 </span>
               )}
               {isActive && (
-                <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-green-400" />
+                <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-orange-400" />
               )}
             </button>
           );
@@ -339,7 +343,7 @@ export default function ArtistDetailPage() {
     const trackCount = Math.max(apiTrackCount, totalTracks, songs.length);
 
     return {
-      avatarUrl: resolveApiAssetUrl(artist.avatar_url),
+      avatarUrl: getArtistAvatarUrl(artist),
       bannerUrl: resolveApiAssetUrl(artist.banner_url ?? artist.cover_url),
       followersCount: getArtistStat(artist, [
         "followers_count",
@@ -378,7 +382,7 @@ export default function ArtistDetailPage() {
     );
   }
 
-  const artistName = artist.name || "Unknown artist";
+  const artistName = getArtistDisplayName(artist);
   const isSelf =
     Boolean(user?.id && artist.user_id && user.id === artist.user_id) ||
     user?.username?.toLowerCase() === artistName.toLowerCase();
@@ -451,7 +455,7 @@ export default function ArtistDetailPage() {
                 <ArtistAvatar name={artistName} avatarUrl={headerData.avatarUrl} />
 
                 <div className="min-w-0">
-                  <span className="inline-flex rounded-full border border-green-400/30 bg-green-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-green-300">
+                  <span className="inline-flex rounded-full border border-orange-400/30 bg-orange-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-orange-300">
                     Artist
                   </span>
                   <h1 className="mt-3 max-w-3xl truncate text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
@@ -471,7 +475,7 @@ export default function ArtistDetailPage() {
                           "rounded-full px-6 py-2.5 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60",
                           isArtistFollowed
                             ? "border border-zinc-600 bg-black/40 text-white hover:bg-zinc-800"
-                            : "bg-green-500 text-green-950 hover:bg-green-400",
+                            : "bg-orange-500 text-orange-950 hover:bg-orange-400",
                         )}
                       >
                         {followLoading

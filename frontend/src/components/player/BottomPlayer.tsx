@@ -32,7 +32,7 @@ function CoverThumb() {
   }
 
   return (
-    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-zinc-800 bg-gradient-to-br from-green-500 to-zinc-900 text-xs font-black text-white md:h-8 md:w-8 md:rounded md:text-[10px]">
+    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-zinc-800 bg-gradient-to-br from-orange-500 to-zinc-900 text-xs font-black text-white md:h-8 md:w-8 md:rounded md:text-[10px]">
       {currentSong?.title.slice(0, 1) ?? "M"}
     </span>
   );
@@ -78,7 +78,7 @@ export function BottomPlayer() {
     <footer className="fixed inset-x-0 bottom-16 z-50 h-16 border-y border-zinc-800 bg-zinc-950 text-zinc-100 md:bottom-0 md:h-14 md:border-t md:border-b-0">
       <div className="absolute inset-x-0 top-0 h-0.5 bg-zinc-800 md:hidden">
         <div
-          className="h-full bg-green-500 transition-[width]"
+          className="h-full bg-orange-500 transition-[width]"
           style={{ width: `${progressPercent}%` }}
         />
       </div>
@@ -139,7 +139,7 @@ export function BottomPlayer() {
             onClick={toggleShuffle}
             disabled={!canControl}
             className={`grid h-8 w-8 place-items-center rounded-full transition focus:outline-none disabled:cursor-not-allowed disabled:opacity-30 ${
-              shuffle ? "text-green-500" : "text-zinc-400 hover:text-white"
+              shuffle ? "text-orange-500" : "text-zinc-400 hover:text-white"
             }`}
             title="Shuffle"
           >
@@ -151,7 +151,7 @@ export function BottomPlayer() {
             onClick={toggleRepeatMode}
             disabled={!canControl}
             className={`grid h-8 w-8 place-items-center rounded-full transition focus:outline-none disabled:cursor-not-allowed disabled:opacity-30 ${
-              repeatActive ? "text-green-500" : "text-zinc-400 hover:text-white"
+              repeatActive ? "text-orange-500" : "text-zinc-400 hover:text-white"
             }`}
             title={`Repeat: ${repeatMode}`}
           >
@@ -205,7 +205,7 @@ export function BottomPlayer() {
               >
                 <CoverThumb />
                 <div className="min-w-0 sm:w-28 lg:w-40">
-                  <span className="block truncate text-[11px] font-semibold leading-tight text-white group-hover:text-green-400">
+                  <span className="block truncate text-[11px] font-semibold leading-tight text-white group-hover:text-orange-400">
                     {currentSong.title}
                   </span>
                   <span className="block truncate text-[10px] leading-tight text-zinc-500">

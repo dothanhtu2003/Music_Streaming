@@ -42,7 +42,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(apiLimiter);
 app.use(
   "/uploads",
-  express.static(path.join(__dirname, "../uploads"), {
+  express.static(path.join(process.cwd(), "uploads"), {
     setHeaders(res) {
       res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     },

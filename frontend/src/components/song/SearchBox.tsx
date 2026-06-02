@@ -55,12 +55,12 @@ export function SearchBox({
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
           placeholder="Search songs, artists..."
-          className="min-w-0 flex-1 rounded-full border border-zinc-800 bg-black/60 px-5 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-green-500/70 focus:bg-black focus:ring-1 focus:ring-green-500/30"
+          className="min-w-0 flex-1 rounded-full border border-zinc-800 bg-[#303030] px-5 py-3 text-sm text-white outline-none transition placeholder:text-zinc-400 focus:border-orange-500/70 focus:bg-[#303030] focus:ring-1 focus:ring-orange-500/30"
         />
         <button
           type="submit"
           disabled={loading}
-          className="rounded-full bg-green-500 px-6 py-3 text-xs font-bold text-green-950 transition hover:bg-green-400 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 shadow-md shadow-green-500/10"
+          className="rounded-full bg-orange-500 px-6 py-3 text-xs font-bold text-orange-950 transition hover:bg-orange-400 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 shadow-md shadow-orange-500/10"
         >
           {loading ? "Searching..." : "Search"}
         </button>

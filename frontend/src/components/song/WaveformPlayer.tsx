@@ -5,6 +5,7 @@ import WaveSurfer from "wavesurfer.js";
 import { PauseIcon, PlayIcon } from "@/components/ui/Icons";
 import {
   getSongWaveformRequest,
+  resolveApiAssetUrl,
   saveSongWaveformRequest,
 } from "@/lib/api";
 import { formatDuration } from "@/lib/song-format";
@@ -87,7 +88,7 @@ function getMarkerTime(marker: WaveformMarker) {
 }
 
 function getMarkerAvatar(marker: WaveformMarker) {
-  return marker.avatarUrl ?? marker.avatar_url ?? null;
+  return resolveApiAssetUrl(marker.avatarUrl ?? marker.avatar_url);
 }
 
 export function WaveformPlayer({
@@ -255,8 +256,8 @@ export function WaveformPlayer({
       const nextWaveSurfer = WaveSurfer.create({
         container: containerRef.current,
         waveColor: "#52525b",
-        progressColor: "#22c55e",
-        cursorColor: "#22c55e",
+        progressColor: "#ff5500",
+        cursorColor: "#ff5500",
         cursorWidth: 2,
         height: height ?? "auto",
         barWidth: 2,
@@ -377,7 +378,7 @@ export function WaveformPlayer({
           onClick={handleTogglePlay}
           disabled={!safeAudioUrl}
           className={cn(
-            "grid h-12 w-12 shrink-0 place-items-center rounded-full bg-green-500 text-green-950 transition hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 sm:h-14 sm:w-14",
+            "grid h-12 w-12 shrink-0 place-items-center rounded-full bg-orange-500 text-orange-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 sm:h-14 sm:w-14",
             isWaveformPlaying && "bg-white text-black hover:bg-zinc-200",
           )}
           aria-label={isWaveformPlaying ? "Pause waveform song" : "Play waveform song"}
@@ -392,7 +393,7 @@ export function WaveformPlayer({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-400">
                 {isCurrentSong ? "Now playing" : "Waveform"}
               </p>
               <p className="mt-1 truncate text-sm font-semibold text-white">
@@ -453,12 +454,12 @@ export function WaveformPlayer({
                 >
                   {avatarUrl ? (
                     <span
-                      className="block h-6 w-6 rounded-full border-2 border-green-400 bg-zinc-950 bg-cover bg-center shadow-lg"
+                      className="block h-6 w-6 rounded-full border-2 border-orange-400 bg-zinc-950 bg-cover bg-center shadow-lg"
                       style={{ backgroundImage: `url(${avatarUrl})` }}
                       aria-label={marker.username ?? marker.label ?? "Marker"}
                     />
                   ) : (
-                    <span className="block h-3 w-3 rounded-full border-2 border-green-300 bg-green-500 shadow-lg shadow-green-500/30" />
+                    <span className="block h-3 w-3 rounded-full border-2 border-orange-300 bg-orange-500 shadow-lg shadow-orange-500/30" />
                   )}
 
                   <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-max max-w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-left text-xs text-zinc-200 opacity-0 shadow-xl transition group-hover:opacity-100">

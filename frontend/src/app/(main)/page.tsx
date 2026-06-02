@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { NowPlayingHero } from "@/components/NowPlayingHero";
 import { HorizontalSongCarousel } from "@/components/song/HorizontalSongCarousel";
 import { RecentlyPlayedList } from "@/components/song/RecentlyPlayedList";
 import { getRecentlyPlayedRequest, getSongsRequest } from "@/lib/api";
+import { getLocalRecentlyPlayed } from "@/lib/recently-played-storage";
 import {
-  getLocalRecentlyPlayed,
-  RECENTLY_PLAYED_UPDATED_EVENT,
-} from "@/lib/recently-played-storage";
+  SONG_CATALOG_UPDATED_EVENT,
+  consumePendingUploadedSongId,
+  type SongCatalogUpdatedDetail,
+} from "@/lib/song-events";
 import { usePlayerStore } from "@/stores/player-store";
 import type { RecentlyPlayedSong, Song, SongPagination } from "@/types/music";
 
@@ -36,40 +38,85 @@ export default function Home() {
     setPagination(result.pagination);
   };
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadLatestSongs = useCallback(
+    async ({ quiet = false }: { quiet?: boolean } = {}) => {
+      if (!quiet) {
+        setLoading(true);
+      }
 
-    void getSongsRequest(1, SONG_LIMIT)
-      .then((result) => {
-        if (!isMounted) {
-          return;
-        }
+      try {
+        const result = await getSongsRequest(1, SONG_LIMIT);
 
         setSongs(result.items);
         setPagination(result.pagination);
         setError(null);
-      })
-      .catch((songsError) => {
-        if (!isMounted) {
-          return;
-        }
-
+      } catch (songsError) {
         setError(
           songsError instanceof Error
             ? songsError.message
             : "Could not load songs.",
         );
-      })
-      .finally(() => {
-        if (isMounted) {
+      } finally {
+        if (!quiet) {
           setLoading(false);
         }
-      });
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    queueMicrotask(() => {
+      if (isMounted) {
+        void loadLatestSongs();
+      }
+    });
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loadLatestSongs]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const pendingUploadedSongId = consumePendingUploadedSongId();
+
+    if (pendingUploadedSongId) {
+      queueMicrotask(() => {
+        if (isMounted) {
+          void loadLatestSongs({ quiet: true });
+        }
+      });
+    }
+
+    const handleSongCatalogUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<SongCatalogUpdatedDetail>).detail;
+
+      if (detail?.song) {
+        setSongs((currentSongs) => [
+          detail.song as Song,
+          ...currentSongs.filter((song) => song.id !== detail.song?.id),
+        ]);
+      }
+
+      void loadLatestSongs({ quiet: true });
+    };
+
+    window.addEventListener(
+      SONG_CATALOG_UPDATED_EVENT,
+      handleSongCatalogUpdated,
+    );
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(
+        SONG_CATALOG_UPDATED_EVENT,
+        handleSongCatalogUpdated,
+      );
+    };
+  }, [loadLatestSongs]);
 
   useEffect(() => {
     if (authLoading) {
@@ -109,14 +156,9 @@ export default function Home() {
     };
 
     void loadRecentlyPlayed();
-    window.addEventListener(RECENTLY_PLAYED_UPDATED_EVENT, loadRecentlyPlayed);
 
     return () => {
       isMounted = false;
-      window.removeEventListener(
-        RECENTLY_PLAYED_UPDATED_EVENT,
-        loadRecentlyPlayed,
-      );
     };
   }, [accessToken, authLoading]);
 
@@ -154,7 +196,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.1),transparent_45%)]" />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-green-500">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
                 Welcome back
               </p>
               <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-5xl bg-clip-text">
@@ -166,7 +208,7 @@ export default function Home() {
             </div>
             {/* <Link
               href="/search"
-              className="inline-flex w-fit items-center rounded-full bg-green-500 px-6 py-3 text-sm font-bold text-green-950 transition hover:bg-green-400 hover:scale-105 shadow-lg shadow-green-500/10"
+              className="inline-flex w-fit items-center rounded-full bg-orange-500 px-6 py-3 text-sm font-bold text-orange-950 transition hover:bg-orange-400 hover:scale-105 shadow-lg shadow-orange-500/10"
             >
               Exploresongs
             </Link> */}
@@ -191,12 +233,12 @@ export default function Home() {
 
       <HorizontalSongCarousel
         title="Latest Songs"
-        subtitle="Fresh songs loaded from the backend database."
+        subtitle="Fresh tracks picked from the latest uploads."
         songs={songs}
         loading={loading}
         error={error}
         emptyTitle="No songs available yet."
-        emptyDescription="Upload or add songs from the dashboard to see them here."
+        emptyDescription="Upload a track or explore music to start building the catalog."
         canLoadMore={canLoadMore}
         loadingMore={loadingMore}
         onLoadMore={handleLoadMore}

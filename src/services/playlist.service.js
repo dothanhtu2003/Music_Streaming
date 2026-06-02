@@ -1,6 +1,7 @@
 const { pool } = require("../db/pool");
 const AppError = require("../utils/appError");
 const songService = require("./song.service");
+const { buildArtistLinkedUserJoin } = require("../utils/artist-user.utils");
 const {
   buildPagination,
   buildUpdateSet,
@@ -38,6 +39,8 @@ const playlistSummarySelect = `
   COUNT(ps.id)::int AS song_count
 `;
 
+const artistUserJoin = buildArtistLinkedUserJoin("u_artist");
+
 const playlistSongSelect = `
   ps.id AS playlist_song_id,
   ps.position,
@@ -55,7 +58,9 @@ const playlistSongSelect = `
   s.created_at,
   s.updated_at,
   ar.name AS artist_name,
-  ar.avatar_url AS artist_avatar_url,
+  COALESCE(NULLIF(u_artist.display_name, ''), ar.name) AS artist_display_name,
+  COALESCE(NULLIF(u_artist.bio, ''), ar.bio) AS artist_bio,
+  COALESCE(u_artist.avatar_url, ar.avatar_url) AS artist_avatar_url,
   ar.user_id AS artist_user_id,
   al.title AS album_title,
   al.cover_url AS album_cover_url,
@@ -100,6 +105,8 @@ const formatPlaylistSong = (row) => {
     artist: {
       id: row.artist_id,
       name: row.artist_name,
+      display_name: row.artist_display_name || row.artist_name,
+      bio: row.artist_bio,
       avatar_url: row.artist_avatar_url,
       user_id: row.artist_user_id,
     },
@@ -337,6 +344,7 @@ const getPlaylistDetail = async (playlistId, user) => {
      FROM playlist_songs ps
      JOIN songs s ON s.id = ps.song_id
      JOIN artists ar ON ar.id = s.artist_id
+     ${artistUserJoin}
      LEFT JOIN albums al ON al.id = s.album_id
      LEFT JOIN genres g ON g.id = s.genre_id
      WHERE ps.playlist_id = $1 AND s.is_active = TRUE

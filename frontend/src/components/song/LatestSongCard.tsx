@@ -45,8 +45,8 @@ function LatestSongCover({
           className="h-[160px] w-[160px] select-none object-cover transition-transform duration-500 group-hover/cover:scale-105"
         />
       ) : (
-        <div className="grid h-[160px] w-[160px] place-items-center bg-gradient-to-br from-green-500/20 to-zinc-950 transition-transform duration-500 group-hover/cover:scale-105">
-          <span className="text-4xl font-black text-green-500/70">
+        <div className="grid h-[160px] w-[160px] place-items-center bg-gradient-to-br from-orange-500/20 to-zinc-950 transition-transform duration-500 group-hover/cover:scale-105">
+          <span className="text-4xl font-black text-orange-500/70">
             {fallbackLetter}
           </span>
         </div>
@@ -98,7 +98,7 @@ export function LatestSongCard({ song, queue }: LatestSongCardProps) {
     <article
       className={cn(
         "w-[160px] flex-none snap-start",
-        isCurrentSong && "text-green-400",
+        isCurrentSong && "text-orange-400",
       )}
     >
       <LatestSongCover
@@ -112,8 +112,8 @@ export function LatestSongCard({ song, queue }: LatestSongCardProps) {
         <Link href={`/songs/${song.id}`} className="block min-w-0">
           <h3
             className={cn(
-              "truncate text-sm font-semibold leading-5 text-white transition hover:text-green-400",
-              isCurrentSong && "text-green-400",
+              "truncate text-sm font-semibold leading-5 text-white transition hover:text-orange-400",
+              isCurrentSong && "text-orange-400",
             )}
           >
             {song.title}
@@ -143,8 +143,8 @@ export function LatestSongCard({ song, queue }: LatestSongCardProps) {
             void toggleLike(song);
           }}
           className={cn(
-            "inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-400 transition hover:border-green-500/30 hover:text-white active:scale-95 disabled:cursor-not-allowed disabled:opacity-50",
-            isLiked && "border-green-500/30 bg-green-500/10 text-green-400",
+            "inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-400 transition hover:border-orange-500/30 hover:text-white active:scale-95 disabled:cursor-not-allowed disabled:opacity-50",
+            isLiked && "border-orange-500/30 bg-orange-500/10 text-orange-400",
           )}
         >
           <HeartIcon size={15} filled={isLiked} />
@@ -159,7 +159,7 @@ export function LatestSongCard({ song, queue }: LatestSongCardProps) {
             event.stopPropagation();
             openAddSongModal(song);
           }}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-400 transition hover:border-green-500/30 hover:text-white active:scale-95"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-400 transition hover:border-orange-500/30 hover:text-white active:scale-95"
         >
           <PlusIcon size={15} />
         </button>

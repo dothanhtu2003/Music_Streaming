@@ -296,7 +296,7 @@ export function FollowProvider({ children }: FollowProviderProps) {
           role="status"
           className={`fixed right-4 top-36 z-50 max-w-sm rounded-lg border px-4 py-3 text-sm shadow-xl ${
             notice.type === "success"
-               ? "border-green-500/40 bg-green-500/10 text-green-300"
+               ? "border-orange-500/40 bg-orange-500/10 text-orange-300"
                : "border-red-500/40 bg-red-500/10 text-red-300"
           }`}
         >

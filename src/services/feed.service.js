@@ -3,6 +3,7 @@ const {
   buildPagination,
   parsePagination,
 } = require("../utils/query.utils");
+const { artistLinkedUserJoin } = require("../utils/artist-user.utils");
 
 const songSelect = `
   s.id,
@@ -19,7 +20,9 @@ const songSelect = `
   s.created_at,
   s.updated_at,
   ar.name AS artist_name,
-  ar.avatar_url AS artist_avatar_url,
+  COALESCE(NULLIF(u.display_name, ''), ar.name) AS artist_display_name,
+  COALESCE(NULLIF(u.bio, ''), ar.bio) AS artist_bio,
+  COALESCE(u.avatar_url, ar.avatar_url) AS artist_avatar_url,
   ar.user_id AS artist_user_id,
   al.title AS album_title,
   al.cover_url AS album_cover_url,
@@ -43,6 +46,8 @@ const formatSong = (song) => {
     artist: {
       id: song.artist_id,
       name: song.artist_name,
+      display_name: song.artist_display_name || song.artist_name,
+      bio: song.artist_bio,
       avatar_url: song.artist_avatar_url,
       user_id: song.artist_user_id,
     },
@@ -85,6 +90,7 @@ const getFeedSongs = async (userId, query) => {
      FROM songs s
      JOIN artists ar ON ar.id = s.artist_id
      JOIN follows f ON f."followingId" = ar.user_id
+     ${artistLinkedUserJoin}
      LEFT JOIN albums al ON al.id = s.album_id
      LEFT JOIN genres g ON g.id = s.genre_id
      WHERE f."followerId" = $1 AND s.is_active = TRUE

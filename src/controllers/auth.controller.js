@@ -1,5 +1,27 @@
 const authService = require("../services/auth.service");
+const fsPromises = require("fs/promises");
+const path = require("path");
 const { successResponse } = require("../utils/apiResponse");
+const AppError = require("../utils/appError");
+
+const avatarUploadRoot = path.join(process.cwd(), "uploads", "avatars");
+
+const removeOldAvatar = async (avatarUrl) => {
+  if (!avatarUrl || !avatarUrl.startsWith("/uploads/avatars/")) {
+    return;
+  }
+
+  const fileName = path.basename(avatarUrl);
+  const filePath = path.join(avatarUploadRoot, fileName);
+  const resolvedPath = path.resolve(filePath);
+  const resolvedRoot = path.resolve(avatarUploadRoot);
+
+  if (!resolvedPath.startsWith(`${resolvedRoot}${path.sep}`)) {
+    return;
+  }
+
+  await fsPromises.unlink(resolvedPath).catch(() => {});
+};
 
 const register = async (req, res, next) => {
   try {
@@ -53,10 +75,48 @@ const getMe = async (req, res, next) => {
   }
 };
 
+const updateMe = async (req, res, next) => {
+  try {
+    const user = await authService.updateCurrentUser(req.user.id, req.body);
+
+    return successResponse(res, "Profile updated successfully", { user });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const uploadAvatar = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      throw new AppError("Avatar image is required", 400);
+    }
+
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    const result = await authService.updateCurrentUserAvatar(
+      req.user.id,
+      avatarUrl
+    );
+
+    await removeOldAvatar(result.previousAvatarUrl);
+
+    return successResponse(res, "Avatar uploaded successfully", {
+      user: result.user,
+    });
+  } catch (error) {
+    if (req.file?.path) {
+      await fsPromises.unlink(req.file.path).catch(() => {});
+    }
+
+    return next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   refresh,
   logout,
   getMe,
+  updateMe,
+  uploadAvatar,
 };

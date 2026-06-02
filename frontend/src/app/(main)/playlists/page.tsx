@@ -34,7 +34,7 @@ function PlaylistCover({ playlist }: { playlist: UserPlaylist }) {
   }
 
   return (
-    <div className="grid aspect-square place-items-center rounded-lg bg-gradient-to-br from-green-500 to-zinc-900">
+    <div className="grid aspect-square place-items-center rounded-lg bg-gradient-to-br from-orange-500 to-zinc-900">
       <span className="text-5xl font-black text-white/90">
         {playlist.title.slice(0, 1).toUpperCase()}
       </span>
@@ -82,7 +82,7 @@ function PlaylistModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-green-500 hover:text-white"
+            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-orange-500 hover:text-white"
           >
             Close
           </button>
@@ -93,7 +93,7 @@ function PlaylistModal({
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg bg-green-500 px-4 py-3 text-sm font-semibold text-green-950 transition hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+            className="rounded-lg bg-orange-500 px-4 py-3 text-sm font-semibold text-orange-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
           >
             {loading ? "Saving..." : submitLabel}
           </button>
@@ -154,7 +154,7 @@ function PlaylistCard({
                 e.stopPropagation();
                 onPlay(playlist);
               }}
-              className="absolute bottom-3 right-3 flex h-10 w-10 translate-y-2 items-center justify-center rounded-full bg-green-500 text-green-950 opacity-0 shadow-xl transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 hover:scale-105 hover:bg-green-400 focus:outline-none"
+              className="absolute bottom-3 right-3 flex h-10 w-10 translate-y-2 items-center justify-center rounded-full bg-orange-500 text-orange-950 opacity-0 shadow-xl transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 hover:scale-105 hover:bg-orange-400 focus:outline-none"
               title="Play playlist"
             >
               <PlayIcon size={16} className="ml-0.5" />
@@ -164,7 +164,7 @@ function PlaylistCard({
 
         {/* Playlist metadata */}
         <div className="mt-4 min-w-0">
-          <h3 className="truncate text-sm font-bold text-white hover:text-green-400 transition">
+          <h3 className="truncate text-sm font-bold text-white hover:text-orange-400 transition">
             <Link href={`/playlists/${playlist.id}`}>{playlist.title}</Link>
           </h3>
           <p className="mt-1 truncate text-xs text-zinc-400">
@@ -322,7 +322,7 @@ export default function PlaylistsPage() {
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="w-fit rounded-lg bg-green-500 px-4 py-3 text-sm font-semibold text-green-950 transition hover:bg-green-400"
+          className="w-fit rounded-lg bg-orange-500 px-4 py-3 text-sm font-semibold text-orange-950 transition hover:bg-orange-400"
         >
           Create playlist
         </button>

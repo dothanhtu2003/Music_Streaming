@@ -14,6 +14,7 @@ import {
 import {
   formatDuration,
   formatPlayCount,
+  getArtistDisplayName,
   getSongCoverUrl,
 } from "@/lib/song-format";
 import { cn } from "@/lib/utils";
@@ -107,7 +108,7 @@ function WaveformPreview({
           key={`${safeSeed}-${index}`}
           className={cn(
             "w-[3px] rounded-full transition-colors",
-            isActive ? "bg-green-400/90" : "bg-zinc-700/80",
+            isActive ? "bg-orange-400/90" : "bg-zinc-700/80",
           )}
           style={{ height: `${height}%` }}
         />
@@ -130,7 +131,7 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
   const coverUrl = getSongCoverUrl(song);
   const songTitle = song.title || "Untitled track";
   const artistId = song.artist?.id ?? "";
-  const artistName = song.artist?.name || "Unknown artist";
+  const artistName = getArtistDisplayName(song.artist);
   const safeQueue = queue.length > 0 ? queue : [song];
 
   const handlePlay = (event: MouseEvent<HTMLButtonElement>) => {
@@ -153,7 +154,7 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
     <article
       className={cn(
         "group rounded-xl border border-zinc-900/80 bg-zinc-950/40 p-3 transition hover:border-zinc-700 hover:bg-zinc-900/50 sm:p-4",
-        isCurrentSong && "border-green-500/30 bg-green-500/[0.04]",
+        isCurrentSong && "border-orange-500/30 bg-orange-500/[0.04]",
       )}
     >
       <div className="flex min-w-0 items-center gap-3">
@@ -165,7 +166,7 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
           onClick={(event) => event.stopPropagation()}
         >
           {!coverUrl && (
-            <span className="grid h-full w-full place-items-center bg-gradient-to-br from-green-500/25 to-zinc-950 text-lg font-black text-green-300">
+            <span className="grid h-full w-full place-items-center bg-gradient-to-br from-orange-500/25 to-zinc-950 text-lg font-black text-orange-300">
               {getFallbackLetter(songTitle)}
             </span>
           )}
@@ -175,10 +176,10 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
           type="button"
           onClick={handlePlay}
           className={cn(
-            "grid h-11 w-11 shrink-0 place-items-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-black",
+            "grid h-11 w-11 shrink-0 place-items-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-black",
             isCurrentSong
-              ? "bg-green-500 text-green-950 hover:bg-green-400"
-              : "bg-zinc-100 text-black hover:bg-green-500 hover:text-green-950",
+              ? "bg-orange-500 text-orange-950 hover:bg-orange-400"
+              : "bg-zinc-100 text-black hover:bg-orange-500 hover:text-orange-950",
           )}
           aria-label={isCurrentSong && isPlaying ? "Pause track" : "Play track"}
         >
@@ -195,7 +196,7 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
               {artistId ? (
                 <Link
                   href={`/artists/${artistId}`}
-                  className="block truncate text-xs font-medium text-zinc-500 transition hover:text-green-400"
+                  className="block truncate text-xs font-medium text-zinc-500 transition hover:text-orange-400"
                   onClick={(event) => event.stopPropagation()}
                 >
                   {artistName}
@@ -208,8 +209,8 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
               <Link
                 href={`/songs/${song.id}`}
                 className={cn(
-                  "mt-0.5 block truncate text-base font-bold transition hover:text-green-400",
-                  isCurrentSong ? "text-green-400" : "text-white",
+                  "mt-0.5 block truncate text-base font-bold transition hover:text-orange-400",
+                  isCurrentSong ? "text-orange-400" : "text-white",
                 )}
                 onClick={(event) => event.stopPropagation()}
               >
@@ -249,7 +250,7 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
             className={cn(
               "grid h-9 w-9 place-items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-60",
               isLiked
-                ? "bg-green-500/10 text-green-400"
+                ? "bg-orange-500/10 text-orange-400"
                 : "text-zinc-500 hover:bg-zinc-800 hover:text-white",
             )}
             title={isLiked ? "Unlike track" : "Like track"}

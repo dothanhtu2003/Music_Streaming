@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   formatDuration,
   formatPlayCount,
+  getArtistDisplayName,
   getSongCoverUrl,
   getGenreName,
 } from "@/lib/song-format";
@@ -60,6 +61,7 @@ export function SongListItem({
   const isLiked = isSongLiked(song.id);
   const likeLoading = actionSongId === song.id;
   const coverUrl = getSongCoverUrl(song);
+  const artistName = getArtistDisplayName(song.artist);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -89,20 +91,20 @@ export function SongListItem({
     <div
       className={cn(
         "group flex items-center justify-between gap-4 rounded-xl border border-transparent p-2.5 transition duration-200 hover:border-zinc-800 hover:bg-zinc-900/50",
-        isCurrentSong && "bg-green-500/5 border-green-500/10"
+        isCurrentSong && "bg-orange-500/5 border-orange-500/10"
       )}
     >
       {/* Left side: Play, cover, title, artist */}
       <div className="flex min-w-0 flex-1 items-center gap-4">
-        {/* Play/Pause circular button (always visible, green when active) */}
+        {/* Play/Pause circular button (always visible, orange when active) */}
         <button
           type="button"
           onClick={handlePlayClick}
           className={cn(
             "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition duration-200",
             isCurrentSong
-              ? "bg-green-500 text-green-950 hover:bg-green-400 hover:scale-105"
-              : "bg-zinc-800 text-zinc-300 hover:bg-green-500 hover:text-green-950 hover:scale-105"
+              ? "bg-orange-500 text-orange-950 hover:bg-orange-400 hover:scale-105"
+              : "bg-zinc-800 text-zinc-300 hover:bg-orange-500 hover:text-orange-950 hover:scale-105"
           )}
         >
           {isCurrentSong && isPlaying ? (
@@ -128,7 +130,7 @@ export function SongListItem({
               aria-label={`${song.title} cover`}
             />
           ) : (
-            <div className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-green-500 to-zinc-900 text-xs font-bold text-white border border-zinc-800/80">
+            <div className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-orange-500 to-zinc-900 text-xs font-bold text-white border border-zinc-800/80">
               {song.title.slice(0, 1).toUpperCase()}
             </div>
           )}
@@ -139,15 +141,15 @@ export function SongListItem({
           <Link href={`/songs/${song.id}`}>
             <h4
               className={cn(
-                "truncate text-sm font-semibold hover:text-green-400",
-                isCurrentSong ? "text-green-400" : "text-white"
+                "truncate text-sm font-semibold hover:text-orange-400",
+                isCurrentSong ? "text-orange-400" : "text-white"
               )}
             >
               {song.title}
             </h4>
           </Link>
           <span className="block truncate text-xs text-zinc-400">
-            {song.artist.name}
+            {artistName}
           </span>
         </div>
       </div>
@@ -175,7 +177,7 @@ export function SongListItem({
           className={cn(
             "p-1.5 transition duration-150 hover:scale-110 focus:outline-none",
             isLiked
-              ? "text-green-500"
+              ? "text-orange-500"
               : "text-zinc-500 hover:text-zinc-300"
           )}
           title={isLiked ? "Unlike" : "Like"}

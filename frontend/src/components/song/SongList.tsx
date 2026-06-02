@@ -22,7 +22,7 @@ export function SongList({
   loading = false,
   error = null,
   emptyMessage = "No songs found.",
-  emptyDescription = "Try another search or add songs from the dashboard.",
+  emptyDescription = "Try another search or explore new uploads.",
   canLoadMore = false,
   loadingMore = false,
   onLoadMore,
@@ -68,7 +68,7 @@ export function SongList({
             type="button"
             onClick={onLoadMore}
             disabled={loadingMore}
-            className="rounded-full border border-zinc-800 px-6 py-2.5 text-xs font-semibold text-zinc-300 transition hover:border-green-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-full border border-zinc-800 px-6 py-2.5 text-xs font-semibold text-zinc-300 transition hover:border-orange-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loadingMore ? "Loading..." : "Load more songs"}
           </button>

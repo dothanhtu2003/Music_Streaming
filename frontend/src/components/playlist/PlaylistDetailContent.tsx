@@ -16,6 +16,7 @@ import {
   resolveApiAssetUrl,
   uploadTrackToPlaylistRequest,
 } from "@/lib/api";
+import { notifySongUploaded } from "@/lib/song-events";
 import { SongListItem } from "@/components/song/SongListItem";
 import { WaveformPlayer } from "@/components/song/WaveformPlayer";
 import { getSongAudioUrl } from "@/lib/song-format";
@@ -68,7 +69,7 @@ function PlaylistCover({ playlist }: { playlist: PlaylistDetail }) {
   }
 
   return (
-    <div className="grid h-36 w-36 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-green-500 to-zinc-900 md:h-44 md:w-44">
+    <div className="grid h-36 w-36 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-orange-500 to-zinc-900 md:h-44 md:w-44">
       <span className="text-5xl font-black text-white/90">
         {playlist.title.slice(0, 1).toUpperCase()}
       </span>
@@ -148,7 +149,7 @@ function EditPlaylistModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-green-500 hover:text-white"
+            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-orange-500 hover:text-white"
           >
             Close
           </button>
@@ -159,7 +160,7 @@ function EditPlaylistModal({
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg bg-green-500 px-4 py-3 text-sm font-semibold text-green-950 transition hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+            className="rounded-lg bg-orange-500 px-4 py-3 text-sm font-semibold text-orange-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
           >
             {loading ? "Saving..." : "Save changes"}
           </button>
@@ -235,7 +236,7 @@ function UploadTrackModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-green-500 hover:text-white"
+            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-orange-500 hover:text-white"
           >
             Close
           </button>
@@ -250,7 +251,7 @@ function UploadTrackModal({
               value={form.title}
               onChange={(event) => updateForm("title", event.target.value)}
               maxLength={200}
-              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-green-500"
+              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-orange-500"
               placeholder="Track title"
             />
           </label>
@@ -261,7 +262,7 @@ function UploadTrackModal({
               value={form.genre}
               onChange={(event) => updateForm("genre", event.target.value)}
               maxLength={100}
-              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-green-500"
+              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-orange-500"
               placeholder="Pop, Lo-fi, Rock..."
             />
           </label>
@@ -273,7 +274,7 @@ function UploadTrackModal({
               onChange={(event) => updateForm("description", event.target.value)}
               rows={4}
               maxLength={5000}
-              className="mt-2 w-full resize-none rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-green-500"
+              className="mt-2 w-full resize-none rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-orange-500"
               placeholder="Short note about this track"
             />
           </label>
@@ -286,7 +287,7 @@ function UploadTrackModal({
               onChange={(event) =>
                 setAudioFile(event.target.files ? event.target.files[0] : null)
               }
-              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-lg file:border-0 file:bg-green-500 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-green-950"
+              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-500 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-orange-950"
             />
           </label>
 
@@ -309,7 +310,7 @@ function UploadTrackModal({
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg bg-green-500 px-4 py-3 text-sm font-semibold text-green-950 transition hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 md:w-fit"
+            className="rounded-lg bg-orange-500 px-4 py-3 text-sm font-semibold text-orange-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 md:w-fit"
           >
             {loading ? "Uploading..." : "Upload and add"}
           </button>
@@ -523,7 +524,7 @@ export function PlaylistDetailContent({
     setError(null);
 
     try {
-      await uploadTrackToPlaylistRequest(
+      const result = await uploadTrackToPlaylistRequest(
         playlist.id,
         {
           title: form.title,
@@ -534,6 +535,8 @@ export function PlaylistDetailContent({
         },
         accessToken,
       );
+
+      notifySongUploaded(result.song);
 
       await loadPlaylist();
       await refreshPlaylists();
@@ -598,7 +601,7 @@ export function PlaylistDetailContent({
         <div className="relative">
           <Link
             href="/playlists"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-green-500 hover:text-green-400 transition"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-orange-500 hover:text-orange-400 transition"
           >
             ← Back to playlists
           </Link>
@@ -609,7 +612,7 @@ export function PlaylistDetailContent({
             </div>
             
             <div className="min-w-0 flex-1">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-green-500">
+              <span className="text-xs font-bold uppercase tracking-[0.2em] text-orange-500">
                 Playlist
               </span>
               <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl truncate">
@@ -639,7 +642,7 @@ export function PlaylistDetailContent({
                   type="button"
                   disabled={playlist.songs.length === 0}
                   onClick={handlePlayAll}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-green-500 px-6 py-3 text-xs font-bold text-green-950 transition hover:bg-green-400 hover:scale-105 shadow-lg shadow-green-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-xs font-bold text-orange-950 transition hover:bg-orange-400 hover:scale-105 shadow-lg shadow-orange-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                   Play All
@@ -650,7 +653,7 @@ export function PlaylistDetailContent({
                     <button
                       type="button"
                       onClick={() => setUploadOpen(true)}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-green-500/30 px-5 py-3 text-xs font-bold text-green-400 transition hover:bg-green-500/10 hover:border-green-500/50"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-orange-500/30 px-5 py-3 text-xs font-bold text-orange-400 transition hover:bg-orange-500/10 hover:border-orange-500/50"
                     >
                       Upload new track
                     </button>

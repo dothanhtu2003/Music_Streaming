@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { uploadTrackRequest } from "@/lib/api";
+import { notifySongUploaded } from "@/lib/song-events";
 
 type UploadFormState = {
   title: string;
@@ -54,7 +55,7 @@ function NoticeBanner({ notice }: { notice: Notice | null }) {
       role="status"
       className={`rounded-lg border px-4 py-3 text-sm ${
         isSuccess
-          ? "border-green-500/40 bg-green-500/10 text-green-300"
+          ? "border-orange-500/40 bg-orange-500/10 text-orange-300"
           : "border-red-500/40 bg-red-500/10 text-red-300"
       }`}
     >
@@ -126,6 +127,8 @@ export default function UploadPage() {
         accessToken,
       );
 
+      notifySongUploaded(song);
+
       setNotice({
         type: "success",
         text: `Track "${song.title}" uploaded successfully. Redirecting to Home...`,
@@ -164,7 +167,7 @@ export default function UploadPage() {
             onChange={(event) => updateForm("title", event.target.value)}
             required
             maxLength={200}
-            className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-green-500"
+            className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-orange-500"
             placeholder="Track title"
           />
         </label>
@@ -175,7 +178,7 @@ export default function UploadPage() {
             value={form.genre}
             onChange={(event) => updateForm("genre", event.target.value)}
             maxLength={100}
-            className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-green-500"
+            className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-orange-500"
             placeholder="Pop, Lo-fi, Rock..."
           />
         </label>
@@ -187,7 +190,7 @@ export default function UploadPage() {
             onChange={(event) => updateForm("description", event.target.value)}
             rows={4}
             maxLength={5000}
-            className="mt-2 w-full resize-none rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-green-500"
+            className="mt-2 w-full resize-none rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-orange-500"
             placeholder="Short note about this track"
           />
         </label>
@@ -201,7 +204,7 @@ export default function UploadPage() {
             onChange={(event) =>
               setAudioFile(event.target.files ? event.target.files[0] : null)
             }
-            className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-lg file:border-0 file:bg-green-500 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-green-950"
+            className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-500 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-orange-950"
           />
         </label>
 
@@ -232,7 +235,7 @@ export default function UploadPage() {
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg bg-green-500 px-4 py-3 text-sm font-semibold text-green-950 transition hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 md:w-fit"
+          className="rounded-lg bg-orange-500 px-4 py-3 text-sm font-semibold text-orange-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 md:w-fit"
         >
           {saving ? "Uploading..." : "Upload track"}
         </button>

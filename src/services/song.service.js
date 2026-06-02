@@ -1,5 +1,6 @@
 const { pool } = require("../db/pool");
 const AppError = require("../utils/appError");
+const { artistLinkedUserJoin } = require("../utils/artist-user.utils");
 const {
   buildPagination,
   buildUpdateSet,
@@ -29,7 +30,9 @@ const songSelect = `
   s.created_at,
   s.updated_at,
   ar.name AS artist_name,
-  ar.avatar_url AS artist_avatar_url,
+  COALESCE(NULLIF(u.display_name, ''), ar.name) AS artist_display_name,
+  COALESCE(NULLIF(u.bio, ''), ar.bio) AS artist_bio,
+  COALESCE(u.avatar_url, ar.avatar_url) AS artist_avatar_url,
   ar.user_id AS artist_user_id,
   al.title AS album_title,
   al.cover_url AS album_cover_url,
@@ -41,6 +44,7 @@ const songSelect = `
 const songFromClause = `
   FROM songs s
   JOIN artists ar ON ar.id = s.artist_id
+  ${artistLinkedUserJoin}
   LEFT JOIN albums al ON al.id = s.album_id
   LEFT JOIN genres g ON g.id = s.genre_id
 `;
@@ -62,6 +66,8 @@ const formatSong = (song) => {
     artist: {
       id: song.artist_id,
       name: song.artist_name,
+      display_name: song.artist_display_name || song.artist_name,
+      bio: song.artist_bio,
       avatar_url: song.artist_avatar_url,
       user_id: song.artist_user_id,
     },
@@ -256,6 +262,42 @@ const getUserArtistName = async (user = {}) => {
 };
 
 const findOrCreateArtistByName = async (name, userId = null) => {
+  if (userId) {
+    const ownedArtistResult = await pool.query(
+      `SELECT id, user_id
+       FROM artists
+       WHERE LOWER(name) = LOWER($1)
+         AND (user_id = $2 OR user_id IS NULL)
+       ORDER BY CASE WHEN user_id = $2 THEN 0 ELSE 1 END, created_at ASC
+       LIMIT 1`,
+      [name, userId]
+    );
+
+    if (ownedArtistResult.rows[0]) {
+      const artist = ownedArtistResult.rows[0];
+
+      if (!artist.user_id) {
+        await pool.query(
+          `UPDATE artists
+           SET user_id = $1, updated_at = NOW()
+           WHERE id = $2`,
+          [userId, artist.id]
+        );
+      }
+
+      return artist.id;
+    }
+
+    const insertResult = await pool.query(
+      `INSERT INTO artists (name, user_id)
+       VALUES ($1, $2)
+       RETURNING id`,
+      [name, userId]
+    );
+
+    return insertResult.rows[0].id;
+  }
+
   const result = await pool.query(
     `SELECT id, user_id
      FROM artists
@@ -362,7 +404,7 @@ const buildSongWhere = (query, forceSearch = false) => {
   if (search) {
     params.push(search);
     conditions.push(
-      `(s.title ILIKE $${params.length} OR ar.name ILIKE $${params.length} OR al.title ILIKE $${params.length} OR g.name ILIKE $${params.length})`
+      `(s.title ILIKE $${params.length} OR ar.name ILIKE $${params.length} OR u.username ILIKE $${params.length} OR u.display_name ILIKE $${params.length} OR al.title ILIKE $${params.length} OR g.name ILIKE $${params.length})`
     );
   }
 
@@ -375,6 +417,43 @@ const buildSongWhere = (query, forceSearch = false) => {
 const getSongs = async (query) => {
   const { page, limit, offset } = parsePagination(query);
   const { whereClause, params } = buildSongWhere(query);
+
+  const countResult = await pool.query(
+    `SELECT COUNT(*) AS total
+     ${songFromClause}
+     ${whereClause}`,
+    params
+  );
+
+  const result = await pool.query(
+    `SELECT ${songSelect}
+     ${songFromClause}
+     ${whereClause}
+     ORDER BY s.created_at DESC
+     LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, limit, offset]
+  );
+
+  const totalItems = Number(countResult.rows[0].total);
+
+  return {
+    items: result.rows.map(formatSong),
+    pagination: buildPagination(totalItems, page, limit),
+  };
+};
+
+const getSongsByUser = async (user, query = {}) => {
+  const { page, limit, offset } = parsePagination(query);
+  const username = String(user.username || "").trim();
+  const params = [user.id];
+  const ownerConditions = ["ar.user_id = $1"];
+
+  if (username) {
+    params.push(username);
+    ownerConditions.push(`LOWER(ar.name) = LOWER($${params.length})`);
+  }
+
+  const whereClause = `WHERE s.is_active = TRUE AND (${ownerConditions.join(" OR ")})`;
 
   const countResult = await pool.query(
     `SELECT COUNT(*) AS total
@@ -677,6 +756,7 @@ const listenToSong = async (id, userId = null) => {
 
 module.exports = {
   getSongs,
+  getSongsByUser,
   searchSongs,
   getSongById,
   getSongWaveform,

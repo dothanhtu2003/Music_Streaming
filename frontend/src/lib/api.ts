@@ -26,6 +26,12 @@ import {
   clearTokens,
   notifyAuthTokenCleared,
 } from "@/lib/auth-storage";
+import {
+  normalizeArtistProfile,
+  normalizePlaylistDetail,
+  normalizeSongArtist,
+  normalizeSongs,
+} from "@/lib/song-format";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
 
@@ -261,6 +267,49 @@ export async function getCurrentUserRequest(accessToken: string) {
   return response.data.user;
 }
 
+export async function updateCurrentUserRequest(
+  payload: {
+    displayName: string;
+    bio?: string | null;
+  },
+  accessToken: string,
+) {
+  const response = await apiRequest<{ user: AuthUser }>("/auth/me", {
+    method: "PATCH",
+    body: {
+      display_name: payload.displayName,
+      bio: payload.bio,
+    },
+    accessToken,
+  });
+
+  if (!response.data?.user) {
+    throw new Error("Update profile response is missing user data.");
+  }
+
+  return response.data.user;
+}
+
+export async function uploadCurrentUserAvatarRequest(
+  avatarFile: File,
+  accessToken: string,
+) {
+  const formData = new FormData();
+  formData.append("avatar", avatarFile);
+
+  const response = await apiRequest<{ user: AuthUser }>("/auth/me/avatar", {
+    method: "POST",
+    body: formData,
+    accessToken,
+  });
+
+  if (!response.data?.user) {
+    throw new Error("Upload avatar response is missing user data.");
+  }
+
+  return response.data.user;
+}
+
 export async function logoutRequest(refreshToken: string) {
   await apiRequest("/auth/logout", {
     method: "POST",
@@ -278,7 +327,23 @@ export async function getSongsRequest(
   );
 
   return {
-    items: response.data ?? [],
+    items: normalizeSongs(response.data ?? []),
+    pagination: getPagination(response, page, limit),
+  };
+}
+
+export async function getMySongsRequest(
+  accessToken: string,
+  page = 1,
+  limit = 100,
+) {
+  const response = await apiRequest<Song[]>(
+    `/songs/me${buildQuery({ page, limit })}`,
+    { accessToken },
+  );
+
+  return {
+    items: normalizeSongs(response.data ?? []),
     pagination: getPagination(response, page, limit),
   };
 }
@@ -289,7 +354,7 @@ export async function searchSongsRequest(q: string, page = 1, limit = 9) {
   );
 
   return {
-    items: response.data ?? [],
+    items: normalizeSongs(response.data ?? []),
     pagination: getPagination(response, page, limit),
   };
 }
@@ -301,7 +366,7 @@ export async function getSongRequest(id: string) {
     throw new Error("Song response is missing data.");
   }
 
-  return response.data;
+  return normalizeSongArtist(response.data);
 }
 
 export async function getSongWaveformRequest(id: string) {
@@ -355,7 +420,10 @@ export async function listenSongRequest(
     throw new Error("Listen response is missing song data.");
   }
 
-  return response.data;
+  return {
+    ...response.data,
+    song: normalizeSongArtist(response.data.song),
+  };
 }
 
 export async function saveRecentlyPlayedRequest(
@@ -376,7 +444,7 @@ export async function saveRecentlyPlayedRequest(
     throw new Error("Recently played response is missing song data.");
   }
 
-  return response.data;
+  return normalizeSongArtist(response.data);
 }
 
 export async function getRecentlyPlayedRequest(accessToken: string) {
@@ -384,7 +452,7 @@ export async function getRecentlyPlayedRequest(accessToken: string) {
     accessToken,
   });
 
-  return response.data ?? [];
+  return normalizeSongs(response.data ?? []);
 }
 
 export async function getMyLikedSongsRequest(
@@ -398,7 +466,7 @@ export async function getMyLikedSongsRequest(
   );
 
   return {
-    items: response.data ?? [],
+    items: normalizeSongs(response.data ?? []),
     pagination: getPagination(response, page, limit),
   };
 }
@@ -464,7 +532,7 @@ export async function getPlaylistRequest(id: string, accessToken: string) {
     throw new Error("Playlist response is missing data.");
   }
 
-  return response.data;
+  return normalizePlaylistDetail(response.data);
 }
 
 export async function createPlaylistRequest(
@@ -481,7 +549,7 @@ export async function createPlaylistRequest(
     throw new Error("Create playlist response is missing data.");
   }
 
-  return response.data;
+  return normalizePlaylistDetail(response.data);
 }
 
 export async function updatePlaylistRequest(
@@ -574,7 +642,7 @@ export async function reorderPlaylistSongsRequest(
     throw new Error("Reorder playlist response is missing data.");
   }
 
-  return response.data;
+  return normalizePlaylistDetail(response.data);
 }
 
 export async function getAdminDashboardRequest(accessToken: string) {
@@ -707,7 +775,7 @@ export async function createSongRequest(
     throw new Error("Create song response is missing data.");
   }
 
-  return response.data;
+  return normalizeSongArtist(response.data);
 }
 
 export async function updateSongRequest(
@@ -725,7 +793,7 @@ export async function updateSongRequest(
     throw new Error("Update song response is missing data.");
   }
 
-  return response.data;
+  return normalizeSongArtist(response.data);
 }
 
 export async function deleteSongRequest(id: string, accessToken: string) {
@@ -775,7 +843,7 @@ export async function uploadTrackRequest(
     throw new Error("Upload track response is missing song data.");
   }
 
-  return response.data;
+  return normalizeSongArtist(response.data);
 }
 
 export async function uploadTrackToPlaylistRequest(
@@ -813,7 +881,13 @@ export async function uploadTrackToPlaylistRequest(
     throw new Error("Upload playlist track response is missing song data.");
   }
 
-  return response.data;
+  return {
+    ...response.data,
+    song: normalizeSongArtist(response.data.song),
+    track: response.data.track
+      ? normalizeSongArtist(response.data.track)
+      : normalizeSongArtist(response.data.song),
+  };
 }
 
 export async function getArtistsRequest(page = 1, limit = 100, q = "") {
@@ -822,7 +896,7 @@ export async function getArtistsRequest(page = 1, limit = 100, q = "") {
   );
 
   return {
-    items: response.data ?? [],
+    items: (response.data ?? []).map((artist) => normalizeArtistProfile(artist)),
     pagination: getPagination(response, page, limit),
   };
 }
@@ -841,7 +915,7 @@ export async function createArtistRequest(
     throw new Error("Create artist response is missing data.");
   }
 
-  return response.data;
+  return normalizeArtistProfile(response.data);
 }
 
 export async function updateArtistRequest(
@@ -859,7 +933,7 @@ export async function updateArtistRequest(
     throw new Error("Update artist response is missing data.");
   }
 
-  return response.data;
+  return normalizeArtistProfile(response.data);
 }
 
 export async function deleteArtistRequest(id: string, accessToken: string) {
@@ -1097,7 +1171,7 @@ export async function getFollowingRequest(accessToken: string) {
     accessToken,
   });
 
-  return response.data ?? [];
+  return (response.data ?? []).map((artist) => normalizeArtistProfile(artist));
 }
 
 export async function getFeedRequest(accessToken: string, page = 1, limit = 9) {
@@ -1107,7 +1181,7 @@ export async function getFeedRequest(accessToken: string, page = 1, limit = 9) {
   );
 
   return {
-    items: response.data ?? [],
+    items: normalizeSongs(response.data ?? []),
     pagination: getPagination(response, page, limit),
   };
 }
@@ -1119,7 +1193,7 @@ export async function getArtistRequest(id: string) {
     throw new Error("Artist response is missing data.");
   }
 
-  return response.data;
+  return normalizeArtistProfile(response.data);
 }
 
 export async function getArtistSongsRequest(id: string, page = 1, limit = 10) {
@@ -1128,7 +1202,7 @@ export async function getArtistSongsRequest(id: string, page = 1, limit = 10) {
   );
 
   return {
-    items: response.data ?? [],
+    items: normalizeSongs(response.data ?? []),
     pagination: getPagination(response, page, limit),
   };
 }

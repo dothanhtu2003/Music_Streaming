@@ -16,7 +16,12 @@ import {
   RECENTLY_PLAYED_UPDATED_EVENT,
   getLocalRecentlyPlayed,
 } from "@/lib/recently-played-storage";
-import { formatPlayCount, getSongCoverUrl } from "@/lib/song-format";
+import {
+  formatPlayCount,
+  getArtistAvatarUrl,
+  getArtistDisplayName,
+  getSongCoverUrl,
+} from "@/lib/song-format";
 import { usePlayerStore } from "@/stores/player-store";
 import type { RecentlyPlayedSong, Song, UserPlaylist } from "@/types/music";
 
@@ -45,7 +50,7 @@ function SidebarSection({ title, href, children }: SidebarSectionProps) {
         {href && (
           <Link
             href={href}
-            className="text-[11px] font-semibold text-zinc-500 transition hover:text-green-400"
+            className="text-[11px] font-semibold text-zinc-500 transition hover:text-orange-400"
           >
             View all
           </Link>
@@ -78,7 +83,7 @@ function CoverImage({
 
   return (
     <div
-      className={`grid h-10 w-10 shrink-0 place-items-center bg-gradient-to-br from-green-500 to-zinc-900 text-sm font-black text-white ${rounded}`}
+      className={`grid h-10 w-10 shrink-0 place-items-center bg-gradient-to-br from-orange-500 to-zinc-900 text-sm font-black text-white ${rounded}`}
     >
       {fallback.slice(0, 1).toUpperCase()}
     </div>
@@ -96,6 +101,7 @@ function TrackItem({
 }) {
   const playSong = usePlayerStore((state) => state.playSong);
   const coverUrl = getSongCoverUrl(song);
+  const artistName = getArtistDisplayName(song.artist);
 
   return (
     <div className="group flex items-center gap-3 rounded-lg p-1.5 transition hover:bg-zinc-900/70">
@@ -113,11 +119,11 @@ function TrackItem({
 
       <div className="min-w-0 flex-1">
         <Link href={`/songs/${song.id}`}>
-          <h3 className="truncate text-sm font-semibold text-zinc-100 transition hover:text-green-400">
+          <h3 className="truncate text-sm font-semibold text-zinc-100 transition hover:text-orange-400">
             {song.title}
           </h3>
         </Link>
-        <p className="truncate text-xs text-zinc-500">{song.artist.name}</p>
+        <p className="truncate text-xs text-zinc-500">{artistName}</p>
         <p className="text-[11px] text-zinc-600">
           {meta ?? `${formatPlayCount(song.play_count)} plays`}
         </p>
@@ -147,7 +153,7 @@ function ArtistItem({ artist }: { artist: DiscoveryArtist }) {
 
       <div className="min-w-0 flex-1">
         <Link href={`/artists/${artist.id}`}>
-          <h3 className="truncate text-sm font-semibold text-zinc-100 transition hover:text-green-400">
+          <h3 className="truncate text-sm font-semibold text-zinc-100 transition hover:text-orange-400">
             {artist.name}
           </h3>
         </Link>
@@ -164,7 +170,7 @@ function ArtistItem({ artist }: { artist: DiscoveryArtist }) {
           className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
             followed
               ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
-              : "bg-green-500 text-green-950 hover:bg-green-400"
+              : "bg-orange-500 text-orange-950 hover:bg-orange-400"
           }`}
         >
           {loading ? "..." : followed ? "Following" : "Follow"}
@@ -187,7 +193,7 @@ function PlaylistItem({ playlist }: { playlist: UserPlaylist }) {
     >
       <CoverImage url={coverUrl} fallback={playlist.title || playlist.name} />
       <div className="min-w-0 flex-1">
-        <h3 className="truncate text-sm font-semibold text-zinc-100 transition hover:text-green-400">
+        <h3 className="truncate text-sm font-semibold text-zinc-100 transition hover:text-orange-400">
           {playlist.title || playlist.name}
         </h3>
         <p className="truncate text-xs text-zinc-500">
@@ -234,13 +240,13 @@ function buildArtists(songs: Song[]) {
 
   songs.forEach((song) => {
     const currentArtist = artists.get(song.artist.id);
-    const avatarUrl =
-      resolveApiAssetUrl(song.artist.avatar_url) ?? getSongCoverUrl(song);
+    const artistName = getArtistDisplayName(song.artist);
+    const avatarUrl = getArtistAvatarUrl(song.artist) ?? getSongCoverUrl(song);
 
     if (!currentArtist) {
       artists.set(song.artist.id, {
         id: song.artist.id,
-        name: song.artist.name,
+        name: artistName,
         avatarUrl,
         userId: song.artist.user_id ?? null,
         songCount: 1,

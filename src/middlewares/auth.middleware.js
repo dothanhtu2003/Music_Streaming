@@ -18,7 +18,7 @@ const getBearerToken = (authorizationHeader) => {
 
 const getUserFromTokenPayload = async (payload) => {
   const result = await pool.query(
-    `SELECT id, username, role, is_banned
+    `SELECT id, username, display_name, role, is_banned
      FROM users
      WHERE id = $1
      LIMIT 1`,
@@ -38,6 +38,7 @@ const getUserFromTokenPayload = async (payload) => {
   return {
     id: user.id,
     username: payload.username || user.username,
+    display_name: user.display_name,
     role: user.role,
   };
 };

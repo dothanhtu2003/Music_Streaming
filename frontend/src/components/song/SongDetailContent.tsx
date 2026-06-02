@@ -50,7 +50,7 @@ function SongCover({ song }: { song: Song }) {
   }
 
   return (
-    <div className="grid h-40 w-40 place-items-center rounded-lg bg-gradient-to-br from-green-500 to-zinc-900">
+    <div className="grid h-40 w-40 place-items-center rounded-lg bg-gradient-to-br from-orange-500 to-zinc-900">
       <span className="text-5xl font-black text-white/90">
         {song.title.slice(0, 1)}
       </span>
@@ -131,7 +131,7 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
           <SongCover song={song} />
 
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium uppercase tracking-[0.18em] text-green-400">
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-orange-400">
               Song
             </p>
             <h1 className="mt-2 text-3xl font-bold text-white sm:text-5xl">
@@ -175,14 +175,14 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
 
                   playSong(song, [song]);
                 }}
-                className="rounded-lg bg-green-500 px-5 py-3 text-sm font-semibold text-green-950 transition hover:bg-green-400"
+                className="rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-orange-950 transition hover:bg-orange-400"
               >
                 {currentSong?.id === song.id && isPlaying ? "Pause" : "Play"}
               </button>
               <button
                 type="button"
                 onClick={() => openAddSongModal(song)}
-                className="rounded-lg border border-zinc-700 px-5 py-3 text-sm font-semibold text-zinc-200 transition hover:border-green-500 hover:text-white"
+                className="rounded-lg border border-zinc-700 px-5 py-3 text-sm font-semibold text-zinc-200 transition hover:border-orange-500 hover:text-white"
               >
                 Add to playlist
               </button>

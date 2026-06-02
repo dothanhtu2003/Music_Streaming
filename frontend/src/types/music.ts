@@ -12,7 +12,11 @@ export type Song = {
   artist: {
     id: string;
     name: string;
+    display_name?: string | null;
+    displayName?: string | null;
+    bio?: string | null;
     avatar_url: string | null;
+    avatarUrl?: string | null;
     user_id?: string | null;
   };
   album: {
@@ -86,8 +90,11 @@ export type SongPagination = Pagination;
 export type ArtistRecord = {
   id: string;
   name: string;
+  display_name?: string | null;
+  displayName?: string | null;
   bio: string | null;
   avatar_url: string | null;
+  avatarUrl?: string | null;
   user_id?: string | null;
   created_at: string;
   updated_at: string;
@@ -104,7 +111,11 @@ export type AlbumRecord = {
   artist: {
     id: string;
     name: string;
+    display_name?: string | null;
+    displayName?: string | null;
+    bio?: string | null;
     avatar_url: string | null;
+    avatarUrl?: string | null;
   } | null;
 };
 
@@ -216,10 +227,13 @@ export type Playlist = {
 export type FollowedArtist = {
   user_id: string;
   username: string;
+  display_name?: string | null;
+  displayName?: string | null;
   email: string;
   artist_id: string | null;
   name: string;
   avatar_url: string | null;
+  avatarUrl?: string | null;
   bio: string | null;
   followed_at: string;
 };

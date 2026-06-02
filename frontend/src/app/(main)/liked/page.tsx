@@ -36,12 +36,12 @@ export default function LikedPage() {
         
         <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end">
           {/* Glowing heart icon block */}
-          <div className="grid h-32 w-32 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-green-700 shadow-lg shadow-emerald-500/20 md:h-36 md:w-36 transition-transform duration-300 hover:scale-[1.02]">
+          <div className="grid h-32 w-32 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-orange-700 shadow-lg shadow-emerald-500/20 md:h-36 md:w-36 transition-transform duration-300 hover:scale-[1.02]">
             <HeartIcon size={56} filled className="text-white" />
           </div>
           
           <div className="min-w-0 flex-1">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-green-400">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-orange-400">
               Library
             </span>
             <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
@@ -59,7 +59,7 @@ export default function LikedPage() {
                 <button
                   type="button"
                   onClick={handlePlayAll}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-green-500 px-6 py-3 text-xs font-bold text-green-950 transition hover:bg-green-400 hover:scale-105 shadow-lg shadow-green-500/10"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-xs font-bold text-orange-950 transition hover:bg-orange-400 hover:scale-105 shadow-lg shadow-orange-500/10"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                   Play All

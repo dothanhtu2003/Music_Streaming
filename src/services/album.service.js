@@ -1,5 +1,6 @@
 const { pool } = require("../db/pool");
 const AppError = require("../utils/appError");
+const { artistLinkedUserJoin } = require("../utils/artist-user.utils");
 const {
   buildPagination,
   buildUpdateSet,
@@ -20,7 +21,9 @@ const albumSelect = `
   al.created_at,
   al.updated_at,
   ar.name AS artist_name,
-  ar.avatar_url AS artist_avatar_url
+  COALESCE(NULLIF(u.display_name, ''), ar.name) AS artist_display_name,
+  COALESCE(NULLIF(u.bio, ''), ar.bio) AS artist_bio,
+  COALESCE(u.avatar_url, ar.avatar_url) AS artist_avatar_url
 `;
 
 const formatAlbum = (album) => {
@@ -36,6 +39,8 @@ const formatAlbum = (album) => {
       ? {
           id: album.artist_id,
           name: album.artist_name,
+          display_name: album.artist_display_name || album.artist_name,
+          bio: album.artist_bio,
           avatar_url: album.artist_avatar_url,
         }
       : null,
@@ -96,6 +101,7 @@ const getAlbums = async (query) => {
     `SELECT ${albumSelect}
      FROM albums al
      JOIN artists ar ON ar.id = al.artist_id
+     ${artistLinkedUserJoin}
      WHERE ($1::text IS NULL OR al.title ILIKE $1 OR ar.name ILIKE $1)
      ORDER BY al.created_at DESC
      LIMIT $2 OFFSET $3`,
@@ -117,6 +123,7 @@ const getAlbumById = async (id) => {
     `SELECT ${albumSelect}
      FROM albums al
      JOIN artists ar ON ar.id = al.artist_id
+     ${artistLinkedUserJoin}
      WHERE al.id = $1
      LIMIT 1`,
     [id]

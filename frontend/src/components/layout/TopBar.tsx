@@ -29,7 +29,7 @@ export function TopBar() {
     <header className="sticky top-0 z-10 border-b border-zinc-800 bg-black/90 backdrop-blur">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 lg:hidden">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-green-500 font-black text-green-950">
+          <span className="grid h-9 w-9 place-items-center rounded-lg bg-orange-500 font-black text-orange-950">
             M
           </span>
           <span className="text-sm font-semibold text-white">Music App</span>

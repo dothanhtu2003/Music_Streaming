@@ -109,7 +109,7 @@ function PlaylistAvatar({ playlist }: { playlist: UserPlaylist }) {
   }
 
   return (
-    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-green-500 to-zinc-900">
+    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-orange-500 to-zinc-900">
       <span className="text-sm font-black text-white">
         {playlist.title.slice(0, 1).toUpperCase()}
       </span>
@@ -170,7 +170,7 @@ function AddSongModal() {
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-green-400">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-orange-400">
               Add to playlist
             </p>
             <h2 className="mt-2 text-xl font-semibold text-white">
@@ -183,7 +183,7 @@ function AddSongModal() {
           <button
             type="button"
             onClick={closeAddSongModal}
-            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-green-500 hover:text-white"
+            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-orange-500 hover:text-white"
           >
             Close
           </button>
@@ -206,7 +206,7 @@ function AddSongModal() {
               onClick={() => {
                 void addSongToPlaylist(playlist.id, selectedSong);
               }}
-              className="flex w-full items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-black px-4 py-3 text-left transition hover:border-green-500 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex w-full items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-black px-4 py-3 text-left transition hover:border-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <span className="flex min-w-0 items-center gap-3">
                 <PlaylistAvatar playlist={playlist} />
@@ -219,7 +219,7 @@ function AddSongModal() {
                   </span>
                 </span>
               </span>
-              <span className="text-xs font-semibold text-green-400">
+              <span className="text-xs font-semibold text-orange-400">
                 {actionId === playlist.id ? "Adding..." : "Add"}
               </span>
             </button>
@@ -236,7 +236,7 @@ function AddSongModal() {
               value={form.title}
               onChange={(event) => updateForm("title", event.target.value)}
               maxLength={150}
-              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-green-500"
+              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500"
               placeholder="My Favorite Set"
             />
           </label>
@@ -246,7 +246,7 @@ function AddSongModal() {
               value={form.coverUrl}
               onChange={(event) => updateForm("coverUrl", event.target.value)}
               maxLength={1000}
-              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-green-500"
+              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500"
               placeholder="Optional"
             />
           </label>
@@ -257,7 +257,7 @@ function AddSongModal() {
               onChange={(event) => updateForm("description", event.target.value)}
               rows={3}
               maxLength={5000}
-              className="mt-2 w-full resize-none rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-green-500"
+              className="mt-2 w-full resize-none rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500"
               placeholder="Short note about this set"
             />
           </label>
@@ -266,7 +266,7 @@ function AddSongModal() {
               type="checkbox"
               checked={Boolean(form.isPublic)}
               onChange={(event) => updateForm("isPublic", event.target.checked)}
-              className="accent-green-500"
+              className="accent-orange-500"
             />
             Public playlist
           </label>
@@ -276,7 +276,7 @@ function AddSongModal() {
           <button
             type="submit"
             disabled={actionId === "create"}
-            className="rounded-lg bg-green-500 px-4 py-3 text-sm font-semibold text-green-950 transition hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 md:w-fit"
+            className="rounded-lg bg-orange-500 px-4 py-3 text-sm font-semibold text-orange-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 md:w-fit"
           >
             {actionId === "create" ? "Creating..." : "Create and add"}
           </button>
@@ -640,7 +640,7 @@ export function PlaylistProvider({ children }: PlaylistProviderProps) {
           role="status"
           className={`fixed right-4 top-36 z-50 max-w-sm rounded-lg border px-4 py-3 text-sm shadow-xl ${
             notice.type === "success"
-              ? "border-green-500/40 bg-green-500/10 text-green-300"
+              ? "border-orange-500/40 bg-orange-500/10 text-orange-300"
               : "border-red-500/40 bg-red-500/10 text-red-300"
           }`}
         >

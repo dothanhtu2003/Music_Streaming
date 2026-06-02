@@ -4,6 +4,9 @@ export type AuthUser = {
   id: string;
   email: string;
   username: string;
+  displayName: string | null;
+  bio: string | null;
+  avatarUrl: string | null;
   role: UserRole;
   isVerified: boolean;
   isBanned: boolean;

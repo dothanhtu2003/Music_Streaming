@@ -1,5 +1,6 @@
 const { pool } = require("../db/pool");
 const AppError = require("../utils/appError");
+const { artistLinkedUserJoin } = require("../utils/artist-user.utils");
 const {
   buildPagination,
   parsePagination,
@@ -22,7 +23,9 @@ const likedSongSelect = `
   s.created_at,
   s.updated_at,
   ar.name AS artist_name,
-  ar.avatar_url AS artist_avatar_url,
+  COALESCE(NULLIF(u.display_name, ''), ar.name) AS artist_display_name,
+  COALESCE(NULLIF(u.bio, ''), ar.bio) AS artist_bio,
+  COALESCE(u.avatar_url, ar.avatar_url) AS artist_avatar_url,
   ar.user_id AS artist_user_id,
   al.title AS album_title,
   al.cover_url AS album_cover_url,
@@ -35,6 +38,7 @@ const likedSongFromClause = `
   FROM likes l
   JOIN songs s ON s.id = l.song_id
   JOIN artists ar ON ar.id = s.artist_id
+  ${artistLinkedUserJoin}
   LEFT JOIN albums al ON al.id = s.album_id
   LEFT JOIN genres g ON g.id = s.genre_id
 `;
@@ -66,6 +70,8 @@ const formatLikedSong = (row) => {
     artist: {
       id: row.artist_id,
       name: row.artist_name,
+      display_name: row.artist_display_name || row.artist_name,
+      bio: row.artist_bio,
       avatar_url: row.artist_avatar_url,
       user_id: row.artist_user_id,
     },

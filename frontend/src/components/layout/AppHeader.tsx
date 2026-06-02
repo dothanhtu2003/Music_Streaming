@@ -72,7 +72,7 @@ function SearchInputInner({ q, router }: SearchInputInnerProps) {
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Search songs, artists..."
-        className="h-9 w-full rounded border border-zinc-700 bg-zinc-100 py-2 pl-10 pr-4 text-sm text-zinc-950 placeholder-zinc-500 outline-none transition focus:border-orange-500 focus:bg-white focus:ring-1 focus:ring-orange-500/30"
+        className="h-9 w-full rounded border border-zinc-700 bg-[#303030] py-2 pl-10 pr-4 text-sm text-white placeholder-zinc-400 outline-none transition focus:border-orange-500 focus:bg-[#303030] focus:ring-1 focus:ring-orange-500/30"
       />
     </form>
   );
@@ -132,7 +132,7 @@ export function AppHeader() {
         <div className="hidden min-w-0 justify-self-stretch md:block lg:justify-self-center lg:w-full lg:max-w-md xl:max-w-lg">
           <Suspense
             fallback={
-              <div className="h-9 w-full animate-pulse rounded border border-zinc-800 bg-zinc-900/60" />
+              <div className="h-9 w-full animate-pulse rounded border border-zinc-800 bg-[#303030]" />
             }
           >
             <SearchInput />
