@@ -12,7 +12,7 @@ import {
   ArtistTrackRowSkeleton,
 } from "@/components/song/ArtistTrackRow";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { PlaylistIcon, UserIcon } from "@/components/ui/Icons";
+import { PlaylistIcon, UserIcon, PlayIcon, PauseIcon } from "@/components/ui/Icons";
 import {
   getMySongsRequest,
   getRecentlyPlayedRequest,
@@ -33,7 +33,9 @@ import {
   formatPlayCount,
   getArtistAvatarUrl,
   getArtistDisplayName,
+  getSongCoverUrl,
 } from "@/lib/song-format";
+import { usePlayerStore } from "@/stores/player-store";
 import { cn } from "@/lib/utils";
 import type {
   FollowedArtist,
@@ -76,25 +78,6 @@ function isOwnTrack(song: Song, userId: string, username: string) {
   return (
     artistUserId === userId ||
     Boolean(artistName && artistName === username.trim().toLowerCase())
-  );
-}
-
-function ProfileStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: number | string;
-}) {
-  return (
-    <div className="min-w-0 text-center">
-      <p className="truncate text-lg font-black text-white sm:text-xl">
-        {typeof value === "number" ? formatPlayCount(value) : value}
-      </p>
-      <p className="mt-1 truncate text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-        {label}
-      </p>
-    </div>
   );
 }
 
@@ -153,7 +136,7 @@ function ProfileAvatar({
   if (avatarUrl) {
     return (
       <div
-        className="h-28 w-28 shrink-0 rounded-full border-4 border-black/70 bg-zinc-900 bg-cover bg-center shadow-2xl sm:h-36 sm:w-36 md:h-40 md:w-40"
+        className="h-28 w-28 shrink-0 rounded-full border border-white/10 ring-4 ring-zinc-950 bg-zinc-950 bg-cover bg-center shadow-lg shadow-black/30 sm:h-36 sm:w-36 md:h-40 md:w-40 animate-fade-in"
         style={{ backgroundImage: `url(${avatarUrl})` }}
         role="img"
         aria-label={`${username} avatar`}
@@ -162,8 +145,8 @@ function ProfileAvatar({
   }
 
   return (
-    <div className="grid h-28 w-28 shrink-0 place-items-center rounded-full border-4 border-black/70 bg-gradient-to-br from-orange-500 to-zinc-950 shadow-2xl sm:h-36 sm:w-36 md:h-40 md:w-40">
-      <span className="text-5xl font-black text-white sm:text-6xl">
+    <div className="grid h-28 w-28 shrink-0 place-items-center rounded-full border border-orange-500/20 ring-4 ring-zinc-950 bg-zinc-950 bg-gradient-to-br from-orange-500/20 to-zinc-900 shadow-lg shadow-black/30 sm:h-36 sm:w-36 md:h-40 md:w-40 animate-fade-in">
+      <span className="text-5xl font-extrabold text-orange-400 sm:text-6xl select-none">
         {getFallbackLetter(username)}
       </span>
     </div>
@@ -370,12 +353,18 @@ function TrackListSection({
   error,
   emptyTitle,
   emptyDescription,
+  actionLabel,
+  href,
+  onAction,
 }: {
   songs: Song[];
   loading?: boolean;
   error?: string | null;
   emptyTitle: string;
   emptyDescription: string;
+  actionLabel?: string;
+  href?: string;
+  onAction?: () => void;
 }) {
   if (loading) {
     return (
@@ -401,6 +390,9 @@ function TrackListSection({
         icon={<PlaylistIcon size={24} />}
         title={emptyTitle}
         description={emptyDescription}
+        actionLabel={actionLabel}
+        href={href}
+        onAction={onAction}
       />
     );
   }
@@ -409,6 +401,172 @@ function TrackListSection({
     <div className="space-y-3">
       {songs.map((song) => (
         <ArtistTrackRow key={song.id} song={song} queue={songs} />
+      ))}
+    </div>
+  );
+}
+
+function CompactRecentActivityRow({ song, queue }: { song: Song; queue: Song[] }) {
+  const currentSong = usePlayerStore((state) => state.currentSong);
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const playSong = usePlayerStore((state) => state.playSong);
+  const togglePlay = usePlayerStore((state) => state.togglePlay);
+
+  const isCurrentSong = currentSong?.id === song.id;
+  const coverUrl = getSongCoverUrl(song);
+  const songTitle = song.title || "Untitled track";
+  const artistId = song.artist?.id ?? "";
+  const artistName = getArtistDisplayName(song.artist);
+  const safeQueue = queue.length > 0 ? queue : [song];
+
+  const handlePlay = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+
+    if (isCurrentSong) {
+      togglePlay();
+      return;
+    }
+
+    playSong(song, safeQueue);
+  };
+
+  return (
+    <article
+      className={cn(
+        "group flex items-center justify-between gap-4 rounded-xl border border-zinc-900/60 bg-zinc-950/20 p-2.5 transition hover:border-zinc-800 hover:bg-zinc-900/30",
+        isCurrentSong && "border-orange-500/20 bg-orange-500/[0.02]",
+      )}
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        {/* Cover Art */}
+        <Link
+          href={`/songs/${song.id}`}
+          className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-zinc-900 bg-zinc-900/60 bg-cover bg-center"
+          style={coverUrl ? { backgroundImage: `url(${coverUrl})` } : undefined}
+          aria-label={`Open ${songTitle}`}
+        >
+          {!coverUrl && (
+            <span className="grid h-full w-full place-items-center bg-gradient-to-br from-orange-500/20 to-zinc-950 text-sm font-black text-orange-400/80">
+              {getFallbackLetter(songTitle)}
+            </span>
+          )}
+          {/* Overlay play button on hover */}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              onClick={handlePlay}
+              className="rounded-full bg-orange-500 p-2 text-orange-950 hover:bg-orange-400 transition"
+              aria-label={isCurrentSong && isPlaying ? "Pause" : "Play"}
+            >
+              {isCurrentSong && isPlaying ? (
+                <PauseIcon size={12} />
+              ) : (
+                <PlayIcon size={12} className="ml-0.5" />
+              )}
+            </button>
+          </div>
+        </Link>
+
+        {/* Text information */}
+        <div className="min-w-0 flex-1">
+          <Link
+            href={`/songs/${song.id}`}
+            className={cn(
+              "block truncate text-sm font-bold transition hover:text-orange-400 leading-tight",
+              isCurrentSong ? "text-orange-400" : "text-white",
+            )}
+          >
+            {songTitle}
+          </Link>
+          
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
+            {artistId ? (
+              <Link
+                href={`/artists/${artistId}`}
+                className="hover:text-orange-400 transition font-medium truncate max-w-[150px] inline-block"
+              >
+                {artistName}
+              </Link>
+            ) : (
+              <span className="truncate max-w-[150px] inline-block">{artistName}</span>
+            )}
+            <span className="text-zinc-700 font-normal select-none">•</span>
+            <span>played recently</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Play/Pause Button on Right */}
+      <button
+        type="button"
+        onClick={handlePlay}
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-orange-500 hover:text-orange-950 hover:border-orange-500 transition group-hover:border-zinc-700 md:opacity-0 group-hover:opacity-100 focus:opacity-100",
+          isCurrentSong && "border-orange-500/30 text-orange-400 md:opacity-100",
+        )}
+        aria-label={isCurrentSong && isPlaying ? "Pause" : "Play"}
+      >
+        {isCurrentSong && isPlaying ? (
+          <PauseIcon size={12} />
+        ) : (
+          <PlayIcon size={12} className="ml-0.5" />
+        )}
+      </button>
+    </article>
+  );
+}
+
+function CompactRecentActivitySection({
+  songs,
+  loading,
+  error,
+  emptyTitle,
+  emptyDescription,
+}: {
+  songs: Song[];
+  loading?: boolean;
+  error?: string | null;
+  emptyTitle: string;
+  emptyDescription: string;
+}) {
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="flex items-center gap-3 rounded-xl border border-zinc-900/60 bg-zinc-950/20 p-2.5 animate-pulse">
+            <div className="h-12 w-12 rounded-lg bg-zinc-900 shimmer shrink-0" />
+            <div className="min-w-0 flex-1 space-y-2 py-1">
+              <div className="h-3.5 w-1/3 rounded bg-zinc-900 shimmer" />
+              <div className="h-3 w-1/4 rounded bg-zinc-900 shimmer" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-5 text-sm text-red-300 animate-fade-in">
+        {error}
+      </div>
+    );
+  }
+
+  if (songs.length === 0) {
+    return (
+      <EmptyState
+        icon={<PlaylistIcon size={24} />}
+        title={emptyTitle}
+        description={emptyDescription}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {songs.map((song) => (
+        <CompactRecentActivityRow key={song.id} song={song} queue={songs} />
       ))}
     </div>
   );
@@ -451,15 +609,15 @@ function PlaylistGrid({
 }) {
   if (loading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, index) => (
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
-            className="rounded-xl border border-zinc-900 bg-zinc-950/60 p-3"
+            className="rounded-xl border border-zinc-900/60 bg-zinc-950/40 p-3 animate-pulse"
           >
-            <div className="aspect-square rounded-lg bg-zinc-900 shimmer" />
-            <div className="mt-3 h-4 w-2/3 rounded bg-zinc-900 shimmer" />
-            <div className="mt-2 h-3 w-1/2 rounded bg-zinc-900 shimmer" />
+            <div className="aspect-square rounded-lg bg-zinc-900/60 shimmer" />
+            <div className="mt-3 h-4 w-2/3 rounded bg-zinc-900/60 shimmer" />
+            <div className="mt-2 h-3 w-1/2 rounded bg-zinc-900/60 shimmer" />
           </div>
         ))}
       </div>
@@ -478,8 +636,8 @@ function PlaylistGrid({
     return (
       <EmptyState
         icon={<PlaylistIcon size={24} />}
-        title="No playlists yet"
-        description="Create playlists from songs you like."
+        title="No playlists yet."
+        description="Create playlists to organize your favorite tracks."
         actionLabel="Create playlist"
         href="/playlists"
       />
@@ -487,7 +645,7 @@ function PlaylistGrid({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
       {playlists.map((playlist) => {
         const title = playlist.title || playlist.name || "Playlist";
         const trackCount = playlist.track_count ?? playlist.song_count ?? 0;
@@ -496,7 +654,7 @@ function PlaylistGrid({
           <Link
             key={playlist.id}
             href={`/playlists/${playlist.id}`}
-            className="group rounded-xl border border-zinc-900 bg-zinc-950/50 p-3 transition hover:border-zinc-700 hover:bg-zinc-900/60"
+            className="group rounded-xl border border-zinc-900/60 bg-zinc-950/40 p-3 transition hover:border-zinc-800 hover:bg-zinc-900/30"
           >
             <PlaylistCover playlist={playlist} />
             <div className="mt-3 min-w-0">
@@ -504,7 +662,7 @@ function PlaylistGrid({
                 {title}
               </h3>
               <p className="mt-1 truncate text-xs text-zinc-500">
-                {trackCount} tracks - {playlist.is_public ? "Public" : "Private"}
+                {trackCount} tracks &middot; {playlist.is_public ? "Public" : "Private"}
               </p>
             </div>
           </Link>
@@ -927,8 +1085,10 @@ export default function ProfilePage() {
             songs={myTracks}
             loading={myTracksLoading}
             error={myTracksError}
-            emptyTitle="You have not uploaded any tracks yet"
-            emptyDescription="Upload a track to start building your music profile."
+            emptyTitle="You haven't uploaded any tracks yet."
+            emptyDescription="Upload your first track to start building your profile."
+            actionLabel="Upload track"
+            href="/upload"
           />
         </ContentBlock>
       );
@@ -989,7 +1149,7 @@ export default function ProfilePage() {
           title="Recent activity"
           description="Tracks you played recently."
         >
-          <TrackListSection
+          <CompactRecentActivitySection
             songs={recentlyPlayed.slice(0, 5)}
             loading={recentlyPlayedLoading}
             error={recentlyPlayedError}
@@ -998,25 +1158,26 @@ export default function ProfilePage() {
           />
         </ContentBlock>
 
-        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <ContentBlock title="Playlists" description="Your latest playlists.">
+        <ContentBlock title="Playlists" description="Your latest playlists.">
+          <div className="space-y-4">
             <PlaylistGrid
-              playlists={playlists.slice(0, 3)}
+              playlists={playlists.slice(0, 4)}
               loading={playlistsLoading}
               error={playlistsError}
             />
-          </ContentBlock>
-
-          <ContentBlock title="Following" description="Artists you follow.">
-            <FollowingList
-              following={following.slice(0, 4)}
-              actionId={actionId}
-              onToggleFollow={(id, name) => {
-                void toggleFollow(id, name);
-              }}
-            />
-          </ContentBlock>
-        </div>
+            {playlists.length > 4 && (
+              <div className="flex justify-start">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("playlists")}
+                  className="text-xs font-bold text-orange-400 hover:text-orange-300 transition"
+                >
+                  View all playlists &rarr;
+                </button>
+              </div>
+            )}
+          </div>
+        </ContentBlock>
       </div>
     );
   };
@@ -1038,84 +1199,92 @@ export default function ProfilePage() {
         />
       )}
 
-      <div className="space-y-6 page-fade-in">
+      <div className="space-y-6 page-fade-in pb-32">
       <section className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/30">
-        <div className="relative min-h-[360px] bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.22),_transparent_32%),linear-gradient(135deg,_#18181b_0%,_#09090b_48%,_#020617_100%)]">
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
-          <div className="relative z-10 flex min-h-[360px] flex-col justify-end p-4 sm:p-6 lg:p-8">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-end">
-                <ProfileAvatar username={username} avatarUrl={avatarUrl} />
+        {/* Banner area */}
+        <div className="relative h-36 sm:h-48 w-full bg-gradient-to-r from-zinc-800 via-zinc-900 to-orange-950/40">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+        </div>
+        
+        {/* Profile info area */}
+        <div className="px-4 pb-6 sm:px-6 lg:px-8 relative z-10">
+          {/* Avatar floating and buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between -mt-14 sm:-mt-16 md:-mt-20 gap-4 mb-5">
+            <ProfileAvatar username={username} avatarUrl={avatarUrl} />
+            
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileError(null);
+                  setEditProfileOpen(true);
+                }}
+                className="rounded-full border border-zinc-700 bg-black/35 px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-orange-400/60 hover:bg-orange-500/10 hover:text-orange-200"
+              >
+                Edit profile
+              </button>
 
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex rounded-full border border-orange-400/30 bg-orange-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-orange-300">
-                      {profileLabel}
-                    </span>
-                    <span className="inline-flex rounded-full border border-white/10 bg-black/35 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-300">
-                      Role: {roleLabel}
-                    </span>
-                  </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-full border border-red-500/30 bg-black/35 px-5 py-2.5 text-sm font-bold text-red-300 transition hover:bg-red-500/10 hover:text-red-200"
+              >
+                Log out
+              </button>
 
-                  <h1 className="mt-3 max-w-3xl truncate text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
-                    {username}
-                  </h1>
-                  <p className="mt-3 max-w-2xl truncate text-sm leading-6 text-zinc-300">
-                    {user.email}
-                  </p>
-                  {profile.bio && (
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">
-                      {profile.bio}
-                    </p>
-                  )}
+              {canShowArtistActions && (
+                <Link
+                  href="/upload"
+                  className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-black text-orange-950 transition hover:bg-orange-400"
+                >
+                  Upload track
+                </Link>
+              )}
 
-                  <div className="mt-5 flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProfileError(null);
-                        setEditProfileOpen(true);
-                      }}
-                      className="rounded-full border border-zinc-700 bg-black/35 px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-orange-400/60 hover:bg-orange-500/10 hover:text-orange-200"
-                    >
-                      Edit profile
-                    </button>
+              {roleLabel === "admin" && (
+                <Link
+                  href="/admin/songs"
+                  className="rounded-full border border-zinc-700 bg-black/35 px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-zinc-500 hover:bg-black/60 hover:text-white"
+                >
+                  Manage tracks
+                </Link>
+              )}
+            </div>
+          </div>
 
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="rounded-full border border-red-500/30 bg-black/35 px-5 py-2.5 text-sm font-bold text-red-300 transition hover:bg-red-500/10 hover:text-red-200"
-                    >
-                      Log out
-                    </button>
+          {/* Details list */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex rounded-full border border-orange-400/30 bg-orange-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-orange-300">
+                {profileLabel}
+              </span>
+              {roleLabel !== "user" && (
+                <span className="inline-flex rounded-full border border-white/10 bg-black/35 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-300">
+                  Role: {roleLabel}
+                </span>
+              )}
+            </div>
 
-                    {canShowArtistActions && (
-                      <Link
-                        href="/upload"
-                        className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-black text-orange-950 transition hover:bg-orange-400"
-                      >
-                        Upload track
-                      </Link>
-                    )}
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                {username}
+              </h1>
+              <p className="text-sm text-zinc-450 mt-0.5">
+                {user.email}
+              </p>
+              {profile.bio && (
+                <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-zinc-300">
+                  {profile.bio}
+                </p>
+              )}
+            </div>
 
-                    {roleLabel === "admin" && (
-                      <Link
-                        href="/admin/songs"
-                        className="rounded-full border border-zinc-700 bg-black/35 px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-zinc-500 hover:bg-black/60 hover:text-white"
-                      >
-                        Manage tracks
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 gap-3 rounded-lg border border-white/10 bg-black/45 p-4 backdrop-blur-sm lg:w-[28rem]">
-                <ProfileStat label="Following" value={following.length} />
-                <ProfileStat label="Playlists" value={playlists.length} />
-                <ProfileStat label="Tracks" value={myTracks.length} />
-                <ProfileStat label="Role" value={roleLabel} />
-              </div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider select-none">
+              <span>{following.length} following</span>
+              <span className="text-zinc-700 font-normal select-none">•</span>
+              <span>{myTracks.length} tracks</span>
+              <span className="text-zinc-700 font-normal select-none">•</span>
+              <span>{playlists.length} playlists</span>
             </div>
           </div>
         </div>

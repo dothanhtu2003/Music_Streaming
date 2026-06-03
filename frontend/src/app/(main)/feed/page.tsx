@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SongList } from "@/components/song/SongList";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getFeedRequest } from "@/lib/api";
+import { SONG_CATALOG_UPDATED_EVENT } from "@/lib/song-events";
 import type { Song, SongPagination } from "@/types/music";
 
 const SONG_LIMIT = 9;
@@ -26,7 +27,7 @@ export default function FeedPage() {
     }
   }, [authLoading, isAuthenticated, router]);
 
-  const loadFeedSongs = async (page: number) => {
+  const loadFeedSongs = useCallback(async (page: number) => {
     if (!accessToken) return;
 
     try {
@@ -38,7 +39,7 @@ export default function FeedPage() {
     } catch (feedError) {
       throw feedError;
     }
-  };
+  }, [accessToken]);
 
   useEffect(() => {
     if (authLoading || !isAuthenticated || !accessToken) {
@@ -78,6 +79,26 @@ export default function FeedPage() {
       isMounted = false;
     };
   }, [accessToken, isAuthenticated, authLoading]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !accessToken) {
+      return;
+    }
+    let timerId: NodeJS.Timeout | null = null;
+
+    const handleCatalogUpdated = () => {
+      if (timerId) clearTimeout(timerId);
+      timerId = setTimeout(() => {
+        void loadFeedSongs(1).catch(() => {});
+      }, 500);
+    };
+
+    window.addEventListener(SONG_CATALOG_UPDATED_EVENT, handleCatalogUpdated);
+    return () => {
+      if (timerId) clearTimeout(timerId);
+      window.removeEventListener(SONG_CATALOG_UPDATED_EVENT, handleCatalogUpdated);
+    };
+  }, [accessToken, isAuthenticated, loadFeedSongs]);
 
   const handleLoadMore = async () => {
     if (!pagination || loadingMore || !accessToken) {

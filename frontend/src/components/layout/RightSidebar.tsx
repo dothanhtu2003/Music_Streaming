@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useFollow } from "@/components/follow/FollowProvider";
 import { useLikes } from "@/components/like/LikeProvider";
@@ -12,6 +12,7 @@ import {
   getSongsRequest,
   resolveApiAssetUrl,
 } from "@/lib/api";
+import { SONG_CATALOG_UPDATED_EVENT } from "@/lib/song-events";
 import {
   RECENTLY_PLAYED_UPDATED_EVENT,
   getLocalRecentlyPlayed,
@@ -277,30 +278,39 @@ export function RightSidebar() {
   );
   const [loadingSongs, setLoadingSongs] = useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    void getSongsRequest(1, 24)
+  const loadDiscoverySongs = useCallback(() => {
+    getSongsRequest(1, 24)
       .then((result) => {
-        if (isMounted) {
-          setSongs(result.items);
-        }
+        setSongs(result.items);
       })
       .catch(() => {
-        if (isMounted) {
-          setSongs([]);
-        }
+        setSongs([]);
       })
       .finally(() => {
-        if (isMounted) {
-          setLoadingSongs(false);
-        }
+        setLoadingSongs(false);
       });
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
+
+  useEffect(() => {
+    loadDiscoverySongs();
+  }, [loadDiscoverySongs]);
+
+  useEffect(() => {
+    let timerId: NodeJS.Timeout | null = null;
+
+    const handleCatalogUpdated = () => {
+      if (timerId) clearTimeout(timerId);
+      timerId = setTimeout(() => {
+        loadDiscoverySongs();
+      }, 500);
+    };
+
+    window.addEventListener(SONG_CATALOG_UPDATED_EVENT, handleCatalogUpdated);
+    return () => {
+      if (timerId) clearTimeout(timerId);
+      window.removeEventListener(SONG_CATALOG_UPDATED_EVENT, handleCatalogUpdated);
+    };
+  }, [loadDiscoverySongs]);
 
   useEffect(() => {
     let isMounted = true;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useFollow } from "@/components/follow/FollowProvider";
 import {
@@ -21,7 +21,9 @@ import {
   getArtistDisplayName,
 } from "@/lib/song-format";
 import { cn } from "@/lib/utils";
+import { SONG_CATALOG_UPDATED_EVENT, type SongCatalogUpdatedDetail } from "@/lib/song-events";
 import type { ArtistRecord, Song } from "@/types/music";
+
 
 type ArtistTab = "all" | "tracks" | "playlists";
 
@@ -104,25 +106,26 @@ async function sharePath(path: string, title: string) {
 function ProfileHeaderSkeleton() {
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-900 bg-zinc-950 animate-pulse">
-      <div className="min-h-[340px] bg-zinc-900 shimmer p-5 sm:p-7">
-        <div className="flex min-h-[300px] flex-col justify-end gap-6 md:flex-row md:items-end md:justify-between">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end">
-            <div className="h-28 w-28 rounded-full bg-zinc-800 shimmer sm:h-36 sm:w-36" />
-            <div className="space-y-4">
-              <div className="h-5 w-20 rounded-full bg-zinc-800 shimmer" />
-              <div className="h-10 w-64 max-w-full rounded bg-zinc-800 shimmer" />
-              <div className="h-4 w-80 max-w-full rounded bg-zinc-800 shimmer" />
-              <div className="flex gap-3">
-                <div className="h-10 w-28 rounded-full bg-zinc-800 shimmer" />
-                <div className="h-10 w-24 rounded-full bg-zinc-800 shimmer" />
-              </div>
-            </div>
+      {/* Banner area skeleton */}
+      <div className="h-36 sm:h-48 w-full bg-zinc-900 shimmer" />
+      
+      {/* Profile info area skeleton */}
+      <div className="px-4 pb-6 sm:px-6 lg:px-8">
+        {/* Avatar floating and buttons skeleton */}
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between -mt-14 sm:-mt-16 md:-mt-20 gap-4 mb-5">
+          <div className="h-28 w-28 rounded-full bg-zinc-800 shimmer sm:h-36 sm:w-36 md:h-40 md:w-40" />
+          <div className="flex gap-3">
+            <div className="h-10 w-28 rounded-full bg-zinc-800 shimmer" />
+            <div className="h-10 w-24 rounded-full bg-zinc-800 shimmer" />
           </div>
-          <div className="grid w-full grid-cols-3 gap-3 rounded-lg border border-zinc-800 bg-black/30 p-4 md:w-80">
-            <div className="h-12 rounded bg-zinc-800 shimmer" />
-            <div className="h-12 rounded bg-zinc-800 shimmer" />
-            <div className="h-12 rounded bg-zinc-800 shimmer" />
-          </div>
+        </div>
+
+        {/* Details list skeleton */}
+        <div className="space-y-3">
+          <div className="h-5 w-20 rounded-full bg-zinc-800 shimmer" />
+          <div className="h-8 w-64 max-w-full rounded bg-zinc-800 shimmer" />
+          <div className="h-4 w-80 max-w-full rounded bg-zinc-800 shimmer" />
+          <div className="h-3 w-48 rounded bg-zinc-800 shimmer" />
         </div>
       </div>
     </div>
@@ -166,25 +169,6 @@ function ArtistAvatar({
       <span className="text-5xl font-black text-white sm:text-6xl">
         {getFallbackLetter(name)}
       </span>
-    </div>
-  );
-}
-
-function ArtistStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="min-w-0 text-center">
-      <p className="truncate text-lg font-black text-white sm:text-xl">
-        {formatPlayCount(value)}
-      </p>
-      <p className="mt-1 truncate text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-        {label}
-      </p>
     </div>
   );
 }
@@ -253,6 +237,27 @@ export default function ArtistDetailPage() {
   const [artistError, setArtistError] = useState<string | null>(null);
   const [songsError, setSongsError] = useState<string | null>(null);
 
+  const loadArtistSongs = useCallback((artistId: string) => {
+    setSongsLoading(true);
+    setSongsError(null);
+    getArtistSongsRequest(artistId, 1, 20)
+      .then((songsData) => {
+        setSongs(songsData.items);
+        setTotalTracks(
+          songsData.pagination.totalItems ?? songsData.items.length,
+        );
+      })
+      .catch((err) => {
+        setSongsError(
+          err instanceof Error ? err.message : "Could not load artist songs.",
+        );
+        setTotalTracks(0);
+      })
+      .finally(() => {
+        setSongsLoading(false);
+      });
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -304,31 +309,44 @@ export default function ArtistDetailPage() {
         }
       });
 
-    void getArtistSongsRequest(id, 1, 20)
-      .then((songsData) => {
-        if (!isMounted) return;
-        setSongs(songsData.items);
-        setTotalTracks(
-          songsData.pagination.totalItems ?? songsData.items.length,
-        );
-      })
-      .catch((err) => {
-        if (!isMounted) return;
-        setSongsError(
-          err instanceof Error ? err.message : "Could not load artist songs.",
-        );
-        setTotalTracks(0);
-      })
-      .finally(() => {
-        if (isMounted) {
-          setSongsLoading(false);
-        }
-      });
+    queueMicrotask(() => {
+      if (isMounted) {
+        loadArtistSongs(id);
+      }
+    });
 
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [id, loadArtistSongs]);
+
+  useEffect(() => {
+    if (!id) return;
+    let timerId: NodeJS.Timeout | null = null;
+
+    const handleCatalogUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<SongCatalogUpdatedDetail>;
+      const newSong = customEvent.detail?.song;
+      
+      if (newSong) {
+        const songArtistId = newSong.artist?.id;
+        if (songArtistId && songArtistId !== id) {
+          return;
+        }
+      }
+
+      if (timerId) clearTimeout(timerId);
+      timerId = setTimeout(() => {
+        loadArtistSongs(id);
+      }, 500);
+    };
+
+    window.addEventListener(SONG_CATALOG_UPDATED_EVENT, handleCatalogUpdated);
+    return () => {
+      if (timerId) clearTimeout(timerId);
+      window.removeEventListener(SONG_CATALOG_UPDATED_EVENT, handleCatalogUpdated);
+    };
+  }, [id, loadArtistSongs]);
 
   const headerData = useMemo(() => {
     if (!artist) {
@@ -436,11 +454,12 @@ export default function ArtistDetailPage() {
   return (
     <div className="space-y-6 page-fade-in">
       <section className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/30">
+        {/* Banner area */}
         <div
           className={cn(
-            "relative min-h-[360px] bg-cover bg-center",
+            "relative h-36 sm:h-48 w-full bg-cover bg-center",
             !headerData.bannerUrl &&
-              "bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.22),_transparent_32%),linear-gradient(135deg,_#18181b_0%,_#09090b_48%,_#020617_100%)]",
+              "bg-gradient-to-r from-zinc-800 via-zinc-900 to-orange-950/40",
           )}
           style={
             headerData.bannerUrl
@@ -448,60 +467,77 @@ export default function ArtistDetailPage() {
               : undefined
           }
         >
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
-          <div className="relative z-10 flex min-h-[360px] flex-col justify-end p-4 sm:p-6 lg:p-8">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-end">
-                <ArtistAvatar name={artistName} avatarUrl={headerData.avatarUrl} />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+        </div>
 
-                <div className="min-w-0">
-                  <span className="inline-flex rounded-full border border-orange-400/30 bg-orange-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-orange-300">
-                    Artist
-                  </span>
-                  <h1 className="mt-3 max-w-3xl truncate text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
-                    {artistName}
-                  </h1>
-                  <p className="mt-3 max-w-2xl line-clamp-3 text-sm leading-6 text-zinc-300">
-                    {bio}
-                  </p>
+        {/* Profile info area */}
+        <div className="px-4 pb-6 sm:px-6 lg:px-8 relative z-10">
+          {/* Avatar floating and buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between -mt-14 sm:-mt-16 md:-mt-20 gap-4 mb-5">
+            <ArtistAvatar name={artistName} avatarUrl={headerData.avatarUrl} />
 
-                  <div className="mt-5 flex flex-wrap items-center gap-3">
-                    {!isSelf && (
-                      <button
-                        type="button"
-                        disabled={followLoading}
-                        onClick={() => void toggleFollow(artist.id, artistName)}
-                        className={cn(
-                          "rounded-full px-6 py-2.5 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60",
-                          isArtistFollowed
-                            ? "border border-zinc-600 bg-black/40 text-white hover:bg-zinc-800"
-                            : "bg-orange-500 text-orange-950 hover:bg-orange-400",
-                        )}
-                      >
-                        {followLoading
-                          ? "Loading..."
-                          : isArtistFollowed
-                            ? "Following"
-                            : "Follow"}
-                      </button>
-                    )}
+            <div className="flex flex-wrap items-center gap-3">
+              {!isSelf && (
+                <button
+                  type="button"
+                  disabled={followLoading}
+                  onClick={() => void toggleFollow(artist.id, artistName)}
+                  className={cn(
+                    "rounded-full px-6 py-2.5 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60",
+                    isArtistFollowed
+                      ? "border border-zinc-600 bg-black/40 text-white hover:bg-zinc-800"
+                      : "bg-orange-500 text-orange-950 hover:bg-orange-400",
+                  )}
+                >
+                  {followLoading
+                    ? "Loading..."
+                    : isArtistFollowed
+                      ? "Following"
+                      : "Follow"}
+                </button>
+              )}
 
-                    <button
-                      type="button"
-                      onClick={handleShareArtist}
-                      className="rounded-full border border-zinc-700 bg-black/35 px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-zinc-500 hover:bg-black/60 hover:text-white"
-                    >
-                      Share
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={handleShareArtist}
+                className="rounded-full border border-zinc-700 bg-black/35 px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-zinc-500 hover:bg-black/60 hover:text-white"
+              >
+                Share
+              </button>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-3 gap-4 rounded-lg border border-white/10 bg-black/45 p-4 backdrop-blur-sm lg:w-80">
-                <ArtistStat label="Followers" value={headerData.followersCount} />
-                <ArtistStat label="Following" value={headerData.followingCount} />
-                <ArtistStat label="Tracks" value={headerData.trackCount} />
-              </div>
+          {/* Details list */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex rounded-full border border-orange-400/30 bg-orange-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-orange-300">
+                Artist
+              </span>
+            </div>
+
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white">
+                {artistName}
+              </h1>
+              {bio && (
+                <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-zinc-300">
+                  {bio}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-zinc-400 select-none">
+              <span>
+                {headerData.followersCount}{" "}
+                {headerData.followersCount === 1 ? "follower" : "followers"}
+              </span>
+              <span className="text-zinc-700 select-none">&middot;</span>
+              <span>{headerData.followingCount} following</span>
+              <span className="text-zinc-700 select-none">&middot;</span>
+              <span>
+                {headerData.trackCount}{" "}
+                {headerData.trackCount === 1 ? "track" : "tracks"}
+              </span>
             </div>
           </div>
         </div>
