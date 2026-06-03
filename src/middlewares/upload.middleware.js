@@ -1,32 +1,28 @@
 const crypto = require("crypto");
-const fs = require("fs");
-const fsPromises = require("fs/promises");
 const path = require("path");
 const multer = require("multer");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const { cloudinary } = require("../config/cloudinary");
 const AppError = require("../utils/appError");
 
 const AUDIO_MAX_SIZE = 20 * 1024 * 1024;
 const COVER_MAX_SIZE = 5 * 1024 * 1024;
 const AVATAR_MAX_SIZE = 2 * 1024 * 1024;
 
-const uploadRoot = path.join(__dirname, "../../uploads");
-const audioUploadPath = path.join(uploadRoot, "audio");
-const coverUploadPath = path.join(uploadRoot, "covers");
-const avatarUploadPath = path.join(uploadRoot, "avatars");
-
-fs.mkdirSync(audioUploadPath, { recursive: true });
-fs.mkdirSync(coverUploadPath, { recursive: true });
-fs.mkdirSync(avatarUploadPath, { recursive: true });
+const CLOUDINARY_FOLDERS = {
+  audio: "music-streaming/audio",
+  cover: "music-streaming/covers",
+  avatar: "music-streaming/avatars",
+};
 
 const audioMimeTypes = new Set(["audio/mpeg", "audio/mp3"]);
-const coverMimeTypes = new Map([
+const imageMimeTypes = new Map([
   ["image/jpeg", ".jpg"],
   ["image/png", ".png"],
   ["image/webp", ".webp"],
 ]);
 const audioExtensions = new Set([".mp3"]);
-const coverExtensions = new Set([".jpg", ".jpeg", ".png", ".webp"]);
-const avatarExtensions = coverExtensions;
+const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
 const isAudioField = (fieldName) => {
   return fieldName === "audio" || fieldName === "audio_file";
@@ -34,6 +30,10 @@ const isAudioField = (fieldName) => {
 
 const isCoverField = (fieldName) => {
   return fieldName === "cover" || fieldName === "cover_image";
+};
+
+const isAvatarField = (fieldName) => {
+  return fieldName === "avatar";
 };
 
 const getAudioExtension = (mimetype) => {
@@ -44,24 +44,12 @@ const getAudioExtension = (mimetype) => {
   return ".mp3";
 };
 
-const getCoverExtension = (mimetype) => {
-  return coverMimeTypes.get(mimetype) || null;
+const getImageExtension = (mimetype) => {
+  return imageMimeTypes.get(mimetype) || null;
 };
 
 const getOriginalExtension = (file) => {
   return path.extname(file.originalname || "").toLowerCase();
-};
-
-const removeUploadedFile = async (file) => {
-  if (!file?.path) {
-    return;
-  }
-
-  await fsPromises.unlink(file.path).catch(() => {});
-};
-
-const removeUploadedFiles = async (files = []) => {
-  await Promise.all(files.map((file) => removeUploadedFile(file)));
 };
 
 const getUploadedFile = (req, fieldName, aliases = []) => {
@@ -78,169 +66,152 @@ const getUploadedFile = (req, fieldName, aliases = []) => {
   return null;
 };
 
-const readFileHeader = async (filePath, byteLength = 12) => {
-  const handle = await fsPromises.open(filePath, "r");
+const getUploadedFileUrl = (file) => {
+  return file?.secure_url || file?.path || null;
+};
 
-  try {
-    const buffer = Buffer.alloc(byteLength);
-    const { bytesRead } = await handle.read(buffer, 0, byteLength, 0);
-    return buffer.subarray(0, bytesRead);
-  } finally {
-    await handle.close();
+const getFileUploadType = (file, fallbackType = null) => {
+  if (isAvatarField(file.fieldname)) {
+    return "avatar";
   }
-};
 
-const isMp3Header = (header) => {
-  const hasId3Tag =
-    header.length >= 3 &&
-    header[0] === 0x49 &&
-    header[1] === 0x44 &&
-    header[2] === 0x33;
-  const hasMpegFrame =
-    header.length >= 2 && header[0] === 0xff && (header[1] & 0xe0) === 0xe0;
-
-  return hasId3Tag || hasMpegFrame;
-};
-
-const isJpegHeader = (header) => {
-  return (
-    header.length >= 3 &&
-    header[0] === 0xff &&
-    header[1] === 0xd8 &&
-    header[2] === 0xff
-  );
-};
-
-const isPngHeader = (header) => {
-  const pngSignature = Buffer.from([
-    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-  ]);
-
-  return header.length >= 8 && header.subarray(0, 8).equals(pngSignature);
-};
-
-const isWebpHeader = (header) => {
-  return (
-    header.length >= 12 &&
-    header.toString("ascii", 0, 4) === "RIFF" &&
-    header.toString("ascii", 8, 12) === "WEBP"
-  );
-};
-
-const isCoverHeader = (header) => {
-  return isJpegHeader(header) || isPngHeader(header) || isWebpHeader(header);
-};
-
-const createStorage = (destination, getExtension) => {
-  return multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, destination);
-    },
-    filename: (req, file, cb) => {
-      const extension = getExtension(file.mimetype);
-      cb(null, `${crypto.randomUUID()}${extension}`);
-    },
-  });
-};
-
-const createTrackStorage = () => {
-  return multer.diskStorage({
-    destination: (req, file, cb) => {
-      if (isAudioField(file.fieldname)) {
-        return cb(null, audioUploadPath);
-      }
-
-      if (isCoverField(file.fieldname)) {
-        return cb(null, coverUploadPath);
-      }
-
-      return cb(new AppError("Invalid file field. Use audio/audio_file and cover/cover_image", 400));
-    },
-    filename: (req, file, cb) => {
-      const extension =
-        isAudioField(file.fieldname)
-          ? getAudioExtension(file.mimetype)
-          : getCoverExtension(file.mimetype);
-
-      cb(null, `${crypto.randomUUID()}${extension}`);
-    },
-  });
-};
-
-const createAvatarStorage = () => {
-  return multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, avatarUploadPath);
-    },
-    filename: (req, file, cb) => {
-      const extension = getCoverExtension(file.mimetype);
-      const userId = req.user?.id || "user";
-      const random = crypto.randomBytes(8).toString("hex");
-
-      cb(null, `${userId}-${Date.now()}-${random}${extension}`);
-    },
-  });
-};
-
-const createFileFilter = (getExtension, allowedExtensions, errorMessage) => {
-  return (req, file, cb) => {
-    const extension = getExtension(file.mimetype);
-    const originalExtension = getOriginalExtension(file);
-
-    if (!extension || !allowedExtensions.has(originalExtension)) {
-      return cb(new AppError(errorMessage, 400));
-    }
-
-    return cb(null, true);
-  };
-};
-
-const createContentValidator = (isValidHeader, errorMessage) => {
-  return async (req, res, next) => {
-    if (!req.file) {
-      return next();
-    }
-
-    try {
-      const header = await readFileHeader(req.file.path);
-
-      if (!isValidHeader(header)) {
-        await removeUploadedFile(req.file);
-        return next(new AppError(errorMessage, 400));
-      }
-
-      return next();
-    } catch (error) {
-      await removeUploadedFile(req.file);
-      return next(error);
-    }
-  };
-};
-
-const trackFileFilter = (req, file, cb) => {
   if (isAudioField(file.fieldname)) {
-    return createFileFilter(
-      getAudioExtension,
-      audioExtensions,
-      "Invalid audio format. Only MP3 files are allowed"
-    )(req, file, cb);
+    return "audio";
   }
 
   if (isCoverField(file.fieldname)) {
-    return createFileFilter(
-      getCoverExtension,
-      coverExtensions,
-      "Invalid cover format. Only JPG, PNG, and WebP images are allowed"
-    )(req, file, cb);
+    return "cover";
   }
 
-  return cb(new AppError("Invalid file field. Use audio/audio_file and cover/cover_image", 400));
+  if (fallbackType) {
+    return fallbackType;
+  }
+
+  if (audioMimeTypes.has(file.mimetype)) {
+    return "audio";
+  }
+
+  if (imageMimeTypes.has(file.mimetype)) {
+    return "cover";
+  }
+
+  return null;
 };
 
-const validateTrackContent = async (req, res, next) => {
+const getAllowedConfig = (uploadType) => {
+  if (uploadType === "audio") {
+    return {
+      resourceType: "video",
+      allowedFormats: ["mp3"],
+      getExtension: getAudioExtension,
+      allowedExtensions: audioExtensions,
+      errorMessage: "Invalid audio format. Only MP3 files are allowed",
+    };
+  }
+
+  return {
+    resourceType: "image",
+    allowedFormats: ["jpg", "jpeg", "png", "webp"],
+    getExtension: getImageExtension,
+    allowedExtensions: imageExtensions,
+    errorMessage:
+      uploadType === "avatar"
+        ? "Invalid avatar format. Only JPG, PNG, and WebP images are allowed"
+        : "Invalid cover format. Only JPG, PNG, and WebP images are allowed",
+  };
+};
+
+const validateFileType = (file, uploadType) => {
+  const config = getAllowedConfig(uploadType);
+  const extension = config.getExtension(file.mimetype);
+  const originalExtension = getOriginalExtension(file);
+
+  if (!extension || !config.allowedExtensions.has(originalExtension)) {
+    throw new AppError(config.errorMessage, 400);
+  }
+};
+
+const createFileFilter = (fallbackType = null) => {
+  return (req, file, cb) => {
+    const uploadType = getFileUploadType(file, fallbackType);
+
+    if (!uploadType) {
+      return cb(
+        new AppError(
+          "Invalid file field. Use audio/audio_file and cover/cover_image",
+          400
+        )
+      );
+    }
+
+    try {
+      validateFileType(file, uploadType);
+      return cb(null, true);
+    } catch (error) {
+      return cb(error);
+    }
+  };
+};
+
+const createCloudinaryStorage = (fallbackType = null) => {
+  return new CloudinaryStorage({
+    cloudinary,
+    params: async (req, file) => {
+      const uploadType = getFileUploadType(file, fallbackType);
+
+      if (!uploadType) {
+        throw new AppError(
+          "Invalid file field. Use audio/audio_file and cover/cover_image",
+          400
+        );
+      }
+
+      validateFileType(file, uploadType);
+
+      const config = getAllowedConfig(uploadType);
+      const userPrefix = req.user?.id || "user";
+      const publicId =
+        uploadType === "avatar"
+          ? `${userPrefix}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`
+          : crypto.randomUUID();
+
+      return {
+        folder: CLOUDINARY_FOLDERS[uploadType],
+        resource_type: config.resourceType,
+        allowed_formats: config.allowedFormats,
+        public_id: publicId,
+      };
+    },
+  });
+};
+
+const getCloudinaryResourceType = (file) => {
+  const uploadType = getFileUploadType(file);
+
+  return uploadType === "audio" ? "video" : "image";
+};
+
+const removeUploadedFile = async (file) => {
+  if (!file?.filename) {
+    return;
+  }
+
+  await cloudinary.uploader
+    .destroy(file.filename, {
+      resource_type: getCloudinaryResourceType(file),
+      invalidate: true,
+    })
+    .catch(() => {});
+};
+
+const removeUploadedFiles = async (files = []) => {
+  await Promise.all(files.map((file) => removeUploadedFile(file)));
+};
+
+const validateTrackUpload = async (req, res, next) => {
   const audioFile = getUploadedFile(req, "audio", ["audio_file"]);
   const coverFile = getUploadedFile(req, "cover", ["cover_image"]);
-  const files = [audioFile, coverFile].filter(Boolean);
+  const files = Object.values(req.files || {}).flat();
 
   try {
     if (!audioFile) {
@@ -253,29 +224,6 @@ const validateTrackContent = async (req, res, next) => {
       return next(new AppError("Cover file is too large", 413));
     }
 
-    const audioHeader = await readFileHeader(audioFile.path);
-
-    if (!isMp3Header(audioHeader)) {
-      await removeUploadedFiles(files);
-      return next(
-        new AppError("Invalid audio content. Only real MP3 files are allowed", 400)
-      );
-    }
-
-    if (coverFile) {
-      const coverHeader = await readFileHeader(coverFile.path);
-
-      if (!isCoverHeader(coverHeader)) {
-        await removeUploadedFiles(files);
-        return next(
-          new AppError(
-            "Invalid cover content. Only real JPG, PNG, and WebP images are allowed",
-            400
-          )
-        );
-      }
-    }
-
     return next();
   } catch (error) {
     await removeUploadedFiles(files);
@@ -284,76 +232,46 @@ const validateTrackContent = async (req, res, next) => {
 };
 
 const audioMulter = multer({
-  storage: createStorage(audioUploadPath, getAudioExtension),
+  storage: createCloudinaryStorage("audio"),
   limits: {
     fileSize: AUDIO_MAX_SIZE,
     files: 1,
   },
-  fileFilter: createFileFilter(
-    getAudioExtension,
-    audioExtensions,
-    "Invalid audio format. Only MP3 files are allowed"
-  ),
+  fileFilter: createFileFilter("audio"),
 });
 
 const coverMulter = multer({
-  storage: createStorage(coverUploadPath, getCoverExtension),
+  storage: createCloudinaryStorage("cover"),
   limits: {
     fileSize: COVER_MAX_SIZE,
     files: 1,
   },
-  fileFilter: createFileFilter(
-    getCoverExtension,
-    coverExtensions,
-    "Invalid cover format. Only JPG, PNG, and WebP images are allowed"
-  ),
+  fileFilter: createFileFilter("cover"),
 });
 
 const avatarMulter = multer({
-  storage: createAvatarStorage(),
+  storage: createCloudinaryStorage("avatar"),
   limits: {
     fileSize: AVATAR_MAX_SIZE,
     files: 1,
   },
-  fileFilter: createFileFilter(
-    getCoverExtension,
-    avatarExtensions,
-    "Invalid avatar format. Only JPG, PNG, and WebP images are allowed"
-  ),
+  fileFilter: createFileFilter("avatar"),
 });
 
 const trackMulter = multer({
-  storage: createTrackStorage(),
+  storage: createCloudinaryStorage(),
   limits: {
     fileSize: AUDIO_MAX_SIZE,
     files: 2,
   },
-  fileFilter: trackFileFilter,
+  fileFilter: createFileFilter(),
 });
 
-const uploadAudio = [
-  audioMulter.single("file"),
-  createContentValidator(
-    isMp3Header,
-    "Invalid audio content. Only real MP3 files are allowed"
-  ),
-];
+const uploadAudio = [audioMulter.single("file")];
 
-const uploadCover = [
-  coverMulter.single("file"),
-  createContentValidator(
-    isCoverHeader,
-    "Invalid cover content. Only real JPG, PNG, and WebP images are allowed"
-  ),
-];
+const uploadCover = [coverMulter.single("file")];
 
-const uploadAvatar = [
-  avatarMulter.single("avatar"),
-  createContentValidator(
-    isCoverHeader,
-    "Invalid avatar content. Only real JPG, PNG, and WebP images are allowed"
-  ),
-];
+const uploadAvatar = [avatarMulter.single("avatar")];
 
 const uploadTrack = [
   trackMulter.fields([
@@ -362,7 +280,7 @@ const uploadTrack = [
     { name: "cover", maxCount: 1 },
     { name: "cover_image", maxCount: 1 },
   ]),
-  validateTrackContent,
+  validateTrackUpload,
 ];
 
 module.exports = {
@@ -371,6 +289,7 @@ module.exports = {
   uploadAvatar,
   uploadTrack,
   getUploadedFile,
+  getUploadedFileUrl,
   removeUploadedFiles,
   removeUploadedFile,
 };

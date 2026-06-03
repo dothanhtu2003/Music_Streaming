@@ -1,6 +1,7 @@
 const playlistService = require("../services/playlist.service");
 const {
   getUploadedFile,
+  getUploadedFileUrl,
   removeUploadedFiles,
 } = require("../middlewares/upload.middleware");
 const { successResponse } = require("../utils/apiResponse");
@@ -130,7 +131,7 @@ const reorderPlaylistSongs = async (req, res, next) => {
 const uploadTrackToPlaylist = async (req, res, next) => {
   const audioFile = getUploadedFile(req, "audio", ["audio_file"]);
   const coverFile = getUploadedFile(req, "cover", ["cover_image"]);
-  const uploadedFiles = [audioFile, coverFile].filter(Boolean);
+  const uploadedFiles = Object.values(req.files || {}).flat();
 
   try {
     const result = await playlistService.uploadTrackToPlaylist(
@@ -140,8 +141,8 @@ const uploadTrackToPlaylist = async (req, res, next) => {
         title: req.body.title,
         genre: req.body.genre,
         description: req.body.description,
-        file_url: audioFile ? `/uploads/audio/${audioFile.filename}` : "",
-        cover_url: coverFile ? `/uploads/covers/${coverFile.filename}` : null,
+        file_url: getUploadedFileUrl(audioFile) || "",
+        cover_url: getUploadedFileUrl(coverFile),
       }
     );
 

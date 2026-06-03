@@ -1,5 +1,6 @@
 const AppError = require("../utils/appError");
 const { successResponse } = require("../utils/apiResponse");
+const { getUploadedFileUrl } = require("../middlewares/upload.middleware");
 
 const uploadAudio = (req, res, next) => {
   try {
@@ -8,7 +9,7 @@ const uploadAudio = (req, res, next) => {
     }
 
     return successResponse(res, "Audio uploaded successfully", {
-      url: `/uploads/audio/${req.file.filename}`,
+      url: getUploadedFileUrl(req.file),
     });
   } catch (error) {
     return next(error);
@@ -22,7 +23,7 @@ const uploadCover = (req, res, next) => {
     }
 
     return successResponse(res, "Cover uploaded successfully", {
-      url: `/uploads/covers/${req.file.filename}`,
+      url: getUploadedFileUrl(req.file),
     });
   } catch (error) {
     return next(error);

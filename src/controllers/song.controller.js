@@ -1,6 +1,7 @@
 const songService = require("../services/song.service");
 const {
   getUploadedFile,
+  getUploadedFileUrl,
   removeUploadedFiles,
 } = require("../middlewares/upload.middleware");
 const { successResponse } = require("../utils/apiResponse");
@@ -82,9 +83,9 @@ const createSong = async (req, res, next) => {
 };
 
 const uploadSong = async (req, res, next) => {
-  const audioFile = getUploadedFile(req, "audio");
-  const coverFile = getUploadedFile(req, "cover");
-  const uploadedFiles = [audioFile, coverFile].filter(Boolean);
+  const audioFile = getUploadedFile(req, "audio", ["audio_file"]);
+  const coverFile = getUploadedFile(req, "cover", ["cover_image"]);
+  const uploadedFiles = Object.values(req.files || {}).flat();
 
   try {
     const song = await songService.createUploadedSong(
@@ -92,8 +93,8 @@ const uploadSong = async (req, res, next) => {
         title: req.body.title,
         genre: req.body.genre,
         description: req.body.description,
-        file_url: audioFile ? `/uploads/audio/${audioFile.filename}` : "",
-        cover_url: coverFile ? `/uploads/covers/${coverFile.filename}` : null,
+        file_url: getUploadedFileUrl(audioFile) || "",
+        cover_url: getUploadedFileUrl(coverFile),
       },
       req.user
     );

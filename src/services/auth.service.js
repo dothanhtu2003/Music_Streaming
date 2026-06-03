@@ -392,8 +392,14 @@ const updateCurrentUser = async (userId, data) => {
 const updateCurrentUserAvatar = async (userId, avatarUrl) => {
   const normalizedAvatarUrl = normalizeOptionalString(avatarUrl);
 
-  if (!normalizedAvatarUrl?.startsWith("/uploads/avatars/")) {
+  if (!normalizedAvatarUrl) {
     throw new AppError("Avatar URL is invalid", 400);
+  }
+
+  validateOptionalUrl(normalizedAvatarUrl, "avatar_url");
+
+  if (new URL(normalizedAvatarUrl).protocol !== "https:") {
+    throw new AppError("Avatar URL must be a secure URL", 400);
   }
 
   const currentResult = await pool.query(

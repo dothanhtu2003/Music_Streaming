@@ -3,6 +3,10 @@ const fsPromises = require("fs/promises");
 const path = require("path");
 const { successResponse } = require("../utils/apiResponse");
 const AppError = require("../utils/appError");
+const {
+  getUploadedFileUrl,
+  removeUploadedFile,
+} = require("../middlewares/upload.middleware");
 
 const avatarUploadRoot = path.join(process.cwd(), "uploads", "avatars");
 
@@ -91,7 +95,7 @@ const uploadAvatar = async (req, res, next) => {
       throw new AppError("Avatar image is required", 400);
     }
 
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    const avatarUrl = getUploadedFileUrl(req.file);
     const result = await authService.updateCurrentUserAvatar(
       req.user.id,
       avatarUrl
@@ -103,9 +107,7 @@ const uploadAvatar = async (req, res, next) => {
       user: result.user,
     });
   } catch (error) {
-    if (req.file?.path) {
-      await fsPromises.unlink(req.file.path).catch(() => {});
-    }
+    await removeUploadedFile(req.file);
 
     return next(error);
   }
