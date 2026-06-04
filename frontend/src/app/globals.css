@@ -252,3 +252,57 @@ input[type="range"].slider-premium::-moz-range-thumb {
 input[type="range"].slider-premium:hover::-moz-range-thumb {
   opacity: 1;
 }
+
+/* Trending section redesign */
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 6px 2px rgba(255, 85, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 14px 4px rgba(255, 85, 0, 0.55);
+  }
+}
+
+.glow-pulse {
+  animation: glow-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes genre-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.genre-slide-in {
+  animation: genre-slide-in 400ms ease-out both;
+}
+
+@keyframes trending-gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.trending-gradient-bg {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 85, 0, 0.06) 0%,
+    rgba(255, 119, 0, 0.03) 25%,
+    transparent 50%,
+    rgba(255, 85, 0, 0.04) 75%,
+    rgba(255, 170, 0, 0.06) 100%
+  );
+  background-size: 200% 200%;
+  animation: trending-gradient 8s ease infinite;
+}

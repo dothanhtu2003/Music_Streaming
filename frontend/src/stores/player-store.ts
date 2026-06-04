@@ -58,6 +58,10 @@ function uniqueSongs(songs: Song[]) {
   return nextSongs;
 }
 
+function hasPlayableQueue(songs?: Song[]) {
+  return Boolean(songs && songs.length > 1);
+}
+
 function buildQueue(selectedSong: Song, songs?: Song[]) {
   const nextQueue = uniqueSongs(songs?.length ? songs : [selectedSong]);
 
@@ -142,6 +146,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     set((state) => ({
       ...selectSong(song)(state),
       queue: buildQueue(song, nextQueue),
+      shuffle: hasPlayableQueue(nextQueue) ? false : state.shuffle,
     }));
   },
 
@@ -174,18 +179,6 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 
   previousSong: () => {
     const state = get();
-
-    if (state.currentTime > 3) {
-      set({
-        currentTime: 0,
-        isPlaying: true,
-        playerError: null,
-        seekTarget: 0,
-        seekVersion: state.seekVersion + 1,
-      });
-      return;
-    }
-
     const previousSong = getPreviousSong(state);
 
     if (previousSong) {

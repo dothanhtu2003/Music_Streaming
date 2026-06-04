@@ -22,6 +22,8 @@ type HorizontalSongCarouselProps = {
   emptyTitle: string;
   emptyDescription?: string;
   viewAllHref?: string;
+  viewAllLabel?: string;
+  onViewAll?: () => void;
   canLoadMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
@@ -78,9 +80,8 @@ export function HorizontalSongCarousel({
   emptyTitle,
   emptyDescription,
   viewAllHref,
-  canLoadMore = false,
-  loadingMore = false,
-  onLoadMore,
+  viewAllLabel = "View all",
+  onViewAll,
 }: HorizontalSongCarouselProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const dragStartXRef = useRef(0);
@@ -123,6 +124,21 @@ export function HorizontalSongCarousel({
       window.removeEventListener("resize", updateScrollButtons);
     };
   }, [loading, songs.length, updateScrollButtons]);
+
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (element) {
+      element.scrollLeft = 0;
+      updateScrollButtons();
+      const timer = setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollLeft = 0;
+          updateScrollButtons();
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [songs, loading, updateScrollButtons]);
 
   const scrollByDirection = (direction: "left" | "right") => {
     const element = scrollRef.current;
@@ -202,31 +218,52 @@ export function HorizontalSongCarousel({
 
   return (
     <section className="min-w-0 space-y-4">
-      <div className="flex items-end justify-between gap-4 border-b border-zinc-900 pb-2">
-        <div className="min-w-0">
-          <h2 className="text-xl font-bold tracking-tight text-white">
-            {title}
-          </h2>
-          {subtitle && <p className="text-xs text-zinc-500">{subtitle}</p>}
+      <div className="flex items-start justify-between gap-4 pb-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-orange-500/10 border border-orange-500/20">
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5 text-orange-500" fill="currentColor">
+                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+              </svg>
+            </div>
+            <h2 className="text-base font-extrabold tracking-tight text-white truncate sm:text-lg">
+              {title}
+            </h2>
+          </div>
+          {subtitle && (
+            <div className="flex items-center gap-1 mt-1 text-xs text-zinc-500 font-medium">
+              <span>•</span>
+              <span>{subtitle}</span>
+            </div>
+          )}
         </div>
 
-        <div className="hidden shrink-0 items-center gap-2 md:flex">
+        <div className="flex shrink-0 items-center gap-3 self-center">
           {viewAllHref && (
             <Link
               href={viewAllHref}
-              className="rounded-full border border-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-400 transition hover:border-orange-500/40 hover:text-white"
+              className="text-xs font-semibold text-zinc-400 hover:text-[#ff5500] hover:brightness-110 active:scale-95 transition-all duration-200"
             >
-              View all
+              {viewAllLabel}
             </Link>
           )}
+          {onViewAll && (
+            <button
+              type="button"
+              onClick={onViewAll}
+              className="text-xs font-semibold text-zinc-400 hover:text-[#ff5500] hover:brightness-110 active:scale-95 transition-all duration-200"
+            >
+              {viewAllLabel}
+            </button>
+          )}
           {!loading && songs.length > 0 && (
-            <>
+            <div className="hidden items-center gap-1.5 md:flex">
               <button
                 type="button"
                 aria-label="Scroll latest songs left"
                 disabled={!canScrollLeft}
                 onClick={() => scrollByDirection("left")}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950 text-zinc-300 transition hover:border-orange-500/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-800/80 bg-zinc-900/80 text-zinc-400 transition hover:border-orange-500/30 hover:text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <ArrowIcon direction="left" />
               </button>
@@ -235,11 +272,11 @@ export function HorizontalSongCarousel({
                 aria-label="Scroll latest songs right"
                 disabled={!canScrollRight}
                 onClick={() => scrollByDirection("right")}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950 text-zinc-300 transition hover:border-orange-500/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-800/80 bg-zinc-900/80 text-zinc-400 transition hover:border-orange-500/30 hover:text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <ArrowIcon direction="right" />
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -292,19 +329,6 @@ export function HorizontalSongCarousel({
               ))}
             </div>
           </div>
-
-          {canLoadMore && onLoadMore && (
-            <div className="flex justify-center pt-2">
-              <button
-                type="button"
-                onClick={onLoadMore}
-                disabled={loadingMore}
-                className="rounded-full border border-zinc-800 px-5 py-2 text-xs font-semibold text-zinc-300 transition hover:border-orange-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loadingMore ? "Loading..." : "Load more songs"}
-              </button>
-            </div>
-          )}
         </>
       )}
     </section>

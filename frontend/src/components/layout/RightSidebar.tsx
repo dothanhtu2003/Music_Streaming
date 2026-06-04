@@ -210,7 +210,7 @@ function DiscoverySkeleton() {
     <aside className="hidden w-72 shrink-0 xl:block" aria-label="Discovery">
       <div
         data-right-sidebar-scroll
-        className="sticky top-20 max-h-[calc(100vh-12rem)] space-y-5 overflow-y-auto dark-scrollbar no-scrollbar pr-1"
+        className="sticky top-20 space-y-5 pb-[120px]"
       >
         {Array.from({ length: 3 }).map((_, index) => (
           <div key={index} className="space-y-3">
@@ -385,7 +385,7 @@ export function RightSidebar() {
     <aside className="hidden w-72 shrink-0 xl:block" aria-label="Discovery">
       <div
         data-right-sidebar-scroll
-        className="sticky top-20 max-h-[calc(100vh-12rem)] space-y-5 overflow-y-auto dark-scrollbar no-scrollbar pr-1"
+        className="sticky top-20 space-y-5 pb-[120px]"
       >
         {artists.length > 0 && (
           <SidebarSection title="Artists you should follow">

@@ -84,10 +84,10 @@ export function BottomPlayer() {
     <footer
       className={cn(
         "fixed z-50 left-1/2 -translate-x-1/2 transition-all duration-500 ease-out transform",
-        "w-[calc(100%-24px)] h-14 rounded-xl border border-white/10 bg-zinc-950/90 backdrop-blur-xl shadow-lg",
-        "md:bottom-5 md:w-[calc(100%-32px)] md:max-w-5xl lg:max-w-6xl md:h-16 md:rounded-2xl md:bg-zinc-950/85 md:shadow-[0_20px_50px_rgba(0,0,0,0.6)]",
+        "w-[calc(100%-24px)] h-[64px] rounded-xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-xl shadow-2xl",
+        "md:w-[calc(100%-32px)] md:max-w-6xl md:h-[68px] md:rounded-2xl md:shadow-[0_8px_32px_rgba(0,0,0,0.7)]",
         currentSong
-          ? "bottom-[80px] translate-y-0 opacity-100 pointer-events-auto"
+          ? "bottom-3 md:bottom-4 translate-y-0 opacity-100 pointer-events-auto"
           : "bottom-0 translate-y-32 opacity-0 pointer-events-none"
       )}
     >

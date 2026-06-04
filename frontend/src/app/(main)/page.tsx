@@ -3,9 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { NowPlayingHero } from "@/components/NowPlayingHero";
+import { HorizontalSongCarousel } from "@/components/song/HorizontalSongCarousel";
 import { RecentlyPlayedList } from "@/components/song/RecentlyPlayedList";
-import { StreamTrackRow } from "@/components/song/StreamTrackRow";
-import { getRecentlyPlayedRequest, getSongsRequest } from "@/lib/api";
+import {
+  getGenresRequest,
+  getRecentlyPlayedRequest,
+  getSongsRequest,
+} from "@/lib/api";
 import { getLocalRecentlyPlayed } from "@/lib/recently-played-storage";
 import {
   SONG_CATALOG_UPDATED_EVENT,
@@ -13,52 +17,71 @@ import {
   type SongCatalogUpdatedDetail,
 } from "@/lib/song-events";
 import { usePlayerStore } from "@/stores/player-store";
-import type { RecentlyPlayedSong, Song, SongPagination } from "@/types/music";
+import type {
+  GenreRecord,
+  RecentlyPlayedSong,
+  Song,
+  SongPagination,
+} from "@/types/music";
 
-const SONG_LIMIT = 10;
+const RECENTLY_PLAYED_DISPLAY_LIMIT = 5;
+const GENRE_LIMIT = 12;
+const GENRE_EXPANDED_DISPLAY_LIMIT = 10;
+const GENRE_FETCH_LIMIT = GENRE_EXPANDED_DISPLAY_LIMIT;
+
+type GenreSongRow = {
+  genre: GenreRecord;
+  songs: Song[];
+  pagination: SongPagination;
+  loadingMore: boolean;
+  error: string | null;
+};
 
 export default function Home() {
   const { accessToken, isLoading: authLoading } = useAuth();
   const currentSong = usePlayerStore((state) => state.currentSong);
-  const [songs, setSongs] = useState<Song[]>([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState<RecentlyPlayedSong[]>([]);
-  const [pagination, setPagination] = useState<SongPagination | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [genreRows, setGenreRows] = useState<GenreSongRow[]>([]);
+  const [genreRowsLoading, setGenreRowsLoading] = useState(true);
   const [recentlyLoading, setRecentlyLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [genreRowsError, setGenreRowsError] = useState<string | null>(null);
   const [recentlyError, setRecentlyError] = useState<string | null>(null);
 
-  const loadSongs = async (page: number) => {
-    const result = await getSongsRequest(page, SONG_LIMIT);
-
-    setSongs((currentSongs) =>
-      page === 1 ? result.items : [...currentSongs, ...result.items],
-    );
-    setPagination(result.pagination);
-  };
-
-  const loadLatestSongs = useCallback(
+  const loadGenreRows = useCallback(
     async ({ quiet = false }: { quiet?: boolean } = {}) => {
       if (!quiet) {
-        setLoading(true);
+        setGenreRowsLoading(true);
       }
 
       try {
-        const result = await getSongsRequest(1, SONG_LIMIT);
+        const genreResult = await getGenresRequest(1, GENRE_LIMIT);
+        const rowResults = await Promise.all(
+          genreResult.items.map(async (genre) => {
+            const songResult = await getSongsRequest(1, GENRE_FETCH_LIMIT, {
+              genre_id: genre.id,
+            });
 
-        setSongs(result.items);
-        setPagination(result.pagination);
-        setError(null);
-      } catch (songsError) {
-        setError(
-          songsError instanceof Error
-            ? songsError.message
-            : "Could not load songs.",
+            return {
+              genre,
+              songs: songResult.items,
+              pagination: songResult.pagination,
+              loadingMore: false,
+              error: null,
+            } satisfies GenreSongRow;
+          }),
+        );
+
+        setGenreRows(rowResults.filter((row) => row.songs.length > 0));
+        setGenreRowsError(null);
+      } catch (rowsError) {
+        setGenreRowsError(
+          rowsError instanceof Error
+            ? rowsError.message
+            : "Could not load genre songs.",
         );
       } finally {
         if (!quiet) {
-          setLoading(false);
+          setGenreRowsLoading(false);
         }
       }
     },
@@ -70,14 +93,14 @@ export default function Home() {
 
     queueMicrotask(() => {
       if (isMounted) {
-        void loadLatestSongs();
+        void loadGenreRows();
       }
     });
 
     return () => {
       isMounted = false;
     };
-  }, [loadLatestSongs]);
+  }, [loadGenreRows]);
 
   useEffect(() => {
     let isMounted = true;
@@ -86,7 +109,7 @@ export default function Home() {
     if (pendingUploadedSongId) {
       queueMicrotask(() => {
         if (isMounted) {
-          void loadLatestSongs({ quiet: true });
+          void loadGenreRows({ quiet: true });
         }
       });
     }
@@ -95,13 +118,8 @@ export default function Home() {
       const detail = (event as CustomEvent<SongCatalogUpdatedDetail>).detail;
 
       if (detail?.song) {
-        setSongs((currentSongs) => [
-          detail.song as Song,
-          ...currentSongs.filter((song) => song.id !== detail.song?.id),
-        ]);
+        void loadGenreRows({ quiet: true });
       }
-
-      void loadLatestSongs({ quiet: true });
     };
 
     window.addEventListener(
@@ -116,7 +134,7 @@ export default function Home() {
         handleSongCatalogUpdated,
       );
     };
-  }, [loadLatestSongs]);
+  }, [loadGenreRows]);
 
   useEffect(() => {
     if (authLoading) {
@@ -162,30 +180,63 @@ export default function Home() {
     };
   }, [accessToken, authLoading]);
 
-  const handleLoadMore = async () => {
-    if (!pagination || loadingMore) {
+  const handleLoadMoreGenre = async (genreId: string) => {
+    const row = genreRows.find((item) => item.genre.id === genreId);
+
+    if (!row || row.loadingMore || row.pagination.page >= row.pagination.totalPages) {
       return;
     }
 
-    setLoadingMore(true);
-    setError(null);
+    setGenreRows((currentRows) =>
+      currentRows.map((item) =>
+        item.genre.id === genreId
+          ? { ...item, loadingMore: true, error: null }
+          : item,
+      ),
+    );
 
     try {
-      await loadSongs(pagination.page + 1);
-    } catch (loadMoreError) {
-      setError(
-        loadMoreError instanceof Error
-          ? loadMoreError.message
-          : "Could not load more songs.",
+      const result = await getSongsRequest(
+        row.pagination.page + 1,
+        GENRE_EXPANDED_DISPLAY_LIMIT,
+        { genre_id: genreId },
+      );
+
+      setGenreRows((currentRows) =>
+        currentRows.map((item) =>
+          item.genre.id === genreId
+            ? {
+                ...item,
+                songs: [...item.songs, ...result.items],
+                pagination: result.pagination,
+                loadingMore: false,
+              }
+            : item,
+        ),
+      );
+    } catch (loadError) {
+      setGenreRows((currentRows) =>
+        currentRows.map((item) =>
+          item.genre.id === genreId
+            ? {
+                ...item,
+                loadingMore: false,
+                error:
+                  loadError instanceof Error
+                    ? loadError.message
+                    : "Could not load more songs.",
+              }
+            : item,
+        ),
       );
     } finally {
-      setLoadingMore(false);
+      setGenreRows((currentRows) =>
+        currentRows.map((item) =>
+          item.genre.id === genreId ? { ...item, loadingMore: false } : item,
+        ),
+      );
     }
   };
-
-  const canLoadMore = pagination
-    ? pagination.page < pagination.totalPages
-    : false;
 
   return (
     <div className="space-y-8 page-fade-in">
@@ -224,72 +275,84 @@ export default function Home() {
             <p className="text-xs text-zinc-500">Your latest played songs, kept newest first.</p>
           </div>
           <RecentlyPlayedList
-            songs={recentlyPlayed}
+            songs={recentlyPlayed.slice(0, RECENTLY_PLAYED_DISPLAY_LIMIT)}
             loading={recentlyLoading || authLoading}
             error={recentlyError}
           />
         </section>
       )}
 
-      <section className="space-y-4">
-        <div className="border-b border-zinc-900 pb-2">
+      <section className="space-y-6">
+        <div className="flex flex-col gap-2 border-b border-zinc-900 pb-4">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-500">
+              Community Hotspot
+            </span>
+          </div>
           <h2 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">
             Hear what’s trending in the community
           </h2>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             Fresh tracks and new vibes picked straight from the latest uploads.
           </p>
         </div>
 
-        {error && (
+        {genreRowsError && (
           <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 text-sm text-red-300">
-            {error}
+            {genreRowsError}
           </div>
         )}
 
-        {!error && loading && (
-          <div className="space-y-4">
+        {!genreRowsError && genreRowsLoading && (
+          <div className="space-y-8">
             {Array.from({ length: 3 }).map((_, index) => (
-              <div
+              <HorizontalSongCarousel
                 key={index}
-                className="flex flex-col gap-4 rounded-xl border border-zinc-900 bg-zinc-950/20 p-4 animate-pulse md:flex-row md:gap-5"
-              >
-                <div className="h-[152px] w-[152px] shrink-0 rounded-lg bg-zinc-900 shimmer mx-auto md:mx-0" />
-                <div className="flex-1 space-y-4 mt-2">
-                  <div className="h-4 w-1/4 rounded bg-zinc-900 shimmer" />
-                  <div className="h-6 w-1/2 rounded bg-zinc-900 shimmer" />
-                  <div className="h-10 w-full rounded bg-zinc-900 shimmer" />
-                </div>
-              </div>
+                title="Loading genre"
+                songs={[]}
+                loading
+                emptyTitle="No songs"
+              />
             ))}
           </div>
         )}
 
-        {!error && !loading && songs.length === 0 && (
+        {!genreRowsError && !genreRowsLoading && genreRows.length === 0 && (
           <div className="rounded-xl border border-zinc-900 bg-zinc-950/20 p-8 text-center text-zinc-500">
             <p className="font-semibold text-zinc-400">No songs available yet.</p>
             <p className="mt-1 text-sm text-zinc-500">Upload a track or explore music to start building the catalog.</p>
           </div>
         )}
 
-        {!error && !loading && songs.length > 0 && (
-          <div className="space-y-4">
-            {songs.map((song) => (
-              <StreamTrackRow key={song.id} song={song} queue={songs} />
-            ))}
+        {!genreRowsError && !genreRowsLoading && genreRows.length > 0 && (
+          <div className="space-y-9">
+            {genreRows.map((row) => {
+              const canLoadMore = row.pagination.page < row.pagination.totalPages;
 
-            {canLoadMore && (
-              <div className="flex justify-center pt-4">
-                <button
-                  type="button"
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                  className="rounded-full border border-zinc-800 bg-zinc-950 px-6 py-2.5 text-xs font-bold text-zinc-300 transition hover:border-orange-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loadingMore ? "Loading more..." : "Load more tracks"}
-                </button>
-              </div>
-            )}
+              return (
+                <div key={row.genre.id} className="space-y-4">
+                  <HorizontalSongCarousel
+                    title={row.genre.name}
+                    subtitle={`${row.pagination.totalItems} tracks`}
+                    songs={row.songs}
+                    error={row.error}
+                    emptyTitle={`No ${row.genre.name} tracks`}
+                    emptyDescription="Tracks in this genre will appear here."
+                    canLoadMore={canLoadMore}
+                    loadingMore={row.loadingMore}
+                    onLoadMore={() => {
+                      void handleLoadMoreGenre(row.genre.id);
+                    }}
+                    viewAllHref={`/search?q=${encodeURIComponent(row.genre.name)}`}
+                    viewAllLabel="View all"
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
