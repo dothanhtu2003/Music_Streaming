@@ -76,7 +76,7 @@ graph TD
     subgraph Database & Media Services [Infrastructure]
         PG[(PostgreSQL Database)]
         Cloudinary[Cloudinary CDN]
-        LocalUploads[/uploads static legacy assets]
+        LocalUploads["/uploads static legacy assets"]
     end
 
     UI --> Zustand
