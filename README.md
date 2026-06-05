@@ -1,228 +1,364 @@
-# Music Streaming Web App
+# 🎵 Music Streaming Web App
 
-A full-stack music streaming application built as a portfolio project.
+<div align="center">
 
-This application allows users to register, listen to music, upload tracks, manage playlists, like songs, follow artists, and discover tracks from followed artists through a personalized feed. It also features a comprehensive admin panel for content and user management.
+A premium, full-stack, responsive music streaming application built as a portfolio showcase.
 
----
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![React 19](https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react)](https://react.dev/)
+[![TypeScript 5](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+[![Zustand](https://img.shields.io/badge/Zustand-State-black?style=for-the-badge)](https://zustand-demo.pmnd.rs/)
 
-## Tech Stack
+[![Node.js 18](https://img.shields.io/badge/Node.js-18-339933?style=for-the-badge&logo=nodedotjs)](https://nodejs.org/)
+[![Express 5](https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express)](https://expressjs.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-4169E1?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
+[![Cloudinary](https://img.shields.io/badge/Cloudinary-Media-F15A24?style=for-the-badge&logo=cloudinary)](https://cloudinary.com/)
 
-### Backend
+[Key Features](#-key-features) • [System Architecture](#%EF%B8%8F-system-architecture) • [Database ERD](#%EF%B8%8F-database-erd) • [Setup Guide](#%EF%B8%8F-setup-guide) • [API Directory](#-api-endpoints) • [Manual Test Plan](#-testing-status)
 
-- **Runtime**: Node.js 18
-- **Framework**: Express 5
-- **Database**: PostgreSQL (with GIN indexes and trigram search)
-- **Authentication**: JWT access tokens + hashed refresh tokens stored in database
-- **Storage**: Cloudinary (for audio and image storage via Multer and Cloudinary Storage)
-- **Security & Utilities**: bcrypt, cors, helmet, morgan, express-rate-limit
-
-### Frontend
-
-- **Framework**: Next.js 16 (App Router, TypeScript)
-- **Library**: React 19
-- **Styling**: Tailwind CSS v4
-- **State Management**: Zustand (for audio player state)
-- **Audio Integration**: HTML5 Audio + WaveSurfer.js (for waveform visualization)
-- **API Client**: Single HTTP client wrapper using native `fetch()` in `frontend/src/lib/api.ts`
+</div>
 
 ---
 
-## Features
+## 🚀 Overview
 
-### User Features
-
-- **Authentication**: Register, login, logout, and token refresh mechanisms
-- **Profile Management**: Update display name, bio, and upload avatar
-- **Audio Player**: Interactive bottom player with queue management, play/pause, volume control, seek, repeat modes (off, one, all), and shuffle
-- **Social Features**: Follow/unfollow other users or artists
-- **Playlists**: Create, update, delete playlists; add, remove, and reorder songs within playlists
-- **Favorites**: Like/unlike songs, with a dedicated page for liked tracks
-- **History & Activity**: Recently played tracks (deduplicated) and full listening history
-- **Personalized Feed**: Chronological list of new releases from followed artists
-- **Search**: Realtime search suggestions and full search results for songs and artists
-- **Upload**: Upload songs directly to Cloudinary (audio track and cover image)
-
-### Admin Features
-
-- **Dashboard**: High-level statistics including user count, track count, play counts, top songs, and newest users
-- **User Management**: List users with filters, change user roles (user/admin), and ban/unban users (which revokes their active sessions)
-- **Playlist Management**: View and delete any playlist in the system
-- **Track Management**: Create, update, and soft-delete (`is_active = false`) tracks
-- **Metadata Management**: Create, update, and delete artists, albums, and genres
-- **Admin Upload**: Dedicated upload interface for administrative tasks
+This **Music Streaming Web App** is a portfolio-ready, full-stack streaming platform featuring a highly responsive, modern user interface alongside a secure, scalable API backend. The system integrates seamless media uploads directly to the cloud, caching of audio waveform data, stateful audio queuing, and a robust role-based admin dashboard.
 
 ---
 
-## Storage Architecture
+## ✨ Key Features
 
-- **Main Storage**: All uploaded audio files, covers, and user avatars are stored on Cloudinary.
-- **Database**: PostgreSQL stores application metadata and secure Cloudinary URLs.
-- **Legacy Path**: The backend static route `/uploads` remains for backward compatibility and serving legacy local files, but is not used for new uploads.
+### 🎧 User Experience & Core Engine
+
+- **Stateful Audio Player**: Implements a Zustand-backed music player supporting continuous playback, queue management, volume controls, progression scrubbing, random shuffle, and various loop states (loop-track, loop-all, loop-off).
+- **Direct Cloud Uploads**: High-performance streaming media management. Both cover art and audio files are securely handled in memory and directly uploaded to **Cloudinary** (no local server-side files).
+- **Waveform Visualization**: Generates, renders, and caches audio waveform peak data via **WaveSurfer.js** to deliver interactive audio player aesthetics.
+- **Dynamic Content Discovery**:
+  - **Personalized Feed**: A chronological pipeline displaying new releases specifically from artists the user is following.
+  - **Fuzzy Search**: Multi-model backend search suggestions across songs and artists powered by PostgreSQL trigram indexes.
+  - **Recent Activity**: Logged-in user activity tracking via deduplicated recently played items and full listening history.
+
+### 🛡️ Platform Security & Session Management
+
+- **Dual-Token Auth**: Secure user session cycles utilizing short-lived JWT Access Tokens and database-stored, bcrypt-hashed Refresh Tokens.
+- **Access Control & Permissions**: Strict role-based middleware guarding user profiles, playlists, uploads, and administrative actions.
+- **User Ban Control**: Administrative user ban immediately invalidates and purges all active refresh tokens, forcing an immediate session termination.
+
+### 📊 Admin Panel Dashboard
+
+- **System Analytics**: Real-time summary counts of users, tracks, playlists, genres, and aggregate play counts, plus a listing of top songs and newly registered profiles.
+- **Administrative Utilities**: Dedicated panel views to manage system users (role elevation, banning), delete public/private playlists, soft-delete tracks (`is_active = false`), and perform administrative metadata curation.
 
 ---
 
-## Project Structure
+## 🗺️ System Architecture
 
-```text
-.
-├── src/                      # Backend source code (CommonJS)
-│   ├── config/               # Database pool and Cloudinary configurations
-│   ├── controllers/          # Request handlers
-│   ├── db/                   # schema.sql, migrations, and database client
-│   ├── middlewares/          # Authentication, error handling, and upload middlewares
-│   ├── routes/               # Express routing tables
-│   ├── services/             # Business logic and database query execution
-│   ├── utils/                # Helper utilities (API responses, validation)
-│   ├── app.js                # Express application definition
-│   └── server.js             # Web server initialization
-│
-├── frontend/                 # Frontend source code (Next.js)
-│   ├── public/               # Static public assets
-│   └── src/
-│       ├── app/              # Next.js App Router (pages and layouts)
-│       │   ├── (main)/       # User application pages
-│       │   ├── admin/        # Admin panel pages
-│       │   ├── login/        # Login page
-│       │   └── register/     # Registration page
-│       ├── components/       # Reusable UI components (layout, player, admin, etc.)
-│       ├── hooks/            # Custom React hooks
-│       ├── lib/              # Client API wrapper (api.ts) and storage utilities
-│       ├── stores/           # Zustand state stores (player-store.ts)
-│       └── types/            # TypeScript type declarations
-│
-├── .env.example              # Template for backend environment variables
-└── package.json              # Backend dependencies and scripts
+The project maintains a clean separation of concerns, connecting a serverless-ready Next.js application with a standard Node.js API service:
+
+```mermaid
+graph TD
+    subgraph Frontend [Next.js App Client]
+        UI[App Shell & Views]
+        Zustand[Zustand Player Store]
+        AudioEngine[HTML5 Audio Engine]
+        APIClient[Fetch Wrapper: api.ts]
+    end
+
+    subgraph Backend [Express API Gateway]
+        Express[Express Router]
+        AuthMD[Auth Middleware]
+        UploadMD[Multer & Cloudinary Storage]
+        Controller[Controllers]
+        Service[Business Logic Services]
+    end
+
+    subgraph Database & Media Services [Infrastructure]
+        PG[(PostgreSQL Database)]
+        Cloudinary[Cloudinary CDN]
+    end
+
+    UI --> Zustand
+    Zustand --> AudioEngine
+    UI --> APIClient
+    APIClient -->|HTTP / JSON / FormData| Express
+    Express --> AuthMD
+    Express --> UploadMD
+    AuthMD --> Controller
+    UploadMD -->|Upload Streams| Cloudinary
+    Controller --> Service
+    Service -->|pg Pool Query| PG
+    UploadMD -->|Return Cloud URL| Service
 ```
 
 ---
 
-## Database
+## 🗄️ Database ERD
 
-The PostgreSQL database (`music_streaming`) consists of the following 12 tables defined in `src/db/schema.sql`:
+The database runs on PostgreSQL, leveraging relations, cascading foreign keys, and indexes designed to support quick data retrieval:
 
-- `users`: Account identities, profile details, roles, and ban status
-- `artists`: Music artists profiles (optionally linked to a registered user)
-- `genres`: Song genres with slugs
-- `albums`: Albums associated with artists
-- `songs`: Playable tracks with title, Cloudinary file URL, cover URL, duration, play counts, is_active flag, and waveform cache
-- `likes`: Many-to-many relationship mapping user likes to songs
-- `playlists`: User-created playlists
-- `playlist_songs`: Many-to-many playlist-to-song mappings with sequence positioning
-- `refresh_tokens`: Revocable hashed refresh tokens associated with active user sessions
-- `listening_history`: Granular stream events log for user statistics
-- `recently_played`: Deduplicated list of recently played tracks per user
-- `follows`: Social follow relationships between users
+```mermaid
+erDiagram
+    users {
+        uuid id PK
+        varchar email UK
+        varchar username UK
+        varchar display_name
+        varchar bio
+        text avatar_url
+        text password_hash
+        varchar role
+        boolean is_verified
+        boolean is_banned
+        timestamptz created_at
+    }
+
+    artists {
+        uuid id PK
+        varchar name
+        text bio
+        text avatar_url
+        uuid user_id FK
+    }
+
+    genres {
+        uuid id PK
+        varchar name
+        varchar slug UK
+    }
+
+    albums {
+        uuid id PK
+        varchar title
+        uuid artist_id FK
+        text cover_url
+        date release_date
+    }
+
+    songs {
+        uuid id PK
+        varchar title
+        text description
+        uuid artist_id FK
+        uuid album_id FK
+        uuid genre_id FK
+        text file_url
+        text cover_url
+        integer duration_sec
+        jsonb waveform_peaks
+        numeric waveform_duration
+        bigint play_count
+        boolean is_active
+    }
+
+    playlists {
+        uuid id PK
+        uuid user_id FK
+        varchar name
+        text description
+        text cover_url
+        boolean is_public
+    }
+
+    playlist_songs {
+        uuid id PK
+        uuid playlist_id FK
+        uuid song_id FK
+        integer position
+    }
+
+    refresh_tokens {
+        uuid id PK
+        uuid user_id FK
+        text token_hash UK
+        timestamptz expires_at
+        timestamptz revoked_at
+    }
+
+    listening_history {
+        uuid id PK
+        uuid user_id FK
+        uuid song_id FK
+        timestamptz listened_at
+    }
+
+    recently_played {
+        uuid id PK
+        uuid user_id FK
+        uuid song_id FK
+        timestamptz played_at
+    }
+
+    follows {
+        uuid id PK
+        uuid followerId FK
+        uuid followingId FK
+        timestamptz createdAt
+    }
+
+    users ||--o| artists : "manages"
+    users ||--o{ playlists : "creates"
+    users ||--o{ refresh_tokens : "owns"
+    users ||--o{ listening_history : "records"
+    users ||--o{ recently_played : "views"
+    users ||--o{ follows : "engages"
+
+    artists ||--o{ albums : "releases"
+    artists ||--o{ songs : "composes"
+
+    albums ||--o{ songs : "includes"
+    genres ||--o{ songs : "classifies"
+
+    playlists ||--o{ playlist_songs : "contains"
+    songs ||--o{ playlist_songs : "references"
+    songs ||--o{ listening_history : "tracks"
+    songs ||--o{ recently_played : "logs"
+```
 
 ---
 
-## API Endpoints
+## 📁 Project Structure
 
-All endpoints are prefixed with `/api`.
-
-- `/api/auth`: Register, login, refresh tokens, profile management, and avatar upload
-- `/api/songs`: List all active songs, get song detail, fetch/cache waveforms, listen tracking, song search, and song uploads
-- `/api/playlists`: CRUD operations for user playlists, track insertion, removal, reordering, and direct upload-to-playlist
-- `/api/likes`: Like, unlike, and fetch user liked songs
-- `/api/follow`: Follow users/artists, unfollow, and retrieve follow status/list
-- `/api/history`: Retrieve or clear listening history
-- `/api/recently-played`: Save or retrieve recently played songs
-- `/api/feed`: Retrieve release feed of followed artists
-- `/api/search`: Realtime search suggestions for songs and artists
-- `/api/artists`: List, get, create, update, and delete artists
-- `/api/albums`: List, get, create, update, and delete albums
-- `/api/genres`: List, get, create, update, and delete genres
-- `/api/admin`: Dashboard overview, user list, user ban/unban, role update, and playlist deletion
-
----
-
-## Key Feature Logic
-
-### Feed
-The `/api/feed` endpoint queries songs uploaded by artists the user follows. It orders results chronologically (`s.created_at DESC`) with standard pagination. No complex or AI recommendation logic is implemented.
-
-### Search
-Realtime search suggestion queries are processed via `/api/search`, returning matched songs and artists in one request. Full song search queries `/api/songs/search`, which sorts results by popularity (`play_count DESC`) and creation date (`created_at DESC`). Client-side Fuse.js is configured but the application relies primarily on backend-side PostgreSQL trigram search GIN indexes for fuzzy matching.
+```text
+.
+├── src/                      # Backend Core (Node.js/Express)
+│   ├── config/               # DB connections & Cloudinary settings
+│   ├── controllers/          # Request routers & response formatters
+│   ├── db/                   # Raw SQL schema & migrations
+│   ├── middlewares/          # Security, error boundaries, uploads
+│   ├── routes/               # Modular Express routing tree
+│   ├── services/             # Transaction scopes & database queries
+│   ├── utils/                # Base validation & generic helpers
+│   ├── app.js                # Main express instance config
+│   └── server.js             # Server startup script
+│
+├── frontend/                 # Frontend Interface (Next.js 16)
+│   └── src/
+│       ├── app/              # Page router, layout hierarchy
+│       │   ├── (main)/       # Main landing, feed, library pages
+│       │   └── admin/        # Dashboard & metadata management
+│       ├── components/       # Component library (player, layout, admin UI)
+│       ├── lib/              # Central API Wrapper client (api.ts)
+│       ├── stores/           # Zustand audio player store
+│       └── types/            # App-wide TypeScript definitions
+```
 
 ---
 
-## Run Locally
+## 🛠️ Setup Guide
 
-### Prerequisites
-- Node.js 18
-- PostgreSQL (local or cloud instance)
-- Cloudinary credentials
+### 📋 Prerequisites
 
-### Backend Setup
-
-1. Install backend dependencies:
-   ```bash
-   npm install
-   ```
-
-2. Create a `.env` file in the root directory based on `.env.example`. Fill in your database configuration, JWT secret, and Cloudinary keys:
-   ```env
-   NODE_ENV=development
-   PORT=5000
-
-   # PostgreSQL
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=music_streaming
-   DB_USER=postgres
-   DB_PASSWORD=your_postgres_password
-   DB_SSL=false
-
-   # JWT Config
-   JWT_ACCESS_SECRET=your_32_character_secret_string
-   JWT_ACCESS_EXPIRES_IN=15m
-   JWT_REFRESH_TOKEN_EXPIRES_DAYS=7
-
-   # Cloudinary Config
-   CLOUDINARY_CLOUD_NAME=your_cloud_name
-   CLOUDINARY_API_KEY=your_api_key
-   CLOUDINARY_API_SECRET=your_api_secret
-   ```
-
-3. Initialize the database schema:
-   ```bash
-   psql -U postgres -d music_streaming -f src/db/schema.sql
-   ```
-
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-### Frontend Setup
-
-1. Navigate to the frontend directory and install dependencies:
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-2. Create a `frontend/.env.local` file with the backend API URL:
-   ```env
-   NEXT_PUBLIC_API_URL=http://localhost:5000/api
-   ```
-
-3. Start the Next.js development server:
-   ```bash
-   npm run dev
-   ```
+- **Runtime**: Node.js v18.x or higher
+- **Database**: PostgreSQL v14.x or higher
+- **Cloud Accounts**: Cloudinary API credentials
 
 ---
 
-## Testing
+### 💻 Local Installation
 
-Automated tests are planned but not fully implemented yet. Refer to [TEST_PLAN.md](file:///E:/music/TEST_PLAN.md) for details on the manual verification script, scenarios, and status trackers for API/UI features.
+#### 1. Setup Backend Environment
+Clone the repository, enter the root directory, and install backend packages:
+```bash
+npm install
+```
+
+Create a `.env` file in the root directory from `.env.example`:
+```env
+NODE_ENV=development
+PORT=5000
+
+# PostgreSQL Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=music_streaming
+DB_USER=postgres
+DB_PASSWORD=your_postgres_password
+DB_SSL=false
+
+# Session Security Keys
+JWT_ACCESS_SECRET=at_least_32_characters_random_string
+JWT_ACCESS_EXPIRES_IN=15m
+JWT_REFRESH_TOKEN_EXPIRES_DAYS=7
+
+# Cloudinary Credentials
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
+# CORS / Origin Settings
+FRONTEND_URL=http://localhost:3000
+```
+
+#### 2. Configure the Database
+Create your local PostgreSQL database, then apply the SQL schema:
+```bash
+psql -U postgres -d music_streaming -f src/db/schema.sql
+```
+
+#### 3. Run Backend Server
+```bash
+npm run dev
+```
+The server starts on `http://localhost:5000`.
 
 ---
 
-## Deployment
+#### 4. Setup Frontend Environment
+Navigate to the frontend directory:
+```bash
+cd frontend
+npm install
+```
 
-- **Backend**: Can be hosted on Railway, Render, or any Node.js compatible environment.
-- **Frontend**: Can be hosted on Vercel or similar platforms.
-- **Database**: PostgreSQL can be hosted on Supabase, Neon, or cloud database providers.
-- **Media**: Audio tracks, cover images, and user avatars are hosted securely on Cloudinary.
+Create a `frontend/.env.local` file:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+```
+
+#### 5. Launch Frontend App
+```bash
+npm run dev
+```
+Open `http://localhost:3000` to interact with the application.
+
+---
+
+## 🔌 API Endpoints
+
+All endpoints are prefix-guarded under `/api`.
+
+| Module | Route Endpoint | Authentication | Actions |
+|---|---|---|---|
+| **Auth** | `/api/auth` | Optional | Register, Login, Refresh, Logout, Me, Edit Profile, Avatar Upload |
+| **Songs** | `/api/songs` | Optional | Search, Get by ID, Listen Logger, Save Waveform, Upload Tracks |
+| **Playlists**| `/api/playlists` | User Session | CRUD Playlists, Track Addition, Reordering, Track Deletion |
+| **Likes** | `/api/likes` | User Session | Like, Unlike, Fetch Liked Songs |
+| **Follows** | `/api/follow` | User Session | Toggle Follow, Get Follow Status, List Following |
+| **Feed** | `/api/feed` | User Session | Retrieve Chronological Followed Releases |
+| **Search** | `/api/search` | Open | Live Unified Search (Artists + Songs) |
+| **History** | `/api/history` | User Session | Fetch Listening Log, Clear History |
+| **Admin** | `/api/admin` | Admin Session | System Dashboard, Users List, User Role Curation, User Ban/Unban |
+| **Metadata** | `/api/artists`, `/api/albums`, `/api/genres` | Mixed | Read (Open) / Write (Admin Only) |
+
+---
+
+## 🧪 Testing Status
+
+Automated end-to-end and unit tests are planned but not fully implemented yet. 
+
+Manual validation is documented in [TEST_PLAN.md](file:///E:/music/TEST_PLAN.md), covering:
+- [x] Session Cycles & JWT validation
+- [x] Cloud uploads & database integrity checks
+- [x] Real-time audio queue manipulation
+- [x] Admin console user control tests (banning/role configuration)
+- [x] Layout responsive checks across mobile viewports
+
+---
+
+## 🌐 Deployment Overview
+
+- **Backend Node API**: Designed for hosting on Heroku, Railway, Render, or ECS.
+- **Frontend App**: Serverless hosting optimized for Vercel or Netlify.
+- **PostgreSQL**: Cloud hosting via Supabase, Neon, or RDS.
+- **Media Assets**: Distributed and managed globally through Cloudinary CDN.
