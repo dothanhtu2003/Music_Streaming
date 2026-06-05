@@ -1,709 +1,396 @@
-# Music Streaming Web App - Backend
+# Music Streaming Web App
 
-Backend setup for the Music Streaming Web App using Node.js, Express, and PostgreSQL.
+A full-stack music streaming application built as a portfolio project. Users can
+listen to music, create playlists, like songs, follow artists, and discover new
+tracks through a personalised feed.
 
 ## Tech Stack
 
-- Node.js
-- Express
-- PostgreSQL
-- pg
-- dotenv
-- cors
-- helmet
-- morgan
-- express-rate-limit
+### Backend
 
-Auth, Song API, and Upload are not implemented in this stage.
+- **Runtime**: Node.js 18
+- **Framework**: Express 5
+- **Database**: PostgreSQL (with `pg_trgm` for search)
+- **Auth**: JWT access tokens + hashed refresh tokens (bcrypt)
+- **File Storage**: Cloudinary (audio + images via `multer-storage-cloudinary`)
+- **Other**: cors, helmet, morgan, express-rate-limit
+
+### Frontend
+
+- **Framework**: Next.js 16 (App Router, TypeScript)
+- **Styling**: Tailwind CSS 4
+- **State**: Zustand (player store)
+- **Audio**: HTML5 Audio + WaveSurfer.js (waveform visualiser)
+- **Search**: Fuse.js (client-side fuzzy matching)
 
 ## Project Structure
 
 ```text
-src/
-  config/
-  controllers/
-  routes/
-  services/
-  middlewares/
-  utils/
-  db/
-  app.js
-  server.js
+.
+├── src/                      # Backend (Node.js + Express)
+│   ├── config/               # env.js, cloudinary.js
+│   ├── controllers/          # Route handlers
+│   ├── services/             # Business logic
+│   ├── routes/               # Express routers
+│   ├── middlewares/           # auth, error, upload (Cloudinary)
+│   ├── utils/                # Response helpers, query utils
+│   ├── db/
+│   │   ├── schema.sql        # Full database schema
+│   │   ├── migrations/       # Incremental SQL migrations
+│   │   └── pool.js           # pg Pool config
+│   ├── app.js                # Express app setup
+│   └── server.js             # Server entry point
+│
+├── frontend/                 # Frontend (Next.js)
+│   └── src/
+│       ├── app/              # Next.js App Router pages
+│       │   ├── (main)/       # User-facing pages
+│       │   ├── admin/        # Admin panel pages
+│       │   ├── login/
+│       │   └── register/
+│       ├── components/       # React components
+│       │   ├── player/       # BottomPlayer, PlayerProvider
+│       │   ├── layout/       # AppShell, Sidebar, AppHeader, etc.
+│       │   ├── admin/        # AdminTable, AdminNotice
+│       │   ├── playlist/
+│       │   ├── song/
+│       │   ├── like/
+│       │   ├── follow/
+│       │   ├── library/
+│       │   ├── auth/
+│       │   └── ui/
+│       ├── stores/           # Zustand stores (player-store.ts)
+│       ├── lib/              # API client, auth helpers, utilities
+│       └── types/            # TypeScript type definitions
+│
+├── .env.example              # Backend env template
+└── package.json              # Backend dependencies
 ```
 
 ## Setup
 
-Install dependencies:
+### Prerequisites
+
+- Node.js 18+
+- PostgreSQL 14+
+- A Cloudinary account (free tier works)
+
+### 1. Clone and install
 
 ```bash
+git clone <repo-url>
+cd music
 npm install
+cd frontend && npm install && cd ..
 ```
 
-Create a `.env` file from `.env.example`, then update the database values.
+### 2. Configure environment
 
-## PostgreSQL Database
-
-Open PostgreSQL terminal or pgAdmin, then create the database:
-
-```sql
-CREATE DATABASE music_streaming;
-```
-
-Run the database schema:
-
-```bash
-psql -U postgres -d music_streaming -f src/db/schema.sql
-```
-
-Example `.env`:
+Copy `.env.example` to `.env` in the project root, then fill in your values:
 
 ```env
 NODE_ENV=development
 PORT=5000
+
+# PostgreSQL
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=music_streaming
 DB_USER=postgres
 DB_PASSWORD=your_postgres_password
 DB_SSL=false
+
+# Or use Supabase:
+# DATABASE_URL=postgresql://postgres.ref:password@host:6543/postgres
+
 FRONTEND_URL=http://localhost:3000
+
+# JWT
 JWT_ACCESS_SECRET=replace_with_at_least_32_random_characters
 JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_TOKEN_EXPIRES_DAYS=7
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 ```
 
-## Run Backend
+Copy `frontend/.env.example` to `frontend/.env.local`:
 
-Development mode:
-
-```bash
-npm run dev
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
 ```
 
-Production/simple start:
+### 3. Create database
 
-```bash
-npm start
+```sql
+CREATE DATABASE music_streaming;
 ```
 
-Server URL:
-
-```text
-http://localhost:5000
-```
-
-## Test Health API
-
-Browser:
-
-```text
-http://localhost:5000/api/health
-```
-
-Postman:
-
-- Method: `GET`
-- URL: `http://localhost:5000/api/health`
-
-Expected response:
-
-```json
-{
-  "success": true,
-  "message": "Music API is running"
-}
-```
-
-## Auth API
-
-Before testing Auth, make sure the database schema has been applied:
+Run the schema:
 
 ```bash
 psql -U postgres -d music_streaming -f src/db/schema.sql
 ```
 
-### Register
+If you are starting fresh, the schema already includes all tables. If upgrading
+from an older version, run the migrations in order:
 
-```http
-POST http://localhost:5000/api/auth/register
-Content-Type: application/json
+```bash
+psql -U postgres -d music_streaming -f src/db/migrations/001_add_is_banned_to_users.sql
+psql -U postgres -d music_streaming -f src/db/migrations/002_add_description_to_songs.sql
+psql -U postgres -d music_streaming -f src/db/migrations/003_create_recently_played.sql
+psql -U postgres -d music_streaming -f src/db/migrations/004_create_follows.sql
+psql -U postgres -d music_streaming -f src/db/migrations/005_add_playlist_metadata.sql
+psql -U postgres -d music_streaming -f src/db/migrations/006_add_waveform_cache_to_songs.sql
+psql -U postgres -d music_streaming -f src/db/migrations/007_add_profile_fields_to_users.sql
 ```
 
-```json
-{
-  "email": "user@example.com",
-  "username": "user01",
-  "password": "123456"
-}
+### 4. Run
+
+Start the backend (port 5000):
+
+```bash
+npm run dev
 ```
 
-### Login
+Start the frontend (port 3000) in a separate terminal:
 
-```http
-POST http://localhost:5000/api/auth/login
-Content-Type: application/json
+```bash
+cd frontend
+npm run dev
 ```
 
-```json
-{
-  "email": "user@example.com",
-  "password": "123456"
-}
-```
+Open `http://localhost:3000` in your browser.
 
-Copy `accessToken` and `refreshToken` from the response.
+## Database Schema
 
-### Get Current User
+12 tables managed by PostgreSQL:
 
-```http
-GET http://localhost:5000/api/auth/me
-Authorization: Bearer your_access_token
-```
+| Table | Purpose |
+|---|---|
+| `users` | Accounts, roles (`user`/`admin`), ban status |
+| `artists` | Artist profiles, optionally linked to a user |
+| `genres` | Music categories with slugs |
+| `albums` | Albums linked to an artist |
+| `songs` | Tracks with Cloudinary URLs, play count, waveform cache |
+| `likes` | User song likes (unique per user+song) |
+| `playlists` | User playlists (public/private) |
+| `playlist_songs` | Songs in playlists with ordering |
+| `refresh_tokens` | Hashed refresh tokens for auth sessions |
+| `listening_history` | Full play history per user |
+| `recently_played` | Deduplicated recent plays per user |
+| `follows` | Social connections between users |
 
-### Refresh Token
+Search uses `pg_trgm` GIN indexes on `users`, `artists`, `genres`, `albums`, and
+`songs` for fast fuzzy matching.
 
-```http
-POST http://localhost:5000/api/auth/refresh
-Content-Type: application/json
-```
+## API Reference
 
-```json
-{
-  "refreshToken": "your_refresh_token"
-}
-```
+Base URL: `http://localhost:5000/api`
 
-### Logout
+### Health
 
-```http
-POST http://localhost:5000/api/auth/logout
-Content-Type: application/json
-```
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/health` | — | Health check |
 
-```json
-{
-  "refreshToken": "your_refresh_token"
-}
-```
+### Auth
 
-## Content APIs
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/auth/register` | — | Register a new account |
+| POST | `/auth/login` | — | Login, returns tokens |
+| POST | `/auth/refresh` | — | Refresh access token |
+| POST | `/auth/logout` | — | Revoke refresh token |
+| GET | `/auth/me` | User | Get current user profile |
+| PATCH | `/auth/me` | User | Update display name and bio |
+| POST | `/auth/me/avatar` | User | Upload avatar (Cloudinary) |
 
-Public users can read artists, genres, albums, and songs. Only admins can create,
-update, or delete content.
+### Songs
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/songs` | — | List songs (paginated, filterable) |
+| GET | `/songs/search?q=` | — | Search songs by title |
+| GET | `/songs/me` | User | Get my uploaded songs |
+| GET | `/songs/:id` | — | Get song by ID |
+| GET | `/songs/:id/waveform` | — | Get cached waveform peaks |
+| POST | `/songs/:id/waveform` | — | Save waveform peaks |
+| POST | `/songs/:id/listen` | Optional | Increment play count + save history |
+| POST | `/songs/upload` | User | Upload a track (audio + cover to Cloudinary) |
+| PATCH | `/songs/:id/play` | — | Increment play count only |
+| POST | `/songs` | Admin | Create song record |
+| PUT | `/songs/:id` | Admin | Update song record |
+| DELETE | `/songs/:id` | Admin | Soft-delete song (`is_active = false`) |
+
+Query parameters for `GET /songs`: `page`, `limit`, `genre_id`, `artist_id`,
+`album_id`.
+
+### Artists
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/artists` | — | List artists (`?page=&limit=&q=`) |
+| GET | `/artists/:id` | — | Get artist by ID |
+| POST | `/artists` | Admin | Create artist |
+| PUT | `/artists/:id` | Admin | Update artist |
+| DELETE | `/artists/:id` | Admin | Delete artist |
+
+### Genres
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/genres` | — | List genres (`?page=&limit=&q=`) |
+| GET | `/genres/:id` | — | Get genre by ID |
+| POST | `/genres` | Admin | Create genre |
+| PUT | `/genres/:id` | Admin | Update genre |
+| DELETE | `/genres/:id` | Admin | Delete genre |
+
+### Albums
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/albums` | — | List albums (`?page=&limit=&q=`) |
+| GET | `/albums/:id` | — | Get album by ID |
+| POST | `/albums` | Admin | Create album |
+| PUT | `/albums/:id` | Admin | Update album |
+| DELETE | `/albums/:id` | Admin | Delete album |
+
+### Likes
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/likes/me` | User | Get my liked songs (paginated) |
+| POST | `/likes/` | User | Like a song (`{ "songId": "..." }`) |
+| DELETE | `/likes/` | User | Unlike a song (`{ "songId": "..." }`) |
+
+### Playlists
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/playlists` | User | Create playlist |
+| GET | `/playlists/me` | User | Get my playlists (paginated) |
+| GET | `/playlists` | User | Get public playlists |
+| GET | `/playlists/:id` | User | Get playlist detail with songs |
+| PUT | `/playlists/:id` | Owner | Update playlist |
+| DELETE | `/playlists/:id` | Owner | Delete playlist |
+| POST | `/playlists/:id/tracks` | Owner | Add song to playlist |
+| POST | `/playlists/:id/upload-track` | Owner | Upload + add track (Cloudinary) |
+| DELETE | `/playlists/:id/tracks/:songId` | Owner | Remove song from playlist |
+| PATCH | `/playlists/:id/tracks/reorder` | Owner | Reorder playlist songs |
+
+### Follow
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/follow/following` | User | Get followed users/artists |
+| GET | `/follow/status/:artistId` | User | Check follow status |
+| POST | `/follow/:userId` | User | Follow/toggle follow |
+| DELETE | `/follow/:userId` | User | Unfollow |
+
+### Feed
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/feed` | User | Songs from followed artists (paginated) |
+
+### Search
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/search?q=&limit=` | — | Realtime search (songs + artists) |
+
+### Recently Played
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/recently-played` | Optional | Save recently played song |
+| GET | `/recently-played` | User | Get my recently played songs |
+
+### Listening History
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/history/me` | User | Get my listening history (paginated) |
+| DELETE | `/history/me` | User | Clear my listening history |
+
+### Upload
+
+All uploads go directly to Cloudinary. Files are **not** stored on disk.
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/upload/audio` | Admin | Upload audio (MP3, max 20 MB) |
+| POST | `/upload/cover` | Admin | Upload cover (JPG/PNG/WebP, max 5 MB) |
+
+Cloudinary folders: `music-streaming/audio`, `music-streaming/covers`,
+`music-streaming/avatars`.
+
+### Admin
+
+All admin endpoints require `role = 'admin'`.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/admin/dashboard` | Stats: totals, top songs, newest users |
+| GET | `/admin/users` | List users (`?page=&limit=&q=&role=`) |
+| GET | `/admin/playlists` | List all playlists (`?page=&limit=&q=`) |
+| DELETE | `/admin/playlists/:id` | Delete any playlist |
+| PATCH | `/admin/users/:id/role` | Change user role (`{ "role": "admin" }`) |
+| PATCH | `/admin/users/:id/ban` | Ban user + revoke tokens |
+| PATCH | `/admin/users/:id/unban` | Unban user |
 
 To make an existing account an admin:
 
 ```sql
-UPDATE users
-SET role = 'admin'
-WHERE email = 'user@example.com';
+UPDATE users SET role = 'admin' WHERE email = 'your@email.com';
 ```
 
-Then login again and use the new `accessToken` as:
-
-```text
-Authorization: Bearer your_admin_access_token
-```
-
-### Artists
-
-- `GET /api/artists?page=1&limit=10&q=son`
-- `GET /api/artists/:id`
-- `POST /api/artists` admin
-- `PUT /api/artists/:id` admin
-- `DELETE /api/artists/:id` admin
-
-```json
-{
-  "name": "Son Tung M-TP",
-  "bio": "Vietnamese singer",
-  "avatar_url": "/uploads/artists/sontung.jpg"
-}
-```
-
-### Genres
-
-- `GET /api/genres?page=1&limit=10&q=pop`
-- `GET /api/genres/:id`
-- `POST /api/genres` admin
-- `PUT /api/genres/:id` admin
-- `DELETE /api/genres/:id` admin
-
-```json
-{
-  "name": "Pop",
-  "slug": "pop"
-}
-```
-
-### Albums
-
-- `GET /api/albums?page=1&limit=10&q=demo`
-- `GET /api/albums/:id`
-- `POST /api/albums` admin
-- `PUT /api/albums/:id` admin
-- `DELETE /api/albums/:id` admin
-
-```json
-{
-  "title": "Demo Album",
-  "artist_id": "artist_uuid",
-  "cover_url": "/uploads/covers/album.jpg",
-  "release_date": "2026-01-01"
-}
-```
-
-### Songs
-
-- `GET /api/songs?page=1&limit=10`
-- `GET /api/songs?genre_id=genre_uuid`
-- `GET /api/songs?artist_id=artist_uuid`
-- `GET /api/songs?album_id=album_uuid`
-- `GET /api/songs/:id`
-- `GET /api/songs/search?q=keyword`
-- `POST /api/songs` admin
-- `PUT /api/songs/:id` admin
-- `DELETE /api/songs/:id` admin, soft deletes with `is_active = false`
-- `PATCH /api/songs/:id/play`
-
-```json
-{
-  "title": "Demo Song",
-  "artist_id": "artist_uuid",
-  "album_id": "album_uuid",
-  "genre_id": "genre_uuid",
-  "file_url": "/uploads/audio/demo.mp3",
-  "cover_url": "/uploads/covers/demo.jpg",
-  "duration_sec": 180,
-  "is_active": true
-}
-```
-
-### Sample Data SQL
-
-```sql
-WITH artist AS (
-  INSERT INTO artists (name, bio, avatar_url)
-  VALUES ('Son Tung M-TP', 'Vietnamese singer', '/uploads/artists/sontung.jpg')
-  RETURNING id
-),
-genre AS (
-  INSERT INTO genres (name, slug)
-  VALUES ('Pop', 'pop')
-  RETURNING id
-),
-album AS (
-  INSERT INTO albums (title, artist_id, cover_url, release_date)
-  SELECT 'Demo Album', artist.id, '/uploads/covers/album.jpg', '2026-01-01'
-  FROM artist
-  RETURNING id, artist_id
-)
-INSERT INTO songs (
-  title,
-  artist_id,
-  album_id,
-  genre_id,
-  file_url,
-  cover_url,
-  duration_sec,
-  is_active
-)
-SELECT
-  'Demo Song',
-  album.artist_id,
-  album.id,
-  genre.id,
-  '/uploads/audio/demo.mp3',
-  '/uploads/covers/demo.jpg',
-  180,
-  true
-FROM album, genre;
-```
-
-## Upload API
-
-Only admins can upload files. Uploads are stored locally and served publicly from
-`/uploads`.
-
-Use this header for both upload endpoints:
-
-```text
-Authorization: Bearer your_admin_access_token
-```
-
-### Upload Audio
-
-```http
-POST http://localhost:5000/api/upload/audio
-Content-Type: multipart/form-data
-```
-
-Postman Body:
-
-- Select `form-data`
-- Key: `file`
-- Type: `File`
-- Value: choose an MP3 file
-
-Rules:
-
-- Allowed MIME types: `audio/mpeg`, `audio/mp3`
-- Max size: `20MB`
-- Stored in: `uploads/audio/`
-
-Example response:
-
-```json
-{
-  "success": true,
-  "message": "Audio uploaded successfully",
-  "data": {
-    "url": "/uploads/audio/generated-file-name.mp3"
-  }
-}
-```
-
-Use `data.url` as `songs.file_url`.
-
-### Upload Cover
-
-```http
-POST http://localhost:5000/api/upload/cover
-Content-Type: multipart/form-data
-```
-
-Postman Body:
-
-- Select `form-data`
-- Key: `file`
-- Type: `File`
-- Value: choose a JPG, PNG, or WebP image
-
-Rules:
-
-- Allowed MIME types: `image/jpeg`, `image/png`, `image/webp`
-- Max size: `5MB`
-- Stored in: `uploads/covers/`
-
-Example response:
-
-```json
-{
-  "success": true,
-  "message": "Cover uploaded successfully",
-  "data": {
-    "url": "/uploads/covers/generated-file-name.jpg"
-  }
-}
-```
-
-Use `data.url` as `songs.cover_url`, `albums.cover_url`, or
-`artists.avatar_url`.
-
-### Changing To Cloudflare R2 Or AWS S3 Later
-
-The current upload logic lives in `src/middlewares/upload.middleware.js`.
-To switch to Cloudflare R2 or AWS S3 later, replace Multer `diskStorage` with a
-storage service that uploads the file buffer to R2/S3, then return the cloud URL
-from `src/controllers/upload.controller.js`. The routes can stay the same.
-
-## Like API
-
-Only logged-in users can like or unlike songs. Use the access token from login:
-
-```text
-Authorization: Bearer your_access_token
-```
-
-### Like A Song
-
-```http
-POST http://localhost:5000/api/likes/
-Content-Type: application/json
-```
-
-```json
-{
-  "songId": "song_uuid"
-}
-```
-
-You can also send `song_id`. If the user already liked the song, the API returns
-a success response and does not create a duplicate row.
-
-### Unlike A Song
-
-```http
-DELETE http://localhost:5000/api/likes/
-Content-Type: application/json
-```
-
-```json
-{
-  "songId": "song_uuid"
-}
-```
-
-If the user has not liked the song yet, the API returns a success response with
-the message `Song was not liked`.
-
-### Get My Liked Songs
-
-```http
-GET http://localhost:5000/api/likes/me?page=1&limit=10
-```
-
-The response includes liked active songs joined with artist, album, and genre
-information.
-
-## Playlist API
-
-Only logged-in users can use playlist APIs.
-
-```text
-Authorization: Bearer your_access_token
-```
-
-Users can modify only their own playlists. Other logged-in users can view public
-playlists. Admins can view playlist details, but playlist editing is still owner
-only.
-
-### Create Playlist
-
-```http
-POST http://localhost:5000/api/playlists
-Content-Type: application/json
-```
-
-```json
-{
-  "name": "My Favorite Songs",
-  "is_public": false
-}
-```
-
-### Get My Playlists
-
-```http
-GET http://localhost:5000/api/playlists/me?page=1&limit=10
-```
-
-### Get Public Playlists
-
-```http
-GET http://localhost:5000/api/playlists?page=1&limit=10
-```
-
-### Get Playlist Detail
-
-```http
-GET http://localhost:5000/api/playlists/playlist_uuid
-```
-
-The response includes songs inside the playlist with artist, album, and genre
-information.
-
-### Update Playlist
-
-```http
-PUT http://localhost:5000/api/playlists/playlist_uuid
-Content-Type: application/json
-```
-
-```json
-{
-  "name": "Updated Playlist Name",
-  "is_public": true
-}
-```
-
-### Delete Playlist
-
-```http
-DELETE http://localhost:5000/api/playlists/playlist_uuid
-```
-
-### Add Song To Playlist
-
-```http
-POST http://localhost:5000/api/playlists/playlist_uuid/songs
-Content-Type: application/json
-```
-
-```json
-{
-  "songId": "song_uuid",
-  "position": 0
-}
-```
-
-`position` is optional. If omitted, the song is added to the end. The same song
-cannot be added twice to one playlist, and inactive songs cannot be added.
-
-### Remove Song From Playlist
-
-```http
-DELETE http://localhost:5000/api/playlists/playlist_uuid/songs/song_uuid
-```
-
-You can also send the song id in JSON body:
-
-```http
-DELETE http://localhost:5000/api/playlists/playlist_uuid/songs
-Content-Type: application/json
-```
-
-```json
-{
-  "songId": "song_uuid"
-}
-```
-
-### Reorder Playlist Songs
-
-```http
-PATCH http://localhost:5000/api/playlists/playlist_uuid/songs/reorder
-Content-Type: application/json
-```
-
-```json
-{
-  "songs": [
-    {
-      "songId": "first_song_uuid",
-      "position": 0
-    },
-    {
-      "songId": "second_song_uuid",
-      "position": 1
-    }
-  ]
-}
-```
-
-## Listening History And Play Count
-
-### Listen To Song
-
-Guest and logged-in users can call the same endpoint:
-
-```http
-POST http://localhost:5000/api/songs/song_uuid/listen
-```
-
-Guest request:
-
-- Do not send `Authorization`
-- The API increases `songs.play_count`
-- No listening history is saved
-
-Logged-in request:
-
-```text
-Authorization: Bearer your_access_token
-```
-
-- The API increases `songs.play_count`
-- A row is inserted into `listening_history`
-
-Inactive songs cannot be listened to.
-
-### Get My Listening History
-
-```http
-GET http://localhost:5000/api/history/me?page=1&limit=10
-Authorization: Bearer your_access_token
-```
-
-The response includes recently listened active songs joined with artist, album,
-and genre information.
-
-### Clear My Listening History
-
-```http
-DELETE http://localhost:5000/api/history/me
-Authorization: Bearer your_access_token
-```
-
-## Admin Dashboard API
-
-Run this migration if your database was created before the admin ban feature:
-
-```bash
-psql -U postgres -d music_streaming -f src/db/migrations/001_add_is_banned_to_users.sql
-```
-
-Make an existing account an admin:
-
-```sql
-UPDATE users
-SET role = 'admin'
-WHERE email = 'admin@example.com';
-```
-
-Login again after changing the role, then use:
-
-```text
-Authorization: Bearer your_admin_access_token
-```
-
-### Dashboard
-
-```http
-GET http://localhost:5000/api/admin/dashboard
-```
-
-Returns:
-
-- `total_users`
-- `total_songs`
-- `total_artists`
-- `total_albums`
-- `total_genres`
-- `total_play_count`
-- `top_songs`
-- `newest_users`
-
-### List Users
-
-```http
-GET http://localhost:5000/api/admin/users?page=1&limit=10
-```
-
-Optional filters:
-
-```http
-GET http://localhost:5000/api/admin/users?q=user&role=user
-```
-
-The response does not include `password_hash`.
-
-### Change User Role
-
-```http
-PATCH http://localhost:5000/api/admin/users/user_uuid/role
-Content-Type: application/json
-```
-
-```json
-{
-  "role": "admin"
-}
-```
-
-Allowed roles: `user`, `admin`.
-
-### Ban User
-
-```http
-PATCH http://localhost:5000/api/admin/users/user_uuid/ban
-```
-
-Admins cannot ban themselves. Banning a user also revokes their active refresh
-tokens.
-
-### Unban User
-
-```http
-PATCH http://localhost:5000/api/admin/users/user_uuid/unban
-```
+## Frontend Pages
+
+### User-facing (`/`)
+
+| Page | Route | Description |
+|---|---|---|
+| Home | `/` | Song grid, recently played, trending |
+| Search | `/search` | Search songs and artists |
+| Feed | `/feed` | Songs from followed artists |
+| Liked Songs | `/liked` | User's liked songs |
+| Playlists | `/playlists` | User's playlists |
+| Playlist Detail | `/playlists/[id]` | Playlist with tracks |
+| Artists | `/artists` | Browse artists |
+| Artist Detail | `/artists/[id]` | Artist profile and songs |
+| Albums | `/albums` | Browse albums |
+| Album Detail | `/albums/[id]` | Album with tracks |
+| Songs | `/songs` | Browse all songs |
+| Upload | `/upload` | Upload a new track |
+| Profile | `/profile` | Edit profile, avatar |
+
+### Admin (`/admin`)
+
+| Page | Route | Description |
+|---|---|---|
+| Dashboard | `/admin` | Overview stats |
+| Users | `/admin/users` | Manage users, roles, bans |
+| Songs | `/admin/songs` | Manage songs |
+| Playlists | `/admin/playlists` | Manage playlists |
+| Artists | `/admin/artists` | Manage artists |
+| Albums | `/admin/albums` | Manage albums |
+| Genres | `/admin/genres` | Manage genres |
+| Upload | `/admin/upload` | Admin file upload |
+
+## Key Architecture Decisions
+
+- **Cloudinary for all file storage** — audio uploaded as `resource_type: video`,
+  images as `image`. No local disk storage.
+- **JWT + Refresh Token** — access tokens are short-lived (15 min), refresh
+  tokens are hashed with bcrypt and stored in `refresh_tokens` table.
+- **Zustand player store** — all player state (current song, queue, shuffle,
+  repeat, seek) managed in a single Zustand store. Audio playback is handled by
+  `PlayerProvider` which syncs HTML5 Audio with the store.
+- **Soft delete for songs** — `DELETE /songs/:id` sets `is_active = false`
+  instead of removing the row.
+- **`api.ts` is the single HTTP client** — all frontend API calls go through
+  `frontend/src/lib/api.ts`. No scattered `fetch()` calls.
