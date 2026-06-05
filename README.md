@@ -4,6 +4,8 @@
 
 A premium, full-stack, responsive music streaming application built as a portfolio showcase.
 
+**🌐 Live Demo:** [music-streaming-inky-five.vercel.app](https://music-streaming-inky-five.vercel.app)
+
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![React 19](https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react)](https://react.dev/)
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
@@ -375,6 +377,7 @@ Manual validation is documented in [TEST_PLAN.md](file:///E:/music/TEST_PLAN.md)
 
 ## 🌐 Deployment Overview
 
+- **Live Demo**: [music-streaming-inky-five.vercel.app](https://music-streaming-inky-five.vercel.app)
 - **Backend Node API**: Designed for hosting on Heroku, Railway, Render, or ECS.
 - **Frontend App**: Serverless hosting optimized for Vercel or Netlify.
 - **PostgreSQL**: Cloud hosting via Supabase, Neon, or RDS.
