@@ -32,11 +32,11 @@ This **Music Streaming Web App** is a portfolio-ready, full-stack streaming plat
 ### 🎧 User Experience & Core Engine
 
 - **Stateful Audio Player**: Implements a Zustand-backed music player supporting continuous playback, queue management, volume controls, progression scrubbing, random shuffle, and various loop states (loop-track, loop-all, loop-off).
-- **Direct Cloud Uploads**: High-performance streaming media management. Both cover art and audio files are securely handled in memory and directly uploaded to **Cloudinary** (no local server-side files).
+- **Cloudinary-backed Uploads**: New audio, cover, and avatar uploads are handled by **Multer** with **CloudinaryStorage**, then persisted as Cloudinary URLs in PostgreSQL. The backend still exposes `/uploads` as a static path for existing or legacy local media assets.
 - **Waveform Visualization**: Generates, renders, and caches audio waveform peak data via **WaveSurfer.js** to deliver interactive audio player aesthetics.
 - **Dynamic Content Discovery**:
   - **Personalized Feed**: A chronological pipeline displaying new releases specifically from artists the user is following.
-  - **Fuzzy Search**: Multi-model backend search suggestions across songs and artists powered by PostgreSQL trigram indexes.
+  - **Realtime Search**: Multi-model backend search suggestions across songs and artists using PostgreSQL `ILIKE` queries backed by trigram indexes.
   - **Recent Activity**: Logged-in user activity tracking via deduplicated recently played items and full listening history.
 
 ### 🛡️ Platform Security & Session Management
@@ -68,7 +68,7 @@ graph TD
     subgraph Backend [Express API Gateway]
         Express[Express Router]
         AuthMD[Auth Middleware]
-        UploadMD[Multer & Cloudinary Storage]
+        UploadMD[Multer & CloudinaryStorage]
         Controller[Controllers]
         Service[Business Logic Services]
     end
@@ -76,6 +76,7 @@ graph TD
     subgraph Database & Media Services [Infrastructure]
         PG[(PostgreSQL Database)]
         Cloudinary[Cloudinary CDN]
+        LocalUploads[/uploads static legacy assets]
     end
 
     UI --> Zustand
@@ -88,7 +89,8 @@ graph TD
     UploadMD -->|Upload Streams| Cloudinary
     Controller --> Service
     Service -->|pg Pool Query| PG
-    UploadMD -->|Return Cloud URL| Service
+    UploadMD -->|Return Cloudinary URL| Service
+    Express -->|Serve existing files| LocalUploads
 ```
 
 ---
@@ -268,26 +270,36 @@ Create a `.env` file in the root directory from `.env.example`:
 NODE_ENV=development
 PORT=5000
 
-# PostgreSQL Configuration
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=music_streaming
 DB_USER=postgres
 DB_PASSWORD=your_postgres_password
 DB_SSL=false
+DB_POOL_MAX=5
+DB_CONNECTION_TIMEOUT_MS=15000
+DB_IDLE_TIMEOUT_MS=30000
 
-# Session Security Keys
-JWT_ACCESS_SECRET=at_least_32_characters_random_string
+# Supabase Shared Pooler for IPv4 networks:
+# DB_HOST=aws-1-ap-southeast-1.pooler.supabase.com
+# DB_PORT=6543
+# DB_NAME=postgres
+# DB_USER=postgres.your_project_ref
+# DB_PASSWORD=your_supabase_database_password
+# DB_SSL=true
+#
+# Or use DATABASE_URL. Percent-encode special characters in password:
+# DATABASE_URL=postgresql://postgres.your_project_ref:your_encoded_password@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres
+
+FRONTEND_URL=http://localhost:3000
+
+JWT_ACCESS_SECRET=replace_with_at_least_32_random_characters
 JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_TOKEN_EXPIRES_DAYS=7
 
-# Cloudinary Credentials
 CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-
-# CORS / Origin Settings
-FRONTEND_URL=http://localhost:3000
 ```
 
 #### 2. Configure the Database
@@ -311,7 +323,7 @@ cd frontend
 npm install
 ```
 
-Create a `frontend/.env.local` file:
+Create a `frontend/.env.local` file from `frontend/.env.example`:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
 ```
@@ -326,20 +338,25 @@ Open `http://localhost:3000` to interact with the application.
 
 ## 🔌 API Endpoints
 
-All endpoints are prefix-guarded under `/api`.
+All routes are mounted under `/api`. Paths below are relative to each module base path.
 
-| Module | Route Endpoint | Authentication | Actions |
+| Module | Base Path | Authentication | Implemented Endpoints |
 |---|---|---|---|
-| **Auth** | `/api/auth` | Optional | Register, Login, Refresh, Logout, Me, Edit Profile, Avatar Upload |
-| **Songs** | `/api/songs` | Optional | Search, Get by ID, Listen Logger, Save Waveform, Upload Tracks |
-| **Playlists**| `/api/playlists` | User Session | CRUD Playlists, Track Addition, Reordering, Track Deletion |
-| **Likes** | `/api/likes` | User Session | Like, Unlike, Fetch Liked Songs |
-| **Follows** | `/api/follow` | User Session | Toggle Follow, Get Follow Status, List Following |
-| **Feed** | `/api/feed` | User Session | Retrieve Chronological Followed Releases |
-| **Search** | `/api/search` | Open | Live Unified Search (Artists + Songs) |
-| **History** | `/api/history` | User Session | Fetch Listening Log, Clear History |
-| **Admin** | `/api/admin` | Admin Session | System Dashboard, Users List, User Role Curation, User Ban/Unban |
-| **Metadata** | `/api/artists`, `/api/albums`, `/api/genres` | Mixed | Read (Open) / Write (Admin Only) |
+| **Health** | `/api/health` | Open | `GET /` |
+| **Auth** | `/api/auth` | Mixed | `POST /register`, `POST /login`, `POST /refresh`, `POST /logout`, `GET /me`, `PATCH /me`, `POST /me/avatar` |
+| **Songs** | `/api/songs` | Mixed | `GET /`, `GET /search`, `GET /me`, `GET /:id`, `GET /:id/waveform`, `POST /:id/waveform`, `POST /upload`, `POST /:id/listen`, `PATCH /:id/play`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
+| **Upload** | `/api/upload` | Admin Session | `POST /audio`, `POST /cover` |
+| **Playlists** | `/api/playlists` | User Session | `POST /`, `GET /me`, `GET /`, `GET /:id`, `PUT /:id`, `DELETE /:id`, `POST /:id/songs`, `POST /:id/tracks`, `POST /:id/upload-track`, `DELETE /:id/songs/:songId`, `DELETE /:id/tracks/:songId`, `DELETE /:id/songs`, `DELETE /:id/tracks`, `PATCH /:id/songs/reorder`, `PATCH /:id/tracks/reorder` |
+| **Likes** | `/api/likes` | User Session | `POST /`, `DELETE /`, `GET /me` |
+| **Recently Played** | `/api/recently-played` | Mixed | `POST /` with optional auth, `GET /` with user session |
+| **Follows** | `/api/follow` | User Session | `GET /following`, `GET /status/:artistId`, `POST /:userId`, `DELETE /:userId` |
+| **Feed** | `/api/feed` | User Session | `GET /` |
+| **Search** | `/api/search` | Open | `GET /` |
+| **History** | `/api/history` | User Session | `GET /me`, `DELETE /me` |
+| **Artists** | `/api/artists` | Mixed | `GET /`, `GET /:id/songs`, `GET /:id`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
+| **Albums** | `/api/albums` | Mixed | `GET /`, `GET /:id`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
+| **Genres** | `/api/genres` | Mixed | `GET /`, `GET /:id`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
+| **Admin** | `/api/admin` | Admin Session | `GET /dashboard`, `GET /users`, `GET /playlists`, `DELETE /playlists/:id`, `PATCH /users/:id/role`, `PATCH /users/:id/ban`, `PATCH /users/:id/unban` |
 
 ---
 
@@ -361,4 +378,4 @@ Manual validation is documented in [TEST_PLAN.md](file:///E:/music/TEST_PLAN.md)
 - **Backend Node API**: Designed for hosting on Heroku, Railway, Render, or ECS.
 - **Frontend App**: Serverless hosting optimized for Vercel or Netlify.
 - **PostgreSQL**: Cloud hosting via Supabase, Neon, or RDS.
-- **Media Assets**: Distributed and managed globally through Cloudinary CDN.
+- **Media Assets**: New uploads are distributed through Cloudinary CDN. Existing `/uploads` local assets still require persistent server storage unless they are migrated to Cloudinary URLs.
