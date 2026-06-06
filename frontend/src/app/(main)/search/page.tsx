@@ -392,11 +392,13 @@ function SearchPageContent() {
                     )}
                   </div>
                   <SongList
-                    songs={songs.slice(0, 6)}
+                    songs={songs}
                     loading={false}
                     error={songError}
                     emptyMessage={`No songs found for "${activeKeyword}".`}
-                    canLoadMore={false}
+                    canLoadMore={canLoadMore}
+                    loadingMore={loadingMore}
+                    onLoadMore={handleLoadMore}
                     variant="list"
                   />
                 </section>

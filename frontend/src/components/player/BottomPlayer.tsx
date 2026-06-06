@@ -87,7 +87,7 @@ export function BottomPlayer() {
         "w-[calc(100%-24px)] h-[64px] rounded-xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-xl shadow-2xl",
         "md:w-[calc(100%-32px)] md:max-w-6xl md:h-[68px] md:rounded-2xl md:shadow-[0_8px_32px_rgba(0,0,0,0.7)]",
         currentSong
-          ? "bottom-3 md:bottom-4 translate-y-0 opacity-100 pointer-events-auto"
+          ? "bottom-20 md:bottom-4 translate-y-0 opacity-100 pointer-events-auto"
           : "bottom-0 translate-y-32 opacity-0 pointer-events-none"
       )}
     >

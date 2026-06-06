@@ -383,7 +383,7 @@ export default function PublicUserProfilePage() {
               </div>
             )
           ) : playlistsLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
               {Array.from({ length: 4 }).map((_, index) => (
                 <div
                   key={index}
@@ -401,7 +401,7 @@ export default function PublicUserProfilePage() {
               description="This user has not shared any playlists yet."
             />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
               {playlists.map((playlist) => {
                 const title = playlist.title || playlist.name || "Playlist";
                 const trackCount = playlist.track_count ?? playlist.song_count ?? 0;

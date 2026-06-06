@@ -11,6 +11,7 @@ A premium, full-stack, responsive music streaming application built as a portfol
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![Zustand](https://img.shields.io/badge/Zustand-State-black?style=for-the-badge)](https://zustand-demo.pmnd.rs/)
+[![WaveSurfer.js](https://img.shields.io/badge/WaveSurfer.js-Waveform-637CDB?style=for-the-badge)](https://wavesurfer.xyz/)
 
 [![Node.js 18](https://img.shields.io/badge/Node.js-18-339933?style=for-the-badge&logo=nodedotjs)](https://nodejs.org/)
 [![Express 5](https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express)](https://expressjs.com/)
@@ -36,10 +37,23 @@ This **Music Streaming Web App** is a portfolio-ready, full-stack streaming plat
 - **Stateful Audio Player**: Implements a Zustand-backed music player supporting continuous playback, queue management, volume controls, progression scrubbing, random shuffle, and various loop states (loop-track, loop-all, loop-off).
 - **Cloudinary-backed Uploads**: New audio, cover, and avatar uploads are handled by **Multer** with **CloudinaryStorage**, then persisted as Cloudinary URLs in PostgreSQL. The backend still exposes `/uploads` as a static path for existing or legacy local media assets.
 - **Waveform Visualization**: Generates, renders, and caches audio waveform peak data via **WaveSurfer.js** to deliver interactive audio player aesthetics.
+- **User Track Upload**: Authenticated users can upload their own tracks (MP3 + cover art) via a drag-and-drop upload page, with automatic notification on successful upload.
 - **Dynamic Content Discovery**:
   - **Personalized Feed**: A chronological pipeline displaying new releases specifically from artists the user is following.
   - **Realtime Search**: Multi-model backend search suggestions across songs and artists using PostgreSQL `ILIKE` queries backed by trigram indexes.
   - **Recent Activity**: Logged-in user activity tracking via deduplicated recently played items and full listening history.
+
+### 💬 Social & Engagement
+
+- **Song Comments**: Threaded comment system on individual song pages, supporting nested replies, comment deletion by owner, and artist verification badges.
+- **Likes & Library**: Users can like/unlike songs and access a dedicated Liked Songs collection page with Play All functionality.
+- **Public User Profiles**: SoundCloud-style profile pages (`/users/:id`) displaying a user's uploaded tracks, public playlists, and follower/following lists with interactive modals.
+- **Follow System**: Users can follow/unfollow other users and artists, with public follower/following list browsing for any user profile.
+
+### 🔔 Notifications
+
+- **User Notifications**: Real-time notification bell with unread count badge, dropdown notification list, and mark-as-read/mark-all-as-read actions. Notification types include upload success, comments, replies, and follows.
+- **Admin Broadcasting**: Administrators can send targeted notifications to specific users or broadcast announcements to all users, with a full notification history log.
 
 ### 🛡️ Platform Security & Session Management
 
@@ -51,6 +65,7 @@ This **Music Streaming Web App** is a portfolio-ready, full-stack streaming plat
 
 - **System Analytics**: Real-time summary counts of users, tracks, playlists, genres, and aggregate play counts, plus a listing of top songs and newly registered profiles.
 - **Administrative Utilities**: Dedicated panel views to manage system users (role elevation, banning), delete public/private playlists, soft-delete tracks (`is_active = false`), and perform administrative metadata curation.
+- **Notification Management**: Admin panel for sending broadcast or targeted notifications to users, with a history log of all sent notifications.
 
 ---
 
@@ -155,6 +170,13 @@ erDiagram
         boolean is_active
     }
 
+    likes {
+        uuid id PK
+        uuid user_id FK
+        uuid song_id FK
+        timestamptz liked_at
+    }
+
     playlists {
         uuid id PK
         uuid user_id FK
@@ -200,18 +222,61 @@ erDiagram
         timestamptz createdAt
     }
 
+    notifications {
+        uuid id PK
+        uuid user_id FK
+        uuid actor_id FK
+        varchar type
+        varchar entity_type
+        uuid entity_id
+        varchar title
+        text message
+        boolean is_read
+        timestamptz created_at
+    }
+
+    admin_notification_logs {
+        uuid id PK
+        uuid actor_id FK
+        varchar target_type
+        uuid target_user_id FK
+        jsonb target_user_ids
+        varchar title
+        text message
+        integer sent_count
+        timestamptz created_at
+    }
+
+    song_comments {
+        uuid id PK
+        uuid song_id FK
+        uuid user_id FK
+        uuid parent_id FK
+        text content
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
     users ||--o| artists : "manages"
     users ||--o{ playlists : "creates"
+    users ||--o{ likes : "likes"
     users ||--o{ refresh_tokens : "owns"
     users ||--o{ listening_history : "records"
     users ||--o{ recently_played : "views"
     users ||--o{ follows : "engages"
+    users ||--o{ notifications : "receives"
+    users ||--o{ admin_notification_logs : "sends"
+    users ||--o{ song_comments : "writes"
 
     artists ||--o{ albums : "releases"
     artists ||--o{ songs : "composes"
 
     albums ||--o{ songs : "includes"
     genres ||--o{ songs : "classifies"
+
+    songs ||--o{ likes : "liked_by"
+    songs ||--o{ song_comments : "has"
+    song_comments ||--o{ song_comments : "replies_to"
 
     playlists ||--o{ playlist_songs : "contains"
     songs ||--o{ playlist_songs : "references"
@@ -229,6 +294,8 @@ erDiagram
 │   ├── config/               # DB connections & Cloudinary settings
 │   ├── controllers/          # Request routers & response formatters
 │   ├── db/                   # Raw SQL schema & migrations
+│   │   ├── schema.sql        # Main schema (12 tables)
+│   │   └── migrations/       # Incremental migrations (notifications, comments)
 │   ├── middlewares/          # Security, error boundaries, uploads
 │   ├── routes/               # Modular Express routing tree
 │   ├── services/             # Transaction scopes & database queries
@@ -239,9 +306,41 @@ erDiagram
 ├── frontend/                 # Frontend Interface (Next.js 16)
 │   └── src/
 │       ├── app/              # Page router, layout hierarchy
-│       │   ├── (main)/       # Main landing, feed, library pages
-│       │   └── admin/        # Dashboard & metadata management
-│       ├── components/       # Component library (player, layout, admin UI)
+│       │   ├── login/        # Login page
+│       │   ├── register/     # Registration page
+│       │   ├── (main)/       # Main app pages
+│       │   │   ├── (home)    # Landing page with genre carousels
+│       │   │   ├── search/   # Multi-tab search (songs, artists, genres)
+│       │   │   ├── feed/     # Personalized feed from followed artists
+│       │   │   ├── liked/    # Liked songs collection
+│       │   │   ├── playlists/# Playlist management & detail views
+│       │   │   ├── profile/  # User own profile (edit, avatar, tabs)
+│       │   │   ├── upload/   # User track upload (drag-and-drop)
+│       │   │   ├── songs/    # Song detail with waveform & comments
+│       │   │   ├── artists/  # Artist profile pages
+│       │   │   ├── albums/   # Album detail pages
+│       │   │   └── users/    # Public user profile pages
+│       │   └── admin/        # Admin panel
+│       │       ├── songs/    # Song CRUD management
+│       │       ├── upload/   # Admin media upload
+│       │       ├── artists/  # Artist CRUD management
+│       │       ├── albums/   # Album CRUD management
+│       │       ├── genres/   # Genre CRUD management
+│       │       ├── playlists/# Playlist management
+│       │       ├── users/    # User management (roles, bans)
+│       │       └── notifications/ # Notification broadcasting
+│       ├── components/       # Component library
+│       │   ├── auth/         # AuthProvider, ProtectedRoute
+│       │   ├── follow/       # FollowProvider, FollowListModal
+│       │   ├── layout/       # AppShell, Sidebar, AdminShell, Header
+│       │   ├── library/      # LibraryTabs
+│       │   ├── like/         # LikeProvider
+│       │   ├── notification/ # NotificationBell with unread badge
+│       │   ├── player/       # BottomPlayer, PlayerProvider
+│       │   ├── playlist/     # PlaylistProvider, PlaylistForm
+│       │   ├── song/         # SongCard, WaveformPlayer, Comments
+│       │   ├── ui/           # AuthForm, DataTable, Icons, Skeletons
+│       │   └── admin/        # AdminNotice, AdminTable
 │       ├── lib/              # Central API Wrapper client (api.ts)
 │       ├── stores/           # Zustand audio player store
 │       └── types/            # App-wide TypeScript definitions
@@ -346,19 +445,22 @@ All routes are mounted under `/api`. Paths below are relative to each module bas
 |---|---|---|---|
 | **Health** | `/api/health` | Open | `GET /` |
 | **Auth** | `/api/auth` | Mixed | `POST /register`, `POST /login`, `POST /refresh`, `POST /logout`, `GET /me`, `PATCH /me`, `POST /me/avatar` |
-| **Songs** | `/api/songs` | Mixed | `GET /`, `GET /search`, `GET /me`, `GET /:id`, `GET /:id/waveform`, `POST /:id/waveform`, `POST /upload`, `POST /:id/listen`, `PATCH /:id/play`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
+| **Songs** | `/api/songs` | Mixed | `GET /`, `GET /search`, `GET /me`, `GET /:id`, `GET /:id/waveform`, `POST /:id/waveform`, `POST /upload`, `POST /:id/listen`, `PATCH /:id/play`, `GET /:songId/comments`, `POST /:songId/comments`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
+| **Comments** | `/api/comments` | User Session | `DELETE /:commentId` |
 | **Upload** | `/api/upload` | Admin Session | `POST /audio`, `POST /cover` |
 | **Playlists** | `/api/playlists` | User Session | `POST /`, `GET /me`, `GET /`, `GET /:id`, `PUT /:id`, `DELETE /:id`, `POST /:id/songs`, `POST /:id/tracks`, `POST /:id/upload-track`, `DELETE /:id/songs/:songId`, `DELETE /:id/tracks/:songId`, `DELETE /:id/songs`, `DELETE /:id/tracks`, `PATCH /:id/songs/reorder`, `PATCH /:id/tracks/reorder` |
 | **Likes** | `/api/likes` | User Session | `POST /`, `DELETE /`, `GET /me` |
 | **Recently Played** | `/api/recently-played` | Mixed | `POST /` with optional auth, `GET /` with user session |
-| **Follows** | `/api/follow` | User Session | `GET /following`, `GET /status/:artistId`, `POST /:userId`, `DELETE /:userId` |
+| **Follows** | `/api/follow` | Mixed | `GET /following`, `GET /status/:artistId`, `POST /:userId`, `DELETE /:userId`, `GET /list/:userId/followers`, `GET /list/:userId/following` |
 | **Feed** | `/api/feed` | User Session | `GET /` |
 | **Search** | `/api/search` | Open | `GET /` |
 | **History** | `/api/history` | User Session | `GET /me`, `DELETE /me` |
+| **Notifications** | `/api/notifications` | User Session | `GET /`, `GET /unread-count`, `PATCH /read-all`, `PATCH /:id/read` |
+| **Users** | `/api/users` | Open | `GET /:id`, `GET /:id/songs`, `GET /:id/playlists` |
 | **Artists** | `/api/artists` | Mixed | `GET /`, `GET /:id/songs`, `GET /:id`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
 | **Albums** | `/api/albums` | Mixed | `GET /`, `GET /:id`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
 | **Genres** | `/api/genres` | Mixed | `GET /`, `GET /:id`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
-| **Admin** | `/api/admin` | Admin Session | `GET /dashboard`, `GET /users`, `GET /playlists`, `DELETE /playlists/:id`, `PATCH /users/:id/role`, `PATCH /users/:id/ban`, `PATCH /users/:id/unban` |
+| **Admin** | `/api/admin` | Admin Session | `GET /dashboard`, `GET /users`, `GET /users/options`, `GET /playlists`, `DELETE /playlists/:id`, `PATCH /users/:id/role`, `PATCH /users/:id/ban`, `PATCH /users/:id/unban`, `POST /notifications/send`, `POST /notifications/broadcast`, `GET /notifications/history` |
 
 ---
 

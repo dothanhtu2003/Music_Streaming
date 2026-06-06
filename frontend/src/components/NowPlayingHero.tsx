@@ -89,7 +89,7 @@ export function NowPlayingHero({ song }: NowPlayingHeroProps) {
               </div>
 
               <Link href={`/songs/${song.id}`} className="group mt-2 block">
-                <h1 className="truncate text-2xl font-black text-white transition group-hover:text-orange-400 sm:text-3xl lg:text-4xl tracking-tight leading-tight">
+                <h1 className="line-clamp-2 whitespace-normal text-2xl font-black text-white transition group-hover:text-orange-400 sm:text-3xl lg:text-4xl tracking-tight leading-tight">
                   {song.title}
                 </h1>
               </Link>

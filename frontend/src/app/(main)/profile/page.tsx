@@ -611,7 +611,7 @@ function PlaylistGrid({
 }) {
   if (loading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
@@ -647,7 +647,7 @@ function PlaylistGrid({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
       {playlists.map((playlist) => {
         const title = playlist.title || playlist.name || "Playlist";
         const trackCount = playlist.track_count ?? playlist.song_count ?? 0;
@@ -1206,7 +1206,8 @@ export default function ProfilePage() {
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between -mt-14 sm:-mt-16 md:-mt-20 gap-4 mb-5">
             <ProfileAvatar username={username} avatarUrl={avatarUrl} />
             
-            <div className="flex flex-wrap items-center gap-3">
+            {/* Desktop Actions */}
+            <div className="hidden sm:flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={() => {
@@ -1247,52 +1248,105 @@ export default function ProfilePage() {
           </div>
 
           {/* Details list */}
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex rounded-full border border-orange-400/30 bg-orange-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-orange-300">
-                {profileLabel}
-              </span>
-              {roleLabel !== "user" && (
-                <span className="inline-flex rounded-full border border-white/10 bg-black/35 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-300">
-                  Role: {roleLabel}
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex rounded-full border border-orange-400/30 bg-orange-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-orange-300">
+                  {profileLabel}
                 </span>
-              )}
-            </div>
+                {roleLabel !== "user" && (
+                  <span className="inline-flex rounded-full border border-white/10 bg-black/35 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-300">
+                    Role: {roleLabel}
+                  </span>
+                )}
+              </div>
 
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                {username}
-              </h1>
-              <p className="text-sm text-zinc-450 mt-0.5">
-                {user.email}
-              </p>
-              {profile.bio && (
-                <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-zinc-300">
-                  {profile.bio}
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                  {username}
+                </h1>
+                <p className="text-sm text-zinc-450 mt-0.5">
+                  {user.email}
                 </p>
-              )}
+                {profile.bio && (
+                  <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-zinc-300">
+                    {profile.bio}
+                  </p>
+                )}
+              </div>
+
+              {/* Profile Stats with premium styling and responsive wrapping */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider select-none pt-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveFollowModal("followers")}
+                  className="hover:text-white transition cursor-pointer focus:outline-none text-left"
+                >
+                  <span className="text-white font-extrabold mr-1">{user.followersCount ?? 0}</span>
+                  {user.followersCount === 1 ? "follower" : "followers"}
+                </button>
+                <span className="text-zinc-800 hidden sm:inline select-none">&bull;</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveFollowModal("following")}
+                  className="hover:text-white transition cursor-pointer focus:outline-none text-left"
+                >
+                  <span className="text-white font-extrabold mr-1">{user.followingCount ?? following.length}</span>
+                  following
+                </button>
+                <span className="text-zinc-800 hidden sm:inline select-none">&bull;</span>
+                <div>
+                  <span className="text-white font-extrabold mr-1">{myTracks.length}</span>
+                  tracks
+                </div>
+                <span className="text-zinc-800 hidden sm:inline select-none">&bull;</span>
+                <div>
+                  <span className="text-white font-extrabold mr-1">{playlists.length}</span>
+                  playlists
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider select-none">
-              <button
-                type="button"
-                onClick={() => setActiveFollowModal("followers")}
-                className="hover:text-white transition cursor-pointer focus:outline-none"
-              >
-                {user.followersCount ?? 0} {user.followersCount === 1 ? "follower" : "followers"}
-              </button>
-              <span className="text-zinc-700 font-normal select-none">•</span>
-              <button
-                type="button"
-                onClick={() => setActiveFollowModal("following")}
-                className="hover:text-white transition cursor-pointer focus:outline-none"
-              >
-                {user.followingCount ?? following.length} following
-              </button>
-              <span className="text-zinc-700 font-normal select-none">•</span>
-              <span>{myTracks.length} tracks</span>
-              <span className="text-zinc-700 font-normal select-none">•</span>
-              <span>{playlists.length} playlists</span>
+            {/* Mobile Actions: clean grid and primary/secondary layout hierarchy */}
+            <div className="flex sm:hidden flex-col gap-2.5 pt-3.5 border-t border-zinc-900/60 w-full">
+              {canShowArtistActions && (
+                <Link
+                  href="/upload"
+                  className="flex h-11 items-center justify-center rounded-full bg-orange-500 text-sm font-black text-orange-950 transition active:scale-[0.98] shadow-md shadow-orange-500/10"
+                >
+                  Upload track
+                </Link>
+              )}
+
+              {roleLabel === "admin" && (
+                <Link
+                  href="/admin/songs"
+                  className="flex h-11 items-center justify-center rounded-full border border-zinc-700 bg-black/35 text-sm font-bold text-zinc-200 transition active:scale-[0.98]"
+                >
+                  Manage tracks
+                </Link>
+              )}
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileError(null);
+                    setEditProfileOpen(true);
+                  }}
+                  className="flex h-11 items-center justify-center rounded-full border border-zinc-700 bg-black/35 text-sm font-bold text-zinc-200 transition active:scale-[0.98]"
+                >
+                  Edit profile
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex h-11 items-center justify-center rounded-full border border-red-500/30 bg-black/35 text-sm font-bold text-red-300 transition active:scale-[0.98]"
+                >
+                  Log out
+                </button>
+              </div>
             </div>
           </div>
         </div>
