@@ -16,7 +16,19 @@ const buildArtistLinkedUserJoin = (userAlias = "u") => `
 
 const artistLinkedUserJoin = buildArtistLinkedUserJoin("u");
 
+/** SQL expression: user id that owns an artist row (user_id or username match). */
+const resolveArtistOwnerUserIdExpr = `COALESCE(
+  ar.user_id,
+  (
+    SELECT u2.id
+    FROM users u2
+    WHERE LOWER(u2.username) = LOWER(ar.name)
+    LIMIT 1
+  )
+)`;
+
 module.exports = {
   artistLinkedUserJoin,
   buildArtistLinkedUserJoin,
+  resolveArtistOwnerUserIdExpr,
 };

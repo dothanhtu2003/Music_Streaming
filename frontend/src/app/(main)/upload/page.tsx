@@ -123,7 +123,14 @@ export default function UploadPage() {
     e.stopPropagation();
     setIsDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setAudioFile(e.dataTransfer.files[0]);
+      const file = e.dataTransfer.files[0];
+      if (file.size > 50 * 1024 * 1024) {
+        setFormError("Audio file size must be 50MB or less.");
+        setAudioFile(null);
+        return;
+      }
+      setFormError(null);
+      setAudioFile(file);
     }
   };
 
@@ -156,6 +163,11 @@ export default function UploadPage() {
 
     if (!isMp3File(audioFile)) {
       setFormError("Only MP3 audio files are allowed.");
+      return;
+    }
+
+    if (audioFile.size > 50 * 1024 * 1024) {
+      setFormError("Audio file size must be 50MB or less.");
       return;
     }
 
@@ -291,9 +303,16 @@ export default function UploadPage() {
                     type="file"
                     accept=".mp3,audio/mpeg,audio/mp3"
                     disabled={saving}
-                    onChange={(event) =>
-                      setAudioFile(event.target.files ? event.target.files[0] : null)
-                    }
+                    onChange={(event) => {
+                      const file = event.target.files ? event.target.files[0] : null;
+                      if (file && file.size > 50 * 1024 * 1024) {
+                        setFormError("Audio file size must be 50MB or less.");
+                        setAudioFile(null);
+                        return;
+                      }
+                      setFormError(null);
+                      setAudioFile(file);
+                    }}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                   />
                   
@@ -307,6 +326,9 @@ export default function UploadPage() {
                   </p>
                   <p className="mt-1 text-xs text-zinc-500">
                     Drag & drop or <span className="text-orange-400 hover:text-orange-300 font-medium underline">click to browse</span>
+                  </p>
+                  <p className="mt-1.5 text-[10px] text-zinc-500">
+                    Maximum size: 50MB
                   </p>
                 </div>
               ) : (

@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useFollow } from "@/components/follow/FollowProvider";
+import { FollowListModal } from "@/components/follow/FollowListModal";
 import {
   ArtistTrackRow,
   ArtistTrackRowSkeleton,
@@ -236,6 +237,21 @@ export default function ArtistDetailPage() {
   const [songsLoading, setSongsLoading] = useState(true);
   const [artistError, setArtistError] = useState<string | null>(null);
   const [songsError, setSongsError] = useState<string | null>(null);
+  const [initialIsFollowing, setInitialIsFollowing] = useState<boolean | null>(null);
+  const [activeFollowModal, setActiveFollowModal] = useState<"followers" | "following" | null>(null);
+
+  const isArtistFollowed =
+    isFollowing(artist?.id) ||
+    Boolean(artist?.user_id && isFollowing(artist.user_id));
+
+  useEffect(() => {
+    if (artist && initialIsFollowing === null) {
+      const isFollowed = isArtistFollowed;
+      queueMicrotask(() => {
+        setInitialIsFollowing(isFollowed);
+      });
+    }
+  }, [artist, isArtistFollowed, initialIsFollowing]);
 
   const loadArtistSongs = useCallback((artistId: string) => {
     setSongsLoading(true);
@@ -289,6 +305,7 @@ export default function ArtistDetailPage() {
         setSongs([]);
         setTotalTracks(0);
         setActiveTab("all");
+        setInitialIsFollowing(null);
       }
     });
 
@@ -360,14 +377,24 @@ export default function ArtistDetailPage() {
     ]);
     const trackCount = Math.max(apiTrackCount, totalTracks, songs.length);
 
+    let followersCount = getArtistStat(artist, [
+      "followers_count",
+      "follower_count",
+      "followers",
+    ]);
+
+    if (initialIsFollowing !== null) {
+      if (isArtistFollowed && !initialIsFollowing) {
+        followersCount += 1;
+      } else if (!isArtistFollowed && initialIsFollowing) {
+        followersCount = Math.max(0, followersCount - 1);
+      }
+    }
+
     return {
       avatarUrl: getArtistAvatarUrl(artist),
       bannerUrl: resolveApiAssetUrl(artist.banner_url ?? artist.cover_url),
-      followersCount: getArtistStat(artist, [
-        "followers_count",
-        "follower_count",
-        "followers",
-      ]),
+      followersCount,
       followingCount: getArtistStat(artist, [
         "following_count",
         "followings_count",
@@ -375,7 +402,7 @@ export default function ArtistDetailPage() {
       ]),
       trackCount,
     };
-  }, [artist, songs.length, totalTracks]);
+  }, [artist, songs.length, totalTracks, isArtistFollowed, initialIsFollowing]);
 
   if (artistLoading) {
     return <ArtistPageSkeleton />;
@@ -404,8 +431,9 @@ export default function ArtistDetailPage() {
   const isSelf =
     Boolean(user?.id && artist.user_id && user.id === artist.user_id) ||
     user?.username?.toLowerCase() === artistName.toLowerCase();
-  const isArtistFollowed = isFollowing(artist.id);
-  const followLoading = actionId === artist.id;
+  const followLoading =
+    actionId === artist.id ||
+    Boolean(artist.user_id && actionId === artist.user_id);
   const bio = artist.bio?.trim() || "No biography available";
 
   const handleShareArtist = (event: MouseEvent<HTMLButtonElement>) => {
@@ -527,12 +555,22 @@ export default function ArtistDetailPage() {
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-zinc-400 select-none">
-              <span>
+              <button
+                type="button"
+                onClick={() => setActiveFollowModal("followers")}
+                className="hover:text-white transition cursor-pointer focus:outline-none"
+              >
                 {headerData.followersCount}{" "}
                 {headerData.followersCount === 1 ? "follower" : "followers"}
-              </span>
+              </button>
               <span className="text-zinc-700 select-none">&middot;</span>
-              <span>{headerData.followingCount} following</span>
+              <button
+                type="button"
+                onClick={() => setActiveFollowModal("following")}
+                className="hover:text-white transition cursor-pointer focus:outline-none"
+              >
+                {headerData.followingCount} following
+              </button>
               <span className="text-zinc-700 select-none">&middot;</span>
               <span>
                 {headerData.trackCount}{" "}
@@ -575,6 +613,15 @@ export default function ArtistDetailPage() {
           )}
         </div>
       </section>
+
+      {activeFollowModal && (
+        <FollowListModal
+          userId={artist.id}
+          type={activeFollowModal}
+          title={activeFollowModal === "followers" ? "Followers" : "Following"}
+          onClose={() => setActiveFollowModal(null)}
+        />
+      )}
     </div>
   );
 }

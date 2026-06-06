@@ -1,5 +1,6 @@
 const express = require("express");
 const songController = require("../controllers/song.controller");
+const commentController = require("../controllers/comment.controller");
 const {
   authMiddleware,
   optionalAuthMiddleware,
@@ -26,5 +27,9 @@ router.delete(
   songController.deleteSong
 );
 router.patch("/:id/play", songController.incrementPlayCount);
+
+// Song Comments
+router.get("/:songId/comments", commentController.getComments);
+router.post("/:songId/comments", authMiddleware, commentController.createComment);
 
 module.exports = router;

@@ -12,6 +12,8 @@ export type AuthUser = {
   isBanned: boolean;
   createdAt: string;
   updatedAt: string;
+  followersCount?: number;
+  followingCount?: number;
 };
 
 export type LoginPayload = {

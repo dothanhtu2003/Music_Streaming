@@ -20,7 +20,10 @@ const artistSelect = `
   COALESCE(u.avatar_url, ar.avatar_url) AS avatar_url,
   ar.user_id,
   ar.created_at,
-  ar.updated_at
+  ar.updated_at,
+  COALESCE(u.is_verified, FALSE) AS is_verified,
+  COALESCE((SELECT COUNT(*)::int FROM follows WHERE "followingId" = u.id), 0) AS followers_count,
+  COALESCE((SELECT COUNT(*)::int FROM follows WHERE "followerId" = u.id), 0) AS following_count
 `;
 
 const artistFields = "id, name, bio, avatar_url, user_id, created_at, updated_at";
@@ -35,6 +38,9 @@ const formatArtist = (artist) => {
     user_id: artist.user_id,
     created_at: artist.created_at,
     updated_at: artist.updated_at,
+    followers_count: Number(artist.followers_count || 0),
+    following_count: Number(artist.following_count || 0),
+    is_verified: Boolean(artist.is_verified),
   };
 };
 

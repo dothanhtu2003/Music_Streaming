@@ -59,6 +59,7 @@ export default function Home() {
           genreResult.items.map(async (genre) => {
             const songResult = await getSongsRequest(1, GENRE_FETCH_LIMIT, {
               genre_id: genre.id,
+              sort: "random",
             });
 
             return {
@@ -199,7 +200,7 @@ export default function Home() {
       const result = await getSongsRequest(
         row.pagination.page + 1,
         GENRE_EXPANDED_DISPLAY_LIMIT,
-        { genre_id: genreId },
+        { genre_id: genreId, sort: "random" },
       );
 
       setGenreRows((currentRows) =>

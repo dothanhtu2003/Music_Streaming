@@ -25,4 +25,5 @@ export const adminNav: NavItem[] = [
   { label: "Genres", href: "/admin/genres" },
   { label: "Playlists", href: "/admin/playlists" },
   { label: "Users", href: "/admin/users" },
+  { label: "Notifications", href: "/admin/notifications" },
 ];

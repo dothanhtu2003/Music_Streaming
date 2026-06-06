@@ -1,4 +1,5 @@
 const adminService = require("../services/admin.service");
+const notificationService = require("../services/notification.service");
 const { successResponse } = require("../utils/apiResponse");
 
 const getDashboard = async (req, res, next) => {
@@ -18,6 +19,16 @@ const getUsers = async (req, res, next) => {
     return successResponse(res, "Users fetched successfully", result.items, 200, {
       pagination: result.pagination,
     });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getUserOptions = async (req, res, next) => {
+  try {
+    const users = await adminService.getUserOptions();
+
+    return successResponse(res, "User options fetched successfully", users);
   } catch (error) {
     return next(error);
   }
@@ -83,12 +94,73 @@ const unbanUser = async (req, res, next) => {
   }
 };
 
+const broadcastNotification = async (req, res, next) => {
+  try {
+    const result = await notificationService.createBroadcastNotification({
+      actorId: req.user.id,
+      title: req.body.title,
+      message: req.body.message,
+    });
+
+    return res.status(200).json({
+      success: true,
+      sent: result.sent,
+      message: "Broadcast notification sent successfully",
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const sendNotification = async (req, res, next) => {
+  try {
+    const result = await notificationService.createAdminNotification({
+      actorId: req.user.id,
+      targetType: req.body.targetType,
+      targetUserId: req.body.targetUserId,
+      targetUserIds: req.body.targetUserIds,
+      title: req.body.title,
+      message: req.body.message,
+    });
+
+    return res.status(200).json({
+      success: true,
+      sent: result.sent,
+      message: "Notification sent successfully",
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getNotificationHistory = async (req, res, next) => {
+  try {
+    const result = await notificationService.getAdminNotificationHistory(
+      req.query
+    );
+
+    return successResponse(
+      res,
+      "Notification history fetched successfully",
+      result.items,
+      200,
+      { pagination: result.pagination }
+    );
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getDashboard,
   getUsers,
+  getUserOptions,
   getPlaylists,
   deletePlaylist,
   updateUserRole,
   banUser,
   unbanUser,
+  broadcastNotification,
+  sendNotification,
+  getNotificationHistory,
 };

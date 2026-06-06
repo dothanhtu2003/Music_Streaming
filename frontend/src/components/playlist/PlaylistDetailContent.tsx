@@ -681,7 +681,7 @@ export function PlaylistDetailContent({
           </div>
 
           {playlistWaveformSong && (
-            <div className="mt-6 border-t border-zinc-800/80 pt-5">
+            <div className="mt-5 border-t border-zinc-900/40 pt-5">
               <WaveformPlayer
                 song={playlistWaveformSong}
                 audioUrl={getSongAudioUrl(playlistWaveformSong) ?? ""}

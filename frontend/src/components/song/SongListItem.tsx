@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { useLikes } from "@/components/like/LikeProvider";
 import { usePlaylists } from "@/components/playlist/PlaylistProvider";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,8 @@ import {
   UserIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  MusicIcon,
+  VerifiedBadge,
 } from "@/components/ui/Icons";
 import { usePlayerStore } from "@/stores/player-store";
 import type { Song } from "@/types/music";
@@ -47,7 +50,7 @@ export function SongListItem({
   isPlaylistOwner = false,
   canReorder = false,
 }: SongListItemProps) {
-
+  const { user } = useAuth();
   const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const playSong = usePlayerStore((state) => state.playSong);
@@ -62,6 +65,8 @@ export function SongListItem({
   const likeLoading = actionSongId === song.id;
   const coverUrl = getSongCoverUrl(song);
   const artistName = getArtistDisplayName(song.artist);
+  const isSelf = user?.id === song.artist.user_id || user?.username?.toLowerCase() === artistName.toLowerCase();
+  const isVerified = song.artist.is_verified;
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -148,8 +153,14 @@ export function SongListItem({
               {song.title}
             </h4>
           </Link>
-          <span className="block truncate text-xs text-zinc-400">
-            {artistName}
+          <span className="flex items-center gap-1.5 truncate text-xs text-zinc-400">
+            <span className="truncate">{artistName}</span>
+            {isVerified && <VerifiedBadge size={12} />}
+            {isSelf && (
+              <span className="inline-flex items-center rounded bg-orange-500/10 px-1.5 py-0.5 text-[9px] font-bold text-orange-400 border border-orange-500/20" title="This is you">
+                Bạn
+              </span>
+            )}
           </span>
         </div>
       </div>
@@ -159,8 +170,9 @@ export function SongListItem({
         <span className="w-24 truncate text-xs font-medium text-zinc-400">
           {getGenreName(song)}
         </span>
-        <span className="w-28 text-xs text-zinc-500">
-          {formatPlayCount(song.play_count)} plays
+        <span className="flex w-28 items-center gap-1.5 text-xs text-zinc-500" title={`${formatPlayCount(song.play_count)} plays`}>
+          <MusicIcon size={13} className="text-zinc-500 shrink-0" />
+          <span>{formatPlayCount(song.play_count)}</span>
         </span>
       </div>
 

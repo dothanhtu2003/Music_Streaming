@@ -37,16 +37,18 @@ export function SearchBox({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-r from-zinc-950 via-zinc-900/60 to-black p-5 shadow-xl",
+        "relative w-full",
         className,
       )}
       noValidate
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.03),transparent_40%)]" />
-      <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label htmlFor="search" className="sr-only">
-          Search songs, artists, albums
-        </label>
+      <div className="relative flex items-center">
+        {/* Search icon inside input */}
+        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-zinc-500">
+          <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
         <input
           id="search"
           name="q"
@@ -54,19 +56,19 @@ export function SearchBox({
           minLength={2}
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
-          placeholder="Search songs, artists..."
-          className="min-w-0 flex-1 rounded-full border border-zinc-800 bg-[#303030] px-5 py-3 text-sm text-white outline-none transition placeholder:text-zinc-400 focus:border-orange-500/70 focus:bg-[#303030] focus:ring-1 focus:ring-orange-500/30"
+          placeholder="Search tracks, artists..."
+          className="w-full rounded-full border border-zinc-800 bg-zinc-900/40 backdrop-blur-md py-2.5 pl-11 pr-24 text-xs text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-500/60 focus:bg-zinc-900/80 focus:ring-1 focus:ring-orange-500/20"
         />
         <button
           type="submit"
           disabled={loading}
-          className="rounded-full bg-orange-500 px-6 py-3 text-xs font-bold text-orange-950 transition hover:bg-orange-400 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 shadow-md shadow-orange-500/10"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-orange-500 px-4 py-1.5 text-[10px] font-bold text-orange-950 transition hover:bg-orange-400 hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 shadow-md shadow-orange-500/10"
         >
-          {loading ? "Searching..." : "Search"}
+          {loading ? "..." : "Search"}
         </button>
       </div>
 
-      {error && <p className="mt-2 text-xs font-semibold text-red-400 pl-4">{error}</p>}
+      {error && <p className="absolute top-full left-4 mt-1 text-[10px] font-semibold text-red-400">{error}</p>}
     </form>
   );
 }

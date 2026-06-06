@@ -6,6 +6,7 @@ export type Song = {
   cover_url: string | null;
   duration_sec: number;
   play_count: number;
+  likes_count?: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -18,6 +19,8 @@ export type Song = {
     avatar_url: string | null;
     avatarUrl?: string | null;
     user_id?: string | null;
+    followers_count?: number;
+    is_verified?: boolean;
   };
   album: {
     id: string;
@@ -38,6 +41,36 @@ export type SongWaveform = {
   duration: number | null;
   cached: boolean;
   updated_at?: string | null;
+};
+
+export type NotificationType =
+  | "LIKE_SONG"
+  | "FOLLOW_USER"
+  | "UPLOAD_SUCCESS"
+  | "NEW_SONG_FROM_FOLLOWING"
+  | "PLAYLIST_ADD_SONG"
+  | "SYSTEM"
+  | "COMMENT_SONG"
+  | "REPLY_COMMENT";
+
+export type NotificationEntityType =
+  | "song"
+  | "user"
+  | "artist"
+  | "playlist"
+  | "system";
+
+export type UserNotification = {
+  id: string;
+  user_id: string;
+  actor_id: string | null;
+  type: NotificationType;
+  entity_type: NotificationEntityType | null;
+  entity_id: string | null;
+  title: string;
+  message: string | null;
+  is_read: boolean;
+  created_at: string;
 };
 
 export type LikedSong = Song & {
@@ -98,6 +131,8 @@ export type ArtistRecord = {
   user_id?: string | null;
   created_at: string;
   updated_at: string;
+  followers_count?: number;
+  is_verified?: boolean;
 };
 
 export type AlbumRecord = {
@@ -136,6 +171,31 @@ export type AdminUser = {
   is_banned: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type AdminUserOption = {
+  id: string;
+  username: string;
+  email: string;
+};
+
+export type AdminNotificationTargetType = "all" | "selected";
+export type AdminNotificationLogTargetType = AdminNotificationTargetType | "user";
+
+export type AdminNotificationLog = {
+  id: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  target_type: AdminNotificationLogTargetType;
+  target_user_id: string | null;
+  target_user_ids: string[];
+  target_user_name: string | null;
+  target_user_email: string | null;
+  target_label: string;
+  title: string;
+  message: string;
+  sent_count: number;
+  created_at: string;
 };
 
 export type AdminPlaylist = {
@@ -224,6 +284,22 @@ export type Playlist = {
   songCount: number;
 };
 
+export type PublicUserProfile = {
+  id: string;
+  username: string;
+  display_name: string;
+  displayName?: string;
+  bio: string | null;
+  avatar_url: string | null;
+  avatarUrl?: string | null;
+  created_at: string;
+  artist_id: string | null;
+  artist_name: string | null;
+  followers_count: number;
+  following_count: number;
+  track_count: number;
+};
+
 export type FollowedArtist = {
   user_id: string;
   username: string;
@@ -236,4 +312,18 @@ export type FollowedArtist = {
   avatarUrl?: string | null;
   bio: string | null;
   followed_at: string;
+};
+
+export type SongComment = {
+  id: string;
+  content: string;
+  parent_id?: string | null;
+  created_at: string;
+  user: {
+    id: string;
+    username: string;
+    avatar_url: string | null;
+  };
+  isArtist: boolean;
+  replies: SongComment[];
 };

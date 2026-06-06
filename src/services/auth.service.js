@@ -13,6 +13,12 @@ const SALT_ROUNDS = 10;
 const userSelectFields =
   "id, email, username, display_name, bio, avatar_url, role, is_verified, is_banned, created_at, updated_at";
 
+const userWithFollowCountsSelect = `
+  id, email, username, display_name, bio, avatar_url, role, is_verified, is_banned, created_at, updated_at,
+  COALESCE((SELECT COUNT(*)::int FROM follows WHERE "followingId" = users.id), 0) AS followers_count,
+  COALESCE((SELECT COUNT(*)::int FROM follows WHERE "followerId" = users.id), 0) AS following_count
+`;
+
 const normalizeEmail = (email) => {
   return String(email || "").trim().toLowerCase();
 };
@@ -124,6 +130,8 @@ const formatUser = (user) => {
     isBanned: user.is_banned,
     createdAt: user.created_at,
     updatedAt: user.updated_at,
+    followersCount: Number(user.followers_count || 0),
+    followingCount: Number(user.following_count || 0),
   };
 };
 
@@ -231,9 +239,10 @@ const login = async ({ email, password }) => {
   }
 
   const tokens = await createTokenPair(user);
+  const currentUser = await getCurrentUser(user.id);
 
   return {
-    user: formatUser(user),
+    user: currentUser,
     ...tokens,
   };
 };
@@ -314,8 +323,10 @@ const refresh = async (refreshToken) => {
 
     await client.query("COMMIT");
 
+    const currentUser = await getCurrentUser(user.id);
+
     return {
-      user: formatUser(user),
+      user: currentUser,
       ...tokens,
     };
   } catch (error) {
@@ -346,7 +357,7 @@ const logout = async (refreshToken) => {
 
 const getCurrentUser = async (userId) => {
   const result = await pool.query(
-    `SELECT ${userSelectFields}
+    `SELECT ${userWithFollowCountsSelect}
      FROM users
      WHERE id = $1
      LIMIT 1`,
@@ -376,7 +387,7 @@ const updateCurrentUser = async (userId, data) => {
          bio = $2,
          updated_at = NOW()
      WHERE id = $3
-     RETURNING ${userSelectFields}`,
+     RETURNING id`,
     [displayName, bio, userId]
   );
 
@@ -386,7 +397,7 @@ const updateCurrentUser = async (userId, data) => {
     throw new AppError("User not found", 404);
   }
 
-  return formatUser(user);
+  return getCurrentUser(userId);
 };
 
 const updateCurrentUserAvatar = async (userId, avatarUrl) => {
@@ -414,17 +425,18 @@ const updateCurrentUserAvatar = async (userId, avatarUrl) => {
     throw new AppError("User not found", 404);
   }
 
-  const result = await pool.query(
+  await pool.query(
     `UPDATE users
      SET avatar_url = $1,
          updated_at = NOW()
-     WHERE id = $2
-     RETURNING ${userSelectFields}`,
+     WHERE id = $2`,
     [normalizedAvatarUrl, userId]
   );
 
+  const updatedUser = await getCurrentUser(userId);
+
   return {
-    user: formatUser(result.rows[0]),
+    user: updatedUser,
     previousAvatarUrl: currentResult.rows[0].avatar_url,
   };
 };

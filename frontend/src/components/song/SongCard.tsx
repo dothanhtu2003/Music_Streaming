@@ -5,7 +5,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useFollow } from "@/components/follow/FollowProvider";
 import { useLikes } from "@/components/like/LikeProvider";
 import { usePlaylists } from "@/components/playlist/PlaylistProvider";
-import { HeartIcon, PlayIcon, PauseIcon, PlusIcon } from "@/components/ui/Icons";
+import { HeartIcon, PlayIcon, PauseIcon, PlusIcon, MusicIcon, VerifiedBadge } from "@/components/ui/Icons";
 import {
   formatDuration,
   formatPlayCount,
@@ -153,8 +153,14 @@ export function SongCard({ song, queue, compact = false }: SongCardProps) {
           </div>
 
           <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-zinc-400">
-            <Link href={`/artists/${song.artist.id}`} className="truncate hover:text-orange-400 transition-colors">
-              {artistName}
+            <Link href={`/artists/${song.artist.id}`} className="inline-flex items-center gap-1.5 max-w-[70%] hover:text-orange-400 transition-colors">
+              <span className="truncate">{artistName}</span>
+              {song.artist.is_verified && <VerifiedBadge size={11} />}
+              {isSelf && (
+                <span className="inline-flex items-center rounded bg-orange-500/10 px-1.5 py-0.5 text-[9px] font-bold text-orange-400 border border-orange-500/20" title="This is you">
+                  Bạn
+                </span>
+              )}
             </Link>
             {!isSelf && (
               <>
@@ -193,9 +199,14 @@ export function SongCard({ song, queue, compact = false }: SongCardProps) {
                 {formatDuration(song.duration_sec)}
               </span>
             </div>
-            <p className="truncate text-zinc-600">
-              {getGenreName(song)} • {formatPlayCount(song.play_count)} plays
-            </p>
+            <div className="flex items-center gap-1.5 truncate text-zinc-600">
+              <span>{getGenreName(song)}</span>
+              <span>•</span>
+              <span className="flex items-center gap-1" title={`${formatPlayCount(song.play_count)} plays`}>
+                <MusicIcon size={11} className="text-zinc-600 shrink-0" />
+                <span>{formatPlayCount(song.play_count)}</span>
+              </span>
+            </div>
           </div>
         )}
       </div>

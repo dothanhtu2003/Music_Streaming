@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useFollow } from "@/components/follow/FollowProvider";
+import { FollowListModal } from "@/components/follow/FollowListModal";
 import { useLikes } from "@/components/like/LikeProvider";
 import { usePlaylists } from "@/components/playlist/PlaylistProvider";
 import {
@@ -36,6 +37,7 @@ import {
   getSongCoverUrl,
 } from "@/lib/song-format";
 import { usePlayerStore } from "@/stores/player-store";
+import { getUserProfilePath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import type {
   FollowedArtist,
@@ -706,30 +708,21 @@ function FollowingList({
             key={`${artist.user_id}-${targetId}`}
             className="flex items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-zinc-950/50 p-3 transition hover:border-zinc-700 hover:bg-zinc-900/50"
           >
-            <div className="flex min-w-0 items-center gap-3">
-              {artist.artist_id ? (
-                <Link href={`/artists/${artist.artist_id}`} className="shrink-0">
-                  <FollowingAvatar name={artistName} avatarUrl={avatarUrl} />
-                </Link>
-              ) : (
-                <FollowingAvatar name={artistName} avatarUrl={avatarUrl} />
-              )}
+            <Link
+              href={getUserProfilePath(artist.user_id)}
+              className="flex min-w-0 flex-1 items-center gap-3 transition hover:opacity-80"
+            >
+              <FollowingAvatar name={artistName} avatarUrl={avatarUrl} />
 
               <div className="min-w-0">
-                {artist.artist_id ? (
-                  <Link href={`/artists/${artist.artist_id}`}>
-                    <h3 className="truncate text-sm font-bold text-white transition hover:text-orange-400">
-                      {artistName}
-                    </h3>
-                  </Link>
-                ) : (
-                  <h3 className="truncate text-sm font-bold text-white">
-                    {artistName}
-                  </h3>
-                )}
-                <p className="truncate text-xs text-zinc-500">Artist</p>
+                <h3 className="truncate text-sm font-bold text-white transition hover:text-orange-400">
+                  {artistName}
+                </h3>
+                <p className="truncate text-xs text-zinc-500">
+                  {artist.artist_id ? "Artist" : "User"}
+                </p>
               </div>
-            </div>
+            </Link>
 
             <button
               type="button"
@@ -810,6 +803,7 @@ export default function ProfilePage() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [activeFollowModal, setActiveFollowModal] = useState<"followers" | "following" | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -1010,10 +1004,10 @@ export default function ProfilePage() {
       overview: null,
       tracks: myTracks.length,
       playlists: playlists.length,
-      following: following.length,
+      following: user?.followingCount ?? following.length,
       liked: likedSongs.length,
     }),
-    [following.length, likedSongs.length, myTracks.length, playlists.length],
+    [user?.followingCount, following.length, likedSongs.length, myTracks.length, playlists.length],
   );
 
   if (!user) {
@@ -1280,7 +1274,21 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider select-none">
-              <span>{following.length} following</span>
+              <button
+                type="button"
+                onClick={() => setActiveFollowModal("followers")}
+                className="hover:text-white transition cursor-pointer focus:outline-none"
+              >
+                {user.followersCount ?? 0} {user.followersCount === 1 ? "follower" : "followers"}
+              </button>
+              <span className="text-zinc-700 font-normal select-none">•</span>
+              <button
+                type="button"
+                onClick={() => setActiveFollowModal("following")}
+                className="hover:text-white transition cursor-pointer focus:outline-none"
+              >
+                {user.followingCount ?? following.length} following
+              </button>
               <span className="text-zinc-700 font-normal select-none">•</span>
               <span>{myTracks.length} tracks</span>
               <span className="text-zinc-700 font-normal select-none">•</span>
@@ -1300,6 +1308,15 @@ export default function ProfilePage() {
         <div className="p-4 sm:p-5">{renderTabContent()}</div>
       </section>
       </div>
+
+      {activeFollowModal && (
+        <FollowListModal
+          userId={user.id}
+          type={activeFollowModal}
+          title={activeFollowModal === "followers" ? "Followers" : "Following"}
+          onClose={() => setActiveFollowModal(null)}
+        />
+      )}
     </>
   );
 }

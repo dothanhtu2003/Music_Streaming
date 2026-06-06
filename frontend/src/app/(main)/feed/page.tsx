@@ -134,7 +134,7 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="space-y-6 page-fade-in">
+    <div className="space-y-6 page-fade-in pb-16">
       <PageHeader
         eyebrow="Personalized"
         title="Your Feed"
@@ -146,6 +146,7 @@ export default function FeedPage() {
           songs={songs}
           loading={loading}
           error={error}
+          variant="list"
           emptyMessage="Follow some artists to see their latest songs."
           canLoadMore={canLoadMore}
           loadingMore={loadingMore}

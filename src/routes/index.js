@@ -7,6 +7,7 @@ const genreRoutes = require("./genre.routes");
 const healthRoutes = require("./health.routes");
 const historyRoutes = require("./history.routes");
 const likeRoutes = require("./like.routes");
+const notificationRoutes = require("./notification.routes");
 const playlistRoutes = require("./playlist.routes");
 const recentlyPlayedRoutes = require("./recently-played.routes");
 const songRoutes = require("./song.routes");
@@ -14,6 +15,8 @@ const uploadRoutes = require("./upload.routes");
 const followRoutes = require("./follow.routes");
 const feedRoutes = require("./feed.routes");
 const searchRoutes = require("./search.routes");
+const userRoutes = require("./user.routes");
+const commentRoutes = require("./comment.routes");
 
 const router = express.Router();
 
@@ -25,6 +28,7 @@ router.use("/genres", genreRoutes);
 router.use("/health", healthRoutes);
 router.use("/history", historyRoutes);
 router.use("/likes", likeRoutes);
+router.use("/notifications", notificationRoutes);
 router.use("/playlists", playlistRoutes);
 router.use("/recently-played", recentlyPlayedRoutes);
 router.use("/songs", songRoutes);
@@ -32,5 +36,7 @@ router.use("/upload", uploadRoutes);
 router.use("/follow", followRoutes);
 router.use("/feed", feedRoutes);
 router.use("/search", searchRoutes);
+router.use("/users", userRoutes);
+router.use("/comments", commentRoutes);
 
 module.exports = router;

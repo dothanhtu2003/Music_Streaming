@@ -1,4 +1,5 @@
 const songService = require("../services/song.service");
+const notificationService = require("../services/notification.service");
 const {
   getUploadedFile,
   getUploadedFileUrl,
@@ -98,6 +99,16 @@ const uploadSong = async (req, res, next) => {
       },
       req.user
     );
+
+    await notificationService.createNotification({
+      userId: req.user.id,
+      actorId: req.user.id,
+      type: "UPLOAD_SUCCESS",
+      entityType: "song",
+      entityId: song.id,
+      title: "Upload thành công",
+      message: "Bài hát của bạn đã được đăng thành công",
+    });
 
     return successResponse(res, "Song uploaded successfully", song, 201);
   } catch (error) {

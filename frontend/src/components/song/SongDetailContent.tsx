@@ -1,19 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePlaylists } from "@/components/playlist/PlaylistProvider";
 import { WaveformPlayer } from "@/components/song/WaveformPlayer";
+import { SongComments } from "@/components/song/SongComments";
 import { getSongRequest } from "@/lib/api";
-import {
-  formatDuration,
-  formatPlayCount,
-  getAlbumTitle,
-  getSongAudioUrl,
-  getGenreName,
-  getSongCoverUrl,
-} from "@/lib/song-format";
-import { usePlayerStore } from "@/stores/player-store";
+import { getSongAudioUrl } from "@/lib/song-format";
 import type { Song } from "@/types/music";
 
 type SongDetailContentProps = {
@@ -22,48 +13,23 @@ type SongDetailContentProps = {
 
 function DetailSkeleton() {
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-6">
-      <div className="flex flex-col gap-6 md:flex-row md:items-end">
-        <div className="h-40 w-40 rounded-lg bg-zinc-800" />
-        <div className="flex-1 space-y-4">
-          <div className="h-4 w-20 rounded bg-zinc-800" />
-          <div className="h-10 w-2/3 rounded bg-zinc-800" />
-          <div className="h-4 w-1/2 rounded bg-zinc-800" />
-          <div className="h-10 w-24 rounded bg-zinc-800" />
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 md:p-8 animate-pulse">
+      <div className="flex flex-col-reverse gap-6 md:flex-row md:items-stretch justify-between">
+        <div className="flex-1 space-y-6">
+          <div className="space-y-3">
+            <div className="h-4 w-24 rounded bg-zinc-800" />
+            <div className="h-8 w-2/3 rounded bg-zinc-800" />
+            <div className="h-4 w-1/2 rounded bg-zinc-800" />
+          </div>
+          <div className="h-20 w-full rounded-xl bg-zinc-800 mt-8" />
         </div>
+        <div className="h-40 w-40 md:h-44 md:w-44 rounded-2xl bg-zinc-800 shrink-0" />
       </div>
     </div>
   );
 }
 
-function SongCover({ song }: { song: Song }) {
-  const coverUrl = getSongCoverUrl(song);
-
-  if (coverUrl) {
-    return (
-      <div
-        className="h-40 w-40 rounded-lg bg-cover bg-center"
-        style={{ backgroundImage: `url(${coverUrl})` }}
-        aria-label={`${song.title} cover`}
-      />
-    );
-  }
-
-  return (
-    <div className="grid h-40 w-40 place-items-center rounded-lg bg-gradient-to-br from-orange-500 to-zinc-900">
-      <span className="text-5xl font-black text-white/90">
-        {song.title.slice(0, 1)}
-      </span>
-    </div>
-  );
-}
-
 export function SongDetailContent({ songId }: SongDetailContentProps) {
-  const currentSong = usePlayerStore((state) => state.currentSong);
-  const isPlaying = usePlayerStore((state) => state.isPlaying);
-  const playSong = usePlayerStore((state) => state.playSong);
-  const togglePlay = usePlayerStore((state) => state.togglePlay);
-  const { openAddSongModal } = usePlaylists();
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -126,78 +92,19 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-6">
-        <div className="flex flex-col gap-6 md:flex-row md:items-end">
-          <SongCover song={song} />
+      <WaveformPlayer
+        song={song}
+        audioUrl={getSongAudioUrl(song) ?? ""}
+        queue={[song]}
+        variant="soundcloud"
+      />
 
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium uppercase tracking-[0.18em] text-orange-400">
-              Song
-            </p>
-            <h1 className="mt-2 text-3xl font-bold text-white sm:text-5xl">
-              {song.title}
-            </h1>
-            <p className="mt-3 text-zinc-400">
-              <Link href={`/artists/${song.artist.id}`} className="hover:text-white">
-                {song.artist.name}
-              </Link>{" "}
-              -{" "}
-              {song.album ? (
-                <Link href={`/albums/${song.album.id}`} className="hover:text-white">
-                  {song.album.title}
-                </Link>
-              ) : (
-                "Single"
-              )}
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2 text-sm text-zinc-400">
-              <span className="rounded-full border border-zinc-700 px-3 py-1">
-                {formatDuration(song.duration_sec)}
-              </span>
-              <span className="rounded-full border border-zinc-700 px-3 py-1">
-                {getGenreName(song)}
-              </span>
-              <span className="rounded-full border border-zinc-700 px-3 py-1">
-                {getAlbumTitle(song)}
-              </span>
-              <span className="rounded-full border border-zinc-700 px-3 py-1">
-                {formatPlayCount(song.play_count)} plays
-              </span>
-            </div>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  if (currentSong?.id === song.id) {
-                    togglePlay();
-                    return;
-                  }
-
-                  playSong(song, [song]);
-                }}
-                className="rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-orange-950 transition hover:bg-orange-400"
-              >
-                {currentSong?.id === song.id && isPlaying ? "Pause" : "Play"}
-              </button>
-              <button
-                type="button"
-                onClick={() => openAddSongModal(song)}
-                className="rounded-lg border border-zinc-700 px-5 py-3 text-sm font-semibold text-zinc-200 transition hover:border-orange-500 hover:text-white"
-              >
-                Add to playlist
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 border-t border-zinc-800 pt-5">
-          <WaveformPlayer
-            song={song}
-            audioUrl={getSongAudioUrl(song) ?? ""}
-            queue={[song]}
-          />
-        </div>
-      </section>
+      <SongComments
+        songId={song.id}
+        songOwnerId={song.artist?.user_id}
+        artist={song.artist}
+        song={song}
+      />
     </div>
   );
 }

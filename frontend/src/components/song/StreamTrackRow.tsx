@@ -21,6 +21,11 @@ import {
   getSongCoverUrl,
   getGenreName,
 } from "@/lib/song-format";
+import {
+  getWaveSurferBarOptions,
+  preparePeakChannel,
+  WAVEFORM_COLORS,
+} from "@/lib/waveform";
 import { cn } from "@/lib/utils";
 import { usePlayerStore } from "@/stores/player-store";
 import type { Song, SongWaveform } from "@/types/music";
@@ -240,7 +245,7 @@ export function StreamTrackRow({ song, queue }: StreamTrackRowProps) {
 
         if (cached) {
           // Flatten to single channel for StaticWaveform
-          setCachedPeaks(cached.peaks[0]);
+          setCachedPeaks(preparePeakChannel(cached.peaks[0]));
           setCachedDuration(cached.duration);
           setStatus("ready");
         } else {
@@ -313,7 +318,7 @@ export function StreamTrackRow({ song, queue }: StreamTrackRowProps) {
 
         // Update cached peaks so StaticWaveform uses real data next time
         if (isActive && peaks[0]) {
-          setCachedPeaks(peaks[0]);
+          setCachedPeaks(preparePeakChannel(peaks[0]));
         }
       } catch {
         // Peaks saving fails silently
@@ -339,18 +344,14 @@ export function StreamTrackRow({ song, queue }: StreamTrackRowProps) {
 
       const nextWaveSurfer = WaveSurferModule.create({
         container: wavesurferContainerRef.current,
-        waveColor: "#3f3f46",
-        progressColor: "#ff5500",
-        cursorColor: "transparent",
-        height: 60,
-        barWidth: 2,
-        barGap: 2,
-        barRadius: 2,
+        ...getWaveSurferBarOptions({
+          height: 60,
+          cursorColor: "transparent",
+        }),
         autoplay: false,
         dragToSeek: true,
         hideScrollbar: true,
         interact: true,
-        normalize: true,
         url: safeAudioUrl,
         peaks: wsPeaks,
         duration: wsDuration,
@@ -655,8 +656,8 @@ export function StreamTrackRow({ song, queue }: StreamTrackRowProps) {
                     peaks={PLACEHOLDER_PEAKS}
                     progress={0}
                     height={60}
-                    waveColor="#27272a"
-                    progressColor="#ff5500"
+                    waveColor={WAVEFORM_COLORS.placeholderWave}
+                    progressColor={WAVEFORM_COLORS.progress}
                     className="absolute inset-0 rounded-md opacity-40"
                   />
                 </div>
@@ -673,8 +674,12 @@ export function StreamTrackRow({ song, queue }: StreamTrackRowProps) {
                   peaks={cachedPeaks ?? PLACEHOLDER_PEAKS}
                   progress={staticProgress}
                   height={60}
-                  waveColor={cachedPeaks ? "#3f3f46" : "#27272a"}
-                  progressColor="#ff5500"
+                  waveColor={
+                    cachedPeaks
+                      ? WAVEFORM_COLORS.staticWave
+                      : WAVEFORM_COLORS.placeholderWave
+                  }
+                  progressColor={WAVEFORM_COLORS.progress}
                   onSeek={handleStaticWaveformSeek}
                   className="rounded-md"
                 />
@@ -691,7 +696,7 @@ export function StreamTrackRow({ song, queue }: StreamTrackRowProps) {
 
           {/* Scrub times shown on hover or when playing */}
           {(status === "ready" || showWaveSurfer) && (
-            <div className="pointer-events-none absolute right-1.5 bottom-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold tracking-wider text-orange-500 border border-white/5 backdrop-blur-[2px]">
+            <div className="pointer-events-none absolute right-1.5 top-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold tracking-wider text-orange-500 border border-white/5 backdrop-blur-[2px]">
               {formatDuration(displayCurrentTime)} / {formatDuration(displayDuration)}
             </div>
           )}

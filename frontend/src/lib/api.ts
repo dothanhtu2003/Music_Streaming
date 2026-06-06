@@ -6,8 +6,11 @@ import type {
 } from "@/types/auth";
 import type {
   AdminDashboard,
+  AdminNotificationLog,
+  AdminNotificationTargetType,
   AdminPlaylist,
   AdminUser,
+  AdminUserOption,
   AlbumRecord,
   ArtistRecord,
   GenreRecord,
@@ -19,8 +22,11 @@ import type {
   SongPagination,
   SongWaveform,
   SongWritePayload,
+  UserNotification,
   UserPlaylist,
   FollowedArtist,
+  PublicUserProfile,
+  SongComment,
 } from "@/types/music";
 import {
   clearTokens,
@@ -53,6 +59,7 @@ type ApiResponse<T> = {
   success: boolean;
   message: string;
   data?: T;
+  sent?: number;
   errors?: unknown;
   pagination?: SongPagination;
 };
@@ -463,6 +470,62 @@ export async function getRecentlyPlayedRequest(accessToken: string) {
   return normalizeSongs(response.data ?? []);
 }
 
+export async function getNotificationsRequest(
+  accessToken: string,
+  limit = 20,
+) {
+  const response = await apiRequest<UserNotification[]>(
+    `/notifications${buildQuery({ limit })}`,
+    { accessToken },
+  );
+
+  return response.data ?? [];
+}
+
+export async function getUnreadNotificationCountRequest(accessToken: string) {
+  const response = await apiRequest<{ count: number }>(
+    "/notifications/unread-count",
+    { accessToken },
+  );
+
+  return response.data?.count ?? 0;
+}
+
+export async function markNotificationAsReadRequest(
+  id: string,
+  accessToken: string,
+) {
+  if (!id) {
+    throw new Error("Notification id is required.");
+  }
+
+  const response = await apiRequest<UserNotification>(
+    `/notifications/${id}/read`,
+    {
+      method: "PATCH",
+      accessToken,
+    },
+  );
+
+  if (!response.data) {
+    throw new Error("Notification response is missing data.");
+  }
+
+  return response.data;
+}
+
+export async function markAllNotificationsAsReadRequest(accessToken: string) {
+  const response = await apiRequest<{ updatedCount: number }>(
+    "/notifications/read-all",
+    {
+      method: "PATCH",
+      accessToken,
+    },
+  );
+
+  return response.data ?? { updatedCount: 0 };
+}
+
 export async function getMyLikedSongsRequest(
   accessToken: string,
   page = 1,
@@ -663,6 +726,73 @@ export async function getAdminDashboardRequest(accessToken: string) {
   }
 
   return response.data;
+}
+
+export async function sendBroadcastNotificationRequest(
+  title: string,
+  message: string,
+  accessToken: string,
+) {
+  const response = await apiRequest<{ sent: number }>(
+    "/admin/notifications/broadcast",
+    {
+      method: "POST",
+      body: { title, message },
+      accessToken,
+    },
+  );
+
+  return {
+    sent: response.sent ?? response.data?.sent ?? 0,
+  };
+}
+
+export async function sendAdminNotificationRequest(
+  payload: {
+    targetType: AdminNotificationTargetType;
+    targetUserIds?: string[];
+    title: string;
+    message: string;
+  },
+  accessToken: string,
+) {
+  const response = await apiRequest<{ sent: number }>(
+    "/admin/notifications/send",
+    {
+      method: "POST",
+      body: payload,
+      accessToken,
+    },
+  );
+
+  return {
+    sent: response.sent ?? response.data?.sent ?? 0,
+  };
+}
+
+export async function getAdminNotificationHistoryRequest(
+  accessToken: string,
+  page = 1,
+  limit = 20,
+) {
+  const response = await apiRequest<AdminNotificationLog[]>(
+    `/admin/notifications/history${buildQuery({ page, limit })}`,
+    { accessToken },
+  );
+
+  return {
+    items: response.data ?? [],
+    pagination: getPagination(response, page, limit),
+  };
+}
+
+export async function getAdminUserOptionsRequest(accessToken: string) {
+  const response = await apiRequest<AdminUserOption[]>(
+    "/admin/users/options",
+    { accessToken },
+  );
+
+  return response.data ?? [];
 }
 
 export async function getAdminUsersRequest(
@@ -1229,6 +1359,90 @@ export async function getFollowStatusRequest(
 
   if (!response.data) {
     throw new Error("Follow status response is missing data.");
+  }
+
+  return response.data;
+}
+
+export async function getUserProfileRequest(id: string) {
+  const response = await apiRequest<PublicUserProfile>(`/users/${id}`);
+
+  if (!response.data) {
+    throw new Error("User profile response is missing data.");
+  }
+
+  return normalizeArtistProfile(response.data);
+}
+
+export async function getUserSongsRequest(id: string, page = 1, limit = 20) {
+  const response = await apiRequest<Song[]>(
+    `/users/${id}/songs${buildQuery({ page, limit })}`,
+  );
+
+  return {
+    items: normalizeSongs(response.data ?? []),
+    pagination: getPagination(response, page, limit),
+  };
+}
+
+export async function getUserPlaylistsRequest(id: string, page = 1, limit = 12) {
+  const response = await apiRequest<UserPlaylist[]>(
+    `/users/${id}/playlists${buildQuery({ page, limit })}`,
+  );
+
+  return {
+    items: response.data ?? [],
+    pagination: getPagination(response, page, limit),
+  };
+}
+
+export async function getFollowersRequest(userId: string) {
+  const response = await apiRequest<FollowedArtist[]>(`/follow/list/${userId}/followers`);
+  return (response.data ?? []).map((artist) => normalizeArtistProfile(artist));
+}
+
+export async function getFollowingForUserRequest(userId: string) {
+  const response = await apiRequest<FollowedArtist[]>(`/follow/list/${userId}/following`);
+  return (response.data ?? []).map((artist) => normalizeArtistProfile(artist));
+}
+
+export async function getSongCommentsRequest(songId: string, sort = "newest") {
+  const response = await apiRequest<SongComment[]>(
+    `/songs/${songId}/comments${buildQuery({ sort })}`
+  );
+
+  return response.data ?? [];
+}
+
+export async function createSongCommentRequest(
+  songId: string,
+  payload: { content: string; parentId?: string | null },
+  accessToken: string,
+) {
+  const response = await apiRequest<SongComment>(`/songs/${songId}/comments`, {
+    method: "POST",
+    body: payload,
+    accessToken,
+  });
+
+  if (!response.data) {
+    throw new Error("Create comment response is missing data.");
+  }
+
+  return response.data;
+}
+
+export async function deleteSongCommentRequest(
+  commentId: string,
+  accessToken: string,
+) {
+  const response = await apiRequest<{ id: string }>(`/comments/${commentId}`, {
+    method: "DELETE",
+    accessToken,
+  });
+
+  if (!response.data) {
+    throw new Error("Delete comment response is missing data.");
   }
 
   return response.data;

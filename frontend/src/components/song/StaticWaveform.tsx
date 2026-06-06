@@ -1,6 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import {
+  drawSoundCloudWaveform,
+  WAVEFORM_BAR,
+  WAVEFORM_COLORS,
+} from "@/lib/waveform";
 
 export type StaticWaveformProps = {
   /** Normalized peak values (-1 to 1 or 0 to 1) */
@@ -26,19 +31,17 @@ export type StaticWaveformProps = {
 };
 
 /**
- * A lightweight, canvas-based waveform component.
- * Renders peaks data as vertical bars without WaveSurfer or Web Audio API.
- * Memory footprint: ~0.5KB vs ~10MB for a WaveSurfer instance.
+ * Lightweight canvas waveform with SoundCloud-style asymmetric mirroring.
  */
 export function StaticWaveform({
   peaks,
   progress,
   height = 60,
-  waveColor = "#3f3f46",
-  progressColor = "#ff5500",
-  barWidth = 2,
-  barGap = 2,
-  barRadius = 2,
+  waveColor = WAVEFORM_COLORS.staticWave,
+  progressColor = WAVEFORM_COLORS.progress,
+  barWidth = WAVEFORM_BAR.width,
+  barGap = WAVEFORM_BAR.gap,
+  barRadius = WAVEFORM_BAR.radius,
   onSeek,
   className,
 }: StaticWaveformProps) {
@@ -59,74 +62,42 @@ export function StaticWaveform({
       return;
     }
 
-    const dpr = window.devicePixelRatio || 1;
+    const pixelRatio = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
     const canvasWidth = rect.width;
     const canvasHeight = rect.height;
 
-    // Set canvas resolution for sharp rendering on HiDPI screens
-    canvas.width = canvasWidth * dpr;
-    canvas.height = canvasHeight * dpr;
-    ctx.scale(dpr, dpr);
-
+    canvas.width = canvasWidth * pixelRatio;
+    canvas.height = canvasHeight * pixelRatio;
+    ctx.scale(pixelRatio, pixelRatio);
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-    if (!peaks || peaks.length === 0) {
+    if (!peaks?.length) {
       return;
     }
 
-    const step = barWidth + barGap;
-    const totalBars = Math.floor(canvasWidth / step);
+    drawSoundCloudWaveform(ctx, {
+      peaks,
+      width: canvasWidth,
+      height: canvasHeight,
+      waveColor,
+      progressColor,
+      progress,
+      pixelRatio: 1,
+      barWidth,
+      barGap,
+      barRadius,
+    });
+  }, [
+    peaks,
+    progress,
+    barWidth,
+    barGap,
+    barRadius,
+    waveColor,
+    progressColor,
+  ]);
 
-    if (totalBars <= 0) {
-      return;
-    }
-
-    // Resample peaks to fit the available width
-    const sampledPeaks: number[] = [];
-
-    for (let i = 0; i < totalBars; i++) {
-      const startIndex = Math.floor((i / totalBars) * peaks.length);
-      const endIndex = Math.floor(((i + 1) / totalBars) * peaks.length);
-      let max = 0;
-
-      for (let j = startIndex; j < endIndex && j < peaks.length; j++) {
-        const value = Math.abs(peaks[j]);
-
-        if (value > max) {
-          max = value;
-        }
-      }
-
-      sampledPeaks.push(max);
-    }
-
-    // Normalize so the tallest bar fills the height
-    const peakMax = Math.max(...sampledPeaks, 0.01);
-
-    const progressX = progress * canvasWidth;
-    const minBarHeight = 2;
-    const centerY = canvasHeight / 2;
-
-    for (let i = 0; i < sampledPeaks.length; i++) {
-      const normalizedValue = sampledPeaks[i] / peakMax;
-      const barHeight = Math.max(normalizedValue * canvasHeight * 0.9, minBarHeight);
-      const x = i * step;
-      const y = centerY - barHeight / 2;
-
-      ctx.fillStyle = x + barWidth <= progressX ? progressColor : waveColor;
-
-      if (barRadius > 0) {
-        ctx.beginPath();
-        ctx.roundRect(x, y, barWidth, barHeight, barRadius);
-        ctx.fill();
-      } else {
-        ctx.fillRect(x, y, barWidth, barHeight);
-      }
-    }
-  }, [peaks, progress, barWidth, barGap, barRadius, waveColor, progressColor]);
-
-  // Draw on mount and when dependencies change
   useEffect(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -141,7 +112,6 @@ export function StaticWaveform({
     };
   }, [draw]);
 
-  // ResizeObserver for responsive resizing
   useEffect(() => {
     const container = containerRef.current;
 

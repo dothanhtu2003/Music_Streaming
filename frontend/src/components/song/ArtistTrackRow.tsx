@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { MouseEvent } from "react";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { useLikes } from "@/components/like/LikeProvider";
 import { usePlaylists } from "@/components/playlist/PlaylistProvider";
 import {
@@ -10,6 +11,8 @@ import {
   PauseIcon,
   PlayIcon,
   PlusIcon,
+  MusicIcon,
+  VerifiedBadge,
 } from "@/components/ui/Icons";
 import {
   formatDuration,
@@ -118,6 +121,7 @@ function WaveformPreview({
 }
 
 export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
+  const { user } = useAuth();
   const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const playSong = usePlayerStore((state) => state.playSong);
@@ -133,6 +137,8 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
   const artistId = song.artist?.id ?? "";
   const artistName = getArtistDisplayName(song.artist);
   const safeQueue = queue.length > 0 ? queue : [song];
+  const isSelf = user?.id === song.artist.user_id || user?.username?.toLowerCase() === artistName.toLowerCase();
+  const isVerified = song.artist.is_verified;
 
   const handlePlay = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -196,14 +202,26 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
               {artistId ? (
                 <Link
                   href={`/artists/${artistId}`}
-                  className="block truncate text-xs font-medium text-zinc-500 transition hover:text-orange-400"
+                  className="inline-flex items-center gap-1.5 max-w-full text-xs font-medium text-zinc-500 transition hover:text-orange-400"
                   onClick={(event) => event.stopPropagation()}
                 >
-                  {artistName}
+                  <span className="truncate">{artistName}</span>
+                  {isVerified && <VerifiedBadge size={12} />}
+                  {isSelf && (
+                    <span className="inline-flex items-center rounded bg-orange-500/10 px-1.5 py-0.5 text-[9px] font-bold text-orange-400 border border-orange-500/20" title="This is you">
+                      Bạn
+                    </span>
+                  )}
                 </Link>
               ) : (
-                <span className="block truncate text-xs font-medium text-zinc-500">
-                  {artistName}
+                <span className="inline-flex items-center gap-1.5 max-w-full text-xs font-medium text-zinc-500">
+                  <span className="truncate">{artistName}</span>
+                  {isVerified && <VerifiedBadge size={12} />}
+                  {isSelf && (
+                    <span className="inline-flex items-center rounded bg-orange-500/10 px-1.5 py-0.5 text-[9px] font-bold text-orange-400 border border-orange-500/20" title="This is you">
+                      Bạn
+                    </span>
+                  )}
                 </span>
               )}
               <Link
@@ -223,7 +241,10 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
                 {formatPostedAt(song.created_at)}
               </span>
               <span className="hidden text-zinc-700 lg:inline">/</span>
-              <span>{formatPlayCount(song.play_count ?? 0)} plays</span>
+              <span className="flex items-center gap-1" title={`${formatPlayCount(song.play_count ?? 0)} plays`}>
+                <MusicIcon size={12} className="text-zinc-500 shrink-0" />
+                <span>{formatPlayCount(song.play_count ?? 0)}</span>
+              </span>
             </div>
           </div>
 

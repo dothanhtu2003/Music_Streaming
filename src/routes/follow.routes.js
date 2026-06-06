@@ -4,7 +4,11 @@ const { authMiddleware } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
-// All follow routes require authentication
+// Public listing routes
+router.get("/list/:userId/followers", followController.getFollowers);
+router.get("/list/:userId/following", followController.getFollowingForUser);
+
+// All follow routes below require authentication
 router.use(authMiddleware);
 
 router.get("/following", followController.getFollowing);

@@ -1,6 +1,34 @@
 const { pool } = require("../db/pool");
 const AppError = require("../utils/appError");
+const notificationService = require("./notification.service");
 const { validateUuid } = require("../utils/query.utils");
+
+// Resolve one artist per user: prefer artists.user_id, fallback to username match.
+const followArtistLateralJoin = `
+  LEFT JOIN LATERAL (
+    SELECT ar.id, ar.name, ar.bio, ar.avatar_url
+    FROM artists ar
+    WHERE ar.user_id = u.id
+       OR (
+         ar.user_id IS NULL
+         AND LOWER(ar.name) = LOWER(u.username)
+       )
+    ORDER BY (ar.user_id IS NOT NULL) DESC, ar.created_at ASC
+    LIMIT 1
+  ) ar ON true
+`;
+
+const mapFollowUserRow = (row) => ({
+  user_id: row.user_id,
+  username: row.username,
+  email: row.email,
+  display_name: row.display_name || row.username,
+  artist_id: row.artist_id,
+  name: row.display_name || row.artist_name || row.username,
+  avatar_url: row.user_avatar_url || row.artist_avatar_url,
+  bio: row.user_bio || row.artist_bio,
+  followed_at: row.followed_at,
+});
 
 /**
  * Resolves a target user ID from a given userId parameter.
@@ -99,6 +127,20 @@ const getFollowStatus = async (followerId, targetId) => {
   };
 };
 
+const getUserDisplayName = async (userId) => {
+  const result = await pool.query(
+    `SELECT username, display_name
+     FROM users
+     WHERE id = $1
+     LIMIT 1`,
+    [userId]
+  );
+
+  const user = result.rows[0];
+
+  return user?.display_name || user?.username || "Một người dùng";
+};
+
 /**
  * Toggle follow status for a user/artist.
  * If already following, unfollow; if not, follow.
@@ -133,6 +175,18 @@ const toggleFollow = async (followerId, targetId) => {
      RETURNING id, "followerId", "followingId", "createdAt"`,
     [followerId, followingId]
   );
+
+  const username = await getUserDisplayName(followerId);
+
+  await notificationService.createNotification({
+    userId: followingId,
+    actorId: followerId,
+    type: "FOLLOW_USER",
+    entityType: "user",
+    entityId: followerId,
+    title: "Có người theo dõi mới",
+    message: `${username} đã theo dõi bạn`,
+  });
 
   return {
     followed: true,
@@ -181,23 +235,51 @@ const getFollowing = async (followerId) => {
        f."createdAt" AS followed_at
      FROM follows f
      JOIN users u ON f."followingId" = u.id
-     LEFT JOIN artists ar ON ar.user_id = u.id
+     ${followArtistLateralJoin}
      WHERE f."followerId" = $1
      ORDER BY f."createdAt" DESC`,
     [followerId]
   );
 
-  return result.rows.map((row) => ({
-    user_id: row.user_id,
-    username: row.username,
-    email: row.email,
-    display_name: row.display_name || row.username,
-    artist_id: row.artist_id,
-    name: row.display_name || row.artist_name || row.username,
-    avatar_url: row.user_avatar_url || row.artist_avatar_url,
-    bio: row.user_bio || row.artist_bio,
-    followed_at: row.followed_at,
-  }));
+  return result.rows.map(mapFollowUserRow);
+};
+
+/**
+ * Retrieves the list of followers for a user/artist.
+ */
+const getFollowers = async (targetId) => {
+  const resolvedUserId = await resolveTargetUserId(targetId, null, { allowSelf: true });
+
+  const result = await pool.query(
+    `SELECT 
+       u.id AS user_id, 
+       u.username, 
+       u.email,
+       u.display_name,
+       u.bio AS user_bio,
+       u.avatar_url AS user_avatar_url,
+       ar.id AS artist_id,
+       ar.name AS artist_name,
+       ar.bio AS artist_bio,
+       ar.avatar_url AS artist_avatar_url,
+       f."createdAt" AS followed_at
+     FROM follows f
+     JOIN users u ON f."followerId" = u.id
+     ${followArtistLateralJoin}
+     WHERE f."followingId" = $1
+     ORDER BY f."createdAt" DESC`,
+    [resolvedUserId]
+  );
+
+  return result.rows.map(mapFollowUserRow);
+};
+
+/**
+ * Retrieves the list of followed entities for a user/artist.
+ */
+const getFollowingForUser = async (targetId) => {
+  const resolvedUserId = await resolveTargetUserId(targetId, null, { allowSelf: true });
+  return getFollowing(resolvedUserId);
 };
 
 module.exports = {
@@ -205,4 +287,6 @@ module.exports = {
   unfollow,
   getFollowStatus,
   getFollowing,
+  getFollowers,
+  getFollowingForUser,
 };

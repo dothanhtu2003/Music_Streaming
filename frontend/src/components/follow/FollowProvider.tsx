@@ -46,7 +46,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export function FollowProvider({ children }: FollowProviderProps) {
-  const { accessToken, user, isLoading: authLoading } = useAuth();
+  const { accessToken, user, isLoading: authLoading, fetchCurrentUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [following, setFollowing] = useState<FollowedArtist[]>([]);
@@ -188,8 +188,7 @@ export function FollowProvider({ children }: FollowProviderProps) {
 
       try {
         const result = await followUserRequest(id, accessToken);
-        // Refresh following list to get correct user_id / artist_id mapping
-        await refreshFollowing();
+        await Promise.all([refreshFollowing(), fetchCurrentUser()]);
         showNotice({ type: "success", text: result.message || `Followed ${name}.` });
       } catch (err) {
         const message = getErrorMessage(err, `Could not follow ${name}.`);
@@ -205,7 +204,7 @@ export function FollowProvider({ children }: FollowProviderProps) {
         setActionId(null);
       }
     },
-    [accessToken, authLoading, user, redirectToLogin, refreshFollowing, showNotice],
+    [accessToken, authLoading, user, redirectToLogin, refreshFollowing, fetchCurrentUser, showNotice],
   );
 
   const unfollow = useCallback(
@@ -238,7 +237,7 @@ export function FollowProvider({ children }: FollowProviderProps) {
 
       try {
         await unfollowUserRequest(id, accessToken);
-        await refreshFollowing();
+        await Promise.all([refreshFollowing(), fetchCurrentUser()]);
         showNotice({ type: "success", text: `Unfollowed ${name}.` });
       } catch (err) {
         const message = getErrorMessage(err, `Could not unfollow ${name}.`);
@@ -250,7 +249,7 @@ export function FollowProvider({ children }: FollowProviderProps) {
         setActionId(null);
       }
     },
-    [accessToken, authLoading, following, redirectToLogin, refreshFollowing, showNotice],
+    [accessToken, authLoading, following, redirectToLogin, refreshFollowing, fetchCurrentUser, showNotice],
   );
 
   const toggleFollow = useCallback(

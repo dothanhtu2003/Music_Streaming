@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { WaveformVisualizer } from "@/components/WaveformVisualizer";
+import { PauseIcon, PlayIcon, VerifiedBadge } from "@/components/ui/Icons";
 import {
   getArtistDisplayName,
   getSongAudioUrl,
@@ -9,6 +10,7 @@ import {
   getGenreName,
 } from "@/lib/song-format";
 import { usePlayerStore } from "@/stores/player-store";
+import { cn } from "@/lib/utils";
 import type { Song } from "@/types/music";
 
 type NowPlayingHeroProps = {
@@ -42,42 +44,76 @@ function HeroCover({ song }: { song: Song }) {
 
 export function NowPlayingHero({ song }: NowPlayingHeroProps) {
   const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const togglePlay = usePlayerStore((state) => state.togglePlay);
   const audioUrl = getSongAudioUrl(song);
   const artistName = getArtistDisplayName(song.artist);
 
   return (
-    <section className="hero-fade-in relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-gradient-to-r from-zinc-950 via-zinc-900 to-black p-5 shadow-2xl sm:p-8 lg:p-10">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.12),transparent_45%)]" />
-      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-orange-500/40 to-transparent" />
+    <section className="hero-fade-in relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900/60 p-6 shadow-2xl sm:p-8">
+      {/* Background glow gradient */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,85,0,0.05),transparent_55%)] pointer-events-none" />
 
-      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center">
-        <HeroCover song={song} />
+      <div className="relative flex flex-col-reverse gap-6 md:flex-row md:items-stretch justify-between h-full">
+        {/* LEFT COLUMN: Controls, metadata & waveform */}
+        <div className="flex flex-col justify-between flex-1 min-w-0">
+          
+          {/* Top Row: Play button + Title/Artist/Tags */}
+          <div className="flex items-start gap-4">
+            {/* Circular Play Button */}
+            <button
+              type="button"
+              onClick={togglePlay}
+              disabled={!audioUrl}
+              className={cn(
+                "flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-orange-500 text-orange-950 transition-all duration-200 hover:bg-orange-400 hover:scale-105 active:scale-95 shadow-lg shadow-orange-500/20 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 sm:h-16 sm:w-16",
+                isPlaying && "bg-white text-black hover:bg-zinc-200",
+              )}
+              aria-label={isPlaying ? "Pause" : "Play"}
+            >
+              {isPlaying ? (
+                <PauseIcon size={22} />
+              ) : (
+                <PlayIcon size={22} className="ml-1" />
+              )}
+            </button>
 
-        <div className="min-w-0 flex-1 space-y-5">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
-              {isPlaying ? "Now playing" : "Paused"}
-            </p>
-            <Link href={`/songs/${song.id}`} className="group mt-2 block">
-              <h1 className="truncate text-3xl font-extrabold text-white transition group-hover:text-orange-400 sm:text-5xl">
-                {song.title}
-              </h1>
-            </Link>
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-zinc-400 sm:text-base">
-              <Link
-                href={`/artists/${song.artist.id}`}
-                className="font-semibold text-zinc-200 transition hover:text-orange-400"
-              >
-                {artistName}
+            {/* Metadata (Title, Artist, Tags) */}
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded bg-orange-500/10 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-orange-400 border border-orange-500/20">
+                  {isPlaying ? "Now playing" : "Paused"}
+                </span>
+                <span className="rounded bg-zinc-900 border border-zinc-800 px-2.5 py-0.5 text-[10px] font-medium text-zinc-400">
+                  {getGenreName(song) || "Track"}
+                </span>
+              </div>
+
+              <Link href={`/songs/${song.id}`} className="group mt-2 block">
+                <h1 className="truncate text-2xl font-black text-white transition group-hover:text-orange-400 sm:text-3xl lg:text-4xl tracking-tight leading-tight">
+                  {song.title}
+                </h1>
               </Link>
-              <span className="text-zinc-600">/</span>
-              <span>{song.album?.title ?? "Single"}</span>
-              <span className="text-zinc-600">/</span>
-              <span>{getGenreName(song)}</span>
+
+              <div className="flex items-center gap-2 text-xs text-zinc-400">
+                <Link href={`/artists/${song.artist.id}`} className="font-bold text-zinc-200 hover:text-orange-400 transition-colors inline-flex items-center gap-1 text-sm">
+                  <span>{artistName}</span>
+                  {song.artist.is_verified && <VerifiedBadge size={13} />}
+                </Link>
+                <span className="text-zinc-700">•</span>
+                <span className="text-zinc-500 font-semibold">{song.album?.title ?? "Single"}</span>
+              </div>
             </div>
           </div>
 
-          <WaveformVisualizer song={song} audioUrl={audioUrl} height={104} />
+          {/* Bottom Row: Waveform container */}
+          <div className="relative mt-8">
+            <WaveformVisualizer song={song} audioUrl={audioUrl} height={90} />
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Cover Image */}
+        <div className="flex flex-col items-center md:items-end justify-center shrink-0">
+          <HeroCover song={song} />
         </div>
       </div>
     </section>

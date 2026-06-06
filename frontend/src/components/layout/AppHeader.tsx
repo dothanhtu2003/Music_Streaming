@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { NotificationBell } from "@/components/notification/NotificationBell";
 import {
   AdminIcon,
   ChevronDownIcon,
@@ -11,7 +12,7 @@ import {
   SearchIcon,
   UserIcon,
 } from "@/components/ui/Icons";
-import { searchRealtimeSuggestionsRequest } from "@/lib/api";
+import { searchRealtimeSuggestionsRequest, resolveApiAssetUrl } from "@/lib/api";
 import {
   getSongCoverUrl,
   getArtistDisplayName,
@@ -364,6 +365,8 @@ export function AppHeader() {
             <SearchIcon size={18} />
           </Link>
 
+          {user && <NotificationBell />}
+
           <div className="relative">
             {isLoading ? (
               <div className="h-9 w-20 animate-pulse rounded border border-zinc-800 bg-zinc-900" />
@@ -374,9 +377,16 @@ export function AppHeader() {
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex h-9 items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 py-1 pl-1 pr-2 text-sm font-medium text-zinc-200 transition hover:bg-zinc-900 hover:text-white"
                 >
-                  <div className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-xs font-bold text-black">
-                    {user.username.slice(0, 1).toUpperCase()}
-                  </div>
+                  {user.avatarUrl ? (
+                    <div
+                      className="h-7 w-7 shrink-0 rounded-full bg-cover bg-center border border-zinc-800 shadow-inner"
+                      style={{ backgroundImage: `url(${resolveApiAssetUrl(user.avatarUrl)})` }}
+                    />
+                  ) : (
+                    <div className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-xs font-bold text-black">
+                      {user.username.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
                   <span className="hidden max-w-28 truncate lg:inline">
                     {user.username}
                   </span>

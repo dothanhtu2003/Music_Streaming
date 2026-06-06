@@ -1,5 +1,6 @@
 const { pool } = require("../db/pool");
 const AppError = require("../utils/appError");
+const notificationService = require("./notification.service");
 const { artistLinkedUserJoin } = require("../utils/artist-user.utils");
 const {
   buildPagination,
@@ -111,6 +112,35 @@ const getSongStatus = async (songId) => {
   return song;
 };
 
+const getSongOwnerForNotification = async (songId) => {
+  const result = await pool.query(
+    `SELECT
+       s.id,
+       ar.user_id AS owner_user_id
+     FROM songs s
+     JOIN artists ar ON ar.id = s.artist_id
+     WHERE s.id = $1
+     LIMIT 1`,
+    [songId]
+  );
+
+  return result.rows[0] || null;
+};
+
+const getUserDisplayName = async (userId) => {
+  const result = await pool.query(
+    `SELECT username, display_name
+     FROM users
+     WHERE id = $1
+     LIMIT 1`,
+    [userId]
+  );
+
+  const user = result.rows[0];
+
+  return user?.display_name || user?.username || "Một người dùng";
+};
+
 const likeSong = async (userId, body) => {
   const songId = getSongIdFromBody(body);
   const song = await getSongStatus(songId);
@@ -133,6 +163,21 @@ const likeSong = async (userId, body) => {
       alreadyLiked: true,
       songId,
     };
+  }
+
+  const songOwner = await getSongOwnerForNotification(songId);
+  if (songOwner?.owner_user_id && songOwner.owner_user_id !== userId) {
+    const username = await getUserDisplayName(userId);
+
+    await notificationService.createNotification({
+      userId: songOwner.owner_user_id,
+      actorId: userId,
+      type: "LIKE_SONG",
+      entityType: "song",
+      entityId: songId,
+      title: "Có lượt thích mới",
+      message: `${username} đã thích bài hát của bạn`,
+    });
   }
 
   return {

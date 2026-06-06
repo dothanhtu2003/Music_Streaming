@@ -259,6 +259,22 @@ const getUsers = async (query) => {
   };
 };
 
+const getUserOptions = async () => {
+  const result = await pool.query(
+    `SELECT id, username, email
+     FROM users
+     WHERE is_banned = FALSE
+     ORDER BY username ASC
+     LIMIT 500`
+  );
+
+  return result.rows.map((user) => ({
+    id: user.id,
+    username: user.username,
+    email: user.email,
+  }));
+};
+
 const getUserById = async (userId) => {
   validateUuid(userId, "userId");
 
@@ -342,6 +358,7 @@ const setUserBanned = async (targetUserId, adminUserId, isBanned) => {
 module.exports = {
   getDashboard,
   getUsers,
+  getUserOptions,
   getPlaylists,
   deletePlaylist,
   updateUserRole,

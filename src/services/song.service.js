@@ -34,11 +34,14 @@ const songSelect = `
   COALESCE(NULLIF(u.bio, ''), ar.bio) AS artist_bio,
   COALESCE(u.avatar_url, ar.avatar_url) AS artist_avatar_url,
   ar.user_id AS artist_user_id,
+  COALESCE(u.is_verified, FALSE) AS artist_is_verified,
   al.title AS album_title,
   al.cover_url AS album_cover_url,
   al.release_date AS album_release_date,
   g.name AS genre_name,
-  g.slug AS genre_slug
+  g.slug AS genre_slug,
+  (SELECT COUNT(*)::int FROM likes WHERE song_id = s.id) AS likes_count,
+  COALESCE((SELECT COUNT(*)::int FROM follows WHERE "followingId" = u.id), 0) AS artist_followers_count
 `;
 
 const songFromClause = `
@@ -60,6 +63,7 @@ const formatSong = (song) => {
     cover_url: song.cover_url,
     duration_sec: song.duration_sec,
     play_count: Number(song.play_count),
+    likes_count: Number(song.likes_count ?? 0),
     is_active: song.is_active,
     created_at: song.created_at,
     updated_at: song.updated_at,
@@ -70,6 +74,8 @@ const formatSong = (song) => {
       bio: song.artist_bio,
       avatar_url: song.artist_avatar_url,
       user_id: song.artist_user_id,
+      followers_count: Number(song.artist_followers_count || 0),
+      is_verified: Boolean(song.artist_is_verified),
     },
     album: song.album_id
       ? {
@@ -425,11 +431,16 @@ const getSongs = async (query) => {
     params
   );
 
+  let orderBy = "s.created_at DESC";
+  if (query.sort === "random") {
+    orderBy = "RANDOM()";
+  }
+
   const result = await pool.query(
     `SELECT ${songSelect}
      ${songFromClause}
      ${whereClause}
-     ORDER BY s.created_at DESC
+     ORDER BY ${orderBy}
      LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
     [...params, limit, offset]
   );

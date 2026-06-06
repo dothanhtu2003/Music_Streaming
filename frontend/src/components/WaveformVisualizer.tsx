@@ -8,6 +8,7 @@ import {
   saveSongWaveformRequest,
 } from "@/lib/api";
 import { formatDuration } from "@/lib/song-format";
+import { getWaveSurferBarOptions, preparePeaks } from "@/lib/waveform";
 import { cn } from "@/lib/utils";
 import type { Song, SongWaveform } from "@/types/music";
 
@@ -86,15 +87,52 @@ function hashString(value: string) {
 
 function buildFallbackPeaks(seed: string) {
   let state = hashString(seed) || 1;
-  const peaks = Array.from({ length: fallbackPeakCount }, (_, index) => {
+  const lcg = () => {
     state = Math.imul(state, 1664525) + 1013904223;
+    return (state >>> 0) / 4294967295;
+  };
 
-    const noise = ((state >>> 0) / 4294967295) * 0.55;
-    const wave = Math.abs(Math.sin(index * 0.11)) * 0.35;
-    const pulse = index % 17 === 0 ? 0.22 : 0;
-    const amplitude = clamp(0.16 + noise + wave + pulse, 0.12, 0.95);
+  // Generate song-specific frequencies and phases for 3 sine components
+  const freq1 = 0.005 + lcg() * 0.015; // Slow variation (period ~100-400 bars)
+  const freq2 = 0.02 + lcg() * 0.04;   // Medium variation (period ~30-100 bars)
+  const freq3 = 0.08 + lcg() * 0.12;   // Fast variation (period ~10-30 bars)
 
-    return Number((index % 2 === 0 ? amplitude : -amplitude).toFixed(4));
+  const phase1 = lcg() * Math.PI * 2;
+  const phase2 = lcg() * Math.PI * 2;
+  const phase3 = lcg() * Math.PI * 2;
+
+  // Randomize the relative weight of the frequencies
+  const w1 = 0.4 + lcg() * 0.2; // 0.4 to 0.6
+  const w2 = 0.2 + lcg() * 0.2; // 0.2 to 0.4
+  const w3 = 0.05 + lcg() * 0.1; // 0.05 to 0.15
+  const sumW = w1 + w2 + w3;
+  // Normalize weights to sum to 0.8 (leaving room for noise)
+  const weight1 = (w1 / sumW) * 0.8;
+  const weight2 = (w2 / sumW) * 0.8;
+  const weight3 = (w3 / sumW) * 0.8;
+
+  const peaks = Array.from({ length: fallbackPeakCount }, (_, index) => {
+    const x = index;
+    const sin1 = Math.sin(x * freq1 + phase1);
+    const sin2 = Math.sin(x * freq2 + phase2);
+    const sin3 = Math.sin(x * freq3 + phase3);
+
+    let baseAmp =
+      Math.abs(sin1) * weight1 +
+      Math.abs(sin2) * weight2 +
+      Math.abs(sin3) * weight3;
+
+    // Add a tiny bit of noise for texture
+    const noise = lcg() * 0.08;
+    baseAmp += noise;
+
+    // Apply the fade envelope at the ends (fade in and fade out)
+    const progress = index / (fallbackPeakCount - 1);
+    const envelope = Math.pow(Math.sin(progress * Math.PI), 1.5);
+
+    const amplitude = clamp(baseAmp * envelope, 0.005, 0.92);
+
+    return Number(amplitude.toFixed(4));
   });
 
   return [peaks];
@@ -264,8 +302,9 @@ export function WaveformVisualizer({
         song.duration_sec,
       );
       const renderDuration = nextDuration || 1;
-      const nextPeaks =
+      const rawPeaks =
         cachedWaveform?.peaks ?? buildFallbackPeaks(fallbackSeed);
+      const nextPeaks = preparePeaks(rawPeaks);
       const canSeek = Boolean(mediaUrl) && nextDuration > 0;
 
       const nextWaveSurfer = WaveSurfer.create({
@@ -274,20 +313,12 @@ export function WaveformVisualizer({
         ...(mediaUrl ? { url: mediaUrl } : {}),
         peaks: nextPeaks,
         duration: renderDuration,
-        waveColor: "#52525b",
-      progressColor: "#ff5500",
-      cursorColor: "#ff5500",
-        cursorWidth: 2,
-        height,
-        barWidth: 2,
-        barGap: 2,
-        barRadius: 2,
+        ...getWaveSurferBarOptions({ height }),
         backend: "MediaElement",
         autoplay: false,
         dragToSeek: true,
         hideScrollbar: true,
         interact: canSeek,
-        normalize: true,
       });
 
       wavesurfer = nextWaveSurfer;
@@ -363,15 +394,10 @@ export function WaveformVisualizer({
   ]);
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3 text-xs font-medium text-zinc-400">
-        <span>{formatDuration(currentTime)}</span>
-        <span>{formatDuration(displayDuration)}</span>
-      </div>
-
+    <div className="relative">
       <div
         className={cn(
-          "relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/70",
+          "relative overflow-hidden rounded-xl",
           status === "ready" && "cursor-pointer",
         )}
         aria-busy={status === "loading"}
@@ -380,16 +406,24 @@ export function WaveformVisualizer({
         <div ref={containerRef} className="w-full" style={{ height }} />
 
         {status !== "ready" && (
-          <div className="absolute inset-0 grid place-items-center bg-zinc-950/80 px-4 text-center text-xs text-zinc-400">
+          <div className="absolute inset-0 grid place-items-center bg-zinc-950/40 backdrop-blur-sm rounded-xl px-4 text-center text-xs text-zinc-400">
             {loadMessage}
           </div>
         )}
 
         {status === "ready" && loadMessage && (
-          <div className="absolute inset-x-0 bottom-0 bg-zinc-950/80 px-3 py-2 text-center text-xs text-zinc-500">
+          <div className="absolute inset-x-0 bottom-0 bg-zinc-950/80 px-3 py-2 text-center text-xs text-zinc-500 rounded-b-xl">
             {loadMessage}
           </div>
         )}
+      </div>
+
+      {/* Overlay timestamps */}
+      <div className="absolute left-0 bottom-[30%] z-10 rounded-sm bg-black px-1.5 py-0.5 text-[9px] font-bold text-orange-500 font-mono select-none">
+        {formatDuration(currentTime)}
+      </div>
+      <div className="absolute right-0 bottom-[30%] z-10 rounded-sm bg-black px-1.5 py-0.5 text-[9px] font-bold text-zinc-400 font-mono select-none">
+        {formatDuration(displayDuration)}
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useFollow } from "@/components/follow/FollowProvider";
 import { useLikes } from "@/components/like/LikeProvider";
 import { usePlaylists } from "@/components/playlist/PlaylistProvider";
-import { PlayIcon } from "@/components/ui/Icons";
+import { PlayIcon, UsersIcon, MusicIcon, VerifiedBadge } from "@/components/ui/Icons";
 import {
   getRecentlyPlayedRequest,
   getSongsRequest,
@@ -33,6 +33,8 @@ type DiscoveryArtist = {
   userId: string | null;
   songCount: number;
   playCount: number;
+  followersCount: number;
+  isVerified: boolean;
 };
 
 type SidebarSectionProps = {
@@ -105,7 +107,7 @@ function TrackItem({
   const artistName = getArtistDisplayName(song.artist);
 
   return (
-    <div className="group flex items-center gap-3 rounded-lg p-1.5 transition hover:bg-zinc-900/70">
+    <div className="group flex items-center gap-3 rounded-lg p-1.5 transition-all duration-200 hover:bg-zinc-900/40 hover:scale-[1.02] hover:translate-x-1 active:scale-[0.98]">
       <button
         type="button"
         onClick={() => playSong(song, queue)}
@@ -125,9 +127,14 @@ function TrackItem({
           </h3>
         </Link>
         <p className="truncate text-xs text-zinc-500">{artistName}</p>
-        <p className="text-[11px] text-zinc-600">
-          {meta ?? `${formatPlayCount(song.play_count)} plays`}
-        </p>
+        {meta ? (
+          <p className="text-[11px] text-zinc-600">{meta}</p>
+        ) : (
+          <div className="flex items-center gap-1 text-[11px] text-zinc-600 mt-0.5" title={`${formatPlayCount(song.play_count)} plays`}>
+            <MusicIcon size={11} className="text-zinc-600 shrink-0" />
+            <span>{formatPlayCount(song.play_count)}</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -143,7 +150,7 @@ function ArtistItem({ artist }: { artist: DiscoveryArtist }) {
     user?.username?.toLowerCase() === artist.name.toLowerCase();
 
   return (
-    <div className="flex items-center gap-3 rounded-lg p-1.5 transition hover:bg-zinc-900/70">
+    <div className="group/artist flex items-center gap-3 rounded-lg p-1.5 transition-all duration-200 hover:bg-zinc-900/40 hover:scale-[1.02] hover:translate-x-1">
       <Link href={`/artists/${artist.id}`} className="shrink-0">
         <CoverImage
           url={artist.avatarUrl}
@@ -154,13 +161,26 @@ function ArtistItem({ artist }: { artist: DiscoveryArtist }) {
 
       <div className="min-w-0 flex-1">
         <Link href={`/artists/${artist.id}`}>
-          <h3 className="truncate text-sm font-semibold text-zinc-100 transition hover:text-orange-400">
-            {artist.name}
+          <h3 className="flex items-center gap-1.5 truncate text-sm font-semibold text-zinc-100 transition hover:text-orange-400">
+            <span className="truncate">{artist.name}</span>
+            {artist.isVerified && <VerifiedBadge size={12} />}
+            {isSelf && (
+              <span className="inline-flex items-center rounded bg-orange-500/10 px-1.5 py-0.5 text-[9px] font-bold text-orange-400 border border-orange-500/20" title="This is you">
+                Bạn
+              </span>
+            )}
           </h3>
         </Link>
-        <p className="truncate text-[11px] text-zinc-500">
-          {artist.songCount} songs - {formatPlayCount(artist.playCount)} plays
-        </p>
+        <div className="flex items-center gap-3 text-[11px] text-zinc-500 mt-0.5">
+          <span className="flex items-center gap-1" title={`${artist.followersCount} followers`}>
+            <UsersIcon size={12} className="text-zinc-500 shrink-0" />
+            <span>{artist.followersCount}</span>
+          </span>
+          <span className="flex items-center gap-1" title={`${artist.songCount} songs`}>
+            <MusicIcon size={12} className="text-zinc-500 shrink-0" />
+            <span>{artist.songCount}</span>
+          </span>
+        </div>
       </div>
 
       {!isSelf && (
@@ -168,7 +188,7 @@ function ArtistItem({ artist }: { artist: DiscoveryArtist }) {
           type="button"
           disabled={loading}
           onClick={() => void toggleFollow(artist.id, artist.name)}
-          className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold transition-all duration-200 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${
             followed
               ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
               : "bg-orange-500 text-orange-950 hover:bg-orange-400"
@@ -190,7 +210,7 @@ function PlaylistItem({ playlist }: { playlist: UserPlaylist }) {
   return (
     <Link
       href={`/playlists/${playlist.id}`}
-      className="flex items-center gap-3 rounded-lg p-1.5 transition hover:bg-zinc-900/70"
+      className="group flex items-center gap-3 rounded-lg p-1.5 transition-all duration-200 hover:bg-zinc-900/40 hover:scale-[1.02] hover:translate-x-1 active:scale-[0.98]"
     >
       <CoverImage url={coverUrl} fallback={playlist.title || playlist.name} />
       <div className="min-w-0 flex-1">
@@ -243,6 +263,8 @@ function buildArtists(songs: Song[]) {
     const currentArtist = artists.get(song.artist.id);
     const artistName = getArtistDisplayName(song.artist);
     const avatarUrl = getArtistAvatarUrl(song.artist) ?? getSongCoverUrl(song);
+    const followersCount = song.artist.followers_count ?? 0;
+    const isVerified = song.artist.is_verified ?? false;
 
     if (!currentArtist) {
       artists.set(song.artist.id, {
@@ -252,6 +274,8 @@ function buildArtists(songs: Song[]) {
         userId: song.artist.user_id ?? null,
         songCount: 1,
         playCount: song.play_count,
+        followersCount,
+        isVerified,
       });
       return;
     }
@@ -259,6 +283,8 @@ function buildArtists(songs: Song[]) {
     currentArtist.songCount += 1;
     currentArtist.playCount += song.play_count;
     currentArtist.avatarUrl = currentArtist.avatarUrl ?? avatarUrl;
+    currentArtist.followersCount = Math.max(currentArtist.followersCount, followersCount);
+    currentArtist.isVerified = currentArtist.isVerified || isVerified;
   });
 
   return Array.from(artists.values()).sort(
@@ -402,7 +428,6 @@ export function RightSidebar() {
                 key={song.id}
                 song={song}
                 queue={recentLiked}
-                meta={`${formatPlayCount(song.play_count)} plays`}
               />
             ))}
           </SidebarSection>
