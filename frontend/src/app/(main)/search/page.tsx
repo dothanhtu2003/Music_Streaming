@@ -4,68 +4,45 @@ import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SearchBox } from "@/components/song/SearchBox";
-import { SongList } from "@/components/song/SongList";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { SearchIcon, VerifiedBadge } from "@/components/ui/Icons";
+import { SearchIcon } from "@/components/ui/Icons";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
-  searchSongsRequest,
-  searchRealtimeSuggestionsRequest,
+  clearRecentSearchesRequest,
+  deleteRecentSearchRequest,
+  getSearchSuggestionsRequest,
+  resolveApiAssetUrl,
+  searchUniversalRequest,
 } from "@/lib/api";
 import {
-  getArtistDisplayName,
-  getArtistAvatarUrl,
-} from "@/lib/song-format";
-import type { ArtistRecord, Song, SongPagination } from "@/types/music";
+  clearGuestRecentSearches,
+  deleteGuestRecentSearch,
+  getGuestRecentSearches,
+  saveGuestRecentSearch,
+} from "@/lib/search-storage";
+import { cn } from "@/lib/utils";
+import type {
+  SearchHistoryItem,
+  UniversalSearchItem,
+  UniversalSearchResponse,
+} from "@/types/music";
 
-const SONG_LIMIT = 9;
-const ARTIST_LIMIT = 8;
+const RESULT_LIMIT = 12;
 
-/* ---------- Artist card used in the search results ---------- */
+const emptySearchData: UniversalSearchResponse = {
+  query: "",
+  normalizedQuery: "",
+  topResult: null,
+  songs: [],
+  artists: [],
+  playlists: [],
+  suggestions: [],
+  recentSearches: [],
+  trendingSearches: [],
+};
 
-function ArtistSearchCard({ artist }: { artist: ArtistRecord }) {
-  const avatarUrl = getArtistAvatarUrl(artist);
-  const displayName = getArtistDisplayName(artist);
-
-  return (
-    <Link
-      href={`/artists/${artist.id}`}
-      className="group flex flex-col items-center gap-3 rounded-2xl border border-zinc-800/60 bg-[#121214]/40 p-4 transition duration-300 hover:border-orange-500/40 hover:bg-zinc-900/80 hover:shadow-lg hover:shadow-orange-500/5 w-full"
-    >
-      <div className="relative">
-        {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={avatarUrl}
-            alt=""
-            className="h-20 w-20 rounded-full object-cover border-2 border-zinc-800 transition duration-300 group-hover:border-orange-500/50 group-hover:scale-105"
-          />
-        ) : (
-          <div className="grid h-20 w-20 place-items-center rounded-full bg-gradient-to-br from-orange-500/20 to-zinc-900 text-xl font-black text-orange-500 border-2 border-zinc-800 transition duration-300 group-hover:border-orange-500/50 group-hover:scale-105">
-            {displayName.slice(0, 1).toUpperCase()}
-          </div>
-        )}
-      </div>
-      <div className="min-w-0 text-center w-full">
-        <span className="flex items-center justify-center gap-1 text-sm font-semibold text-zinc-100 transition duration-200 group-hover:text-orange-400">
-          <span className="truncate">{displayName}</span>
-          {artist.is_verified && <VerifiedBadge size={13} />}
-        </span>
-        <span className="block text-[11px] text-zinc-500 mt-0.5">
-          {artist.followers_count && artist.followers_count > 0
-            ? `${artist.followers_count} followers`
-            : "Artist"}
-        </span>
-      </div>
-    </Link>
-  );
-}
-
-
-
-
-/* ---------- Page fallback / skeleton ---------- */
+type SearchTab = "all" | "songs" | "artists" | "playlists";
 
 function SearchPageFallback() {
   return (
@@ -73,389 +50,451 @@ function SearchPageFallback() {
       <PageHeader
         eyebrow="Search"
         title="Find your next song"
-        description="Search songs and artists from the header."
+        description="Search songs, artists, and playlists."
       />
-      <div className="grid min-h-40 place-items-center rounded-2xl border border-zinc-800 bg-zinc-950 p-8 text-sm text-zinc-500">
+      <div className="grid min-h-40 place-items-center rounded-xl border border-zinc-900 bg-zinc-950/40 p-8 text-sm text-zinc-500">
         Loading search...
       </div>
     </div>
   );
 }
 
-const GENRES = [
-  { name: "Remix", query: "remix", color: "from-orange-600 to-red-650 hover:shadow-orange-500/10", icon: "💿" },
-  { name: "Lofi Beats", query: "lofi", color: "from-purple-600 to-indigo-700 hover:shadow-purple-500/10", icon: "☕" },
-  { name: "VinaHouse", query: "vinahouse", color: "from-cyan-600 to-blue-700 hover:shadow-cyan-500/10", icon: "🔥" },
-  { name: "Nightcore", query: "nightcore", color: "from-rose-600 to-pink-700 hover:shadow-rose-500/10", icon: "⚡" },
-  { name: "Pop Music", query: "pop", color: "from-emerald-600 to-teal-700 hover:shadow-emerald-500/10", icon: "🎵" },
-  { name: "Chill", query: "chill", color: "from-fuchsia-600 to-purple-700 hover:shadow-fuchsia-500/10", icon: "🍃" },
-];
+function resultTypeLabel(type: UniversalSearchItem["type"]) {
+  if (type === "song") {
+    return "Song";
+  }
 
-/* ---------- Main search page content ---------- */
+  if (type === "artist") {
+    return "Artist";
+  }
+
+  return "Playlist";
+}
+
+function ResultCard({
+  item,
+  compact = false,
+}: {
+  item: UniversalSearchItem;
+  compact?: boolean;
+}) {
+  const imageUrl = resolveApiAssetUrl(item.imageUrl);
+
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        "group flex items-center gap-3 rounded-lg border border-zinc-800/70 bg-zinc-950/40 p-3 transition hover:border-orange-500/50 hover:bg-zinc-900/80",
+        compact ? "min-h-20" : "min-h-24",
+      )}
+    >
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt=""
+          className={cn(
+            "shrink-0 object-cover border border-zinc-800",
+            item.type === "artist" ? "rounded-full" : "rounded",
+            compact ? "h-12 w-12" : "h-16 w-16",
+          )}
+        />
+      ) : (
+        <div
+          className={cn(
+            "grid shrink-0 place-items-center border border-zinc-800 bg-zinc-900 text-lg font-black text-orange-500",
+            item.type === "artist" ? "rounded-full" : "rounded",
+            compact ? "h-12 w-12" : "h-16 w-16",
+          )}
+        >
+          {item.title.slice(0, 1).toUpperCase()}
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <span className="mb-1 inline-flex rounded border border-zinc-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-500">
+          {resultTypeLabel(item.type)}
+        </span>
+        <h3 className="truncate text-sm font-semibold text-zinc-100 transition group-hover:text-orange-400">
+          {item.title}
+        </h3>
+        <p className="truncate text-xs text-zinc-500">{item.subtitle}</p>
+      </div>
+    </Link>
+  );
+}
+
+function TopResultCard({ item }: { item: UniversalSearchItem }) {
+  return (
+    <section className="space-y-3">
+      <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
+        Top Result
+      </h2>
+      <div className="max-w-xl">
+        <ResultCard item={item} />
+      </div>
+    </section>
+  );
+}
+
+function ResultSection({
+  title,
+  items,
+  emptyTitle,
+}: {
+  title: string;
+  items: UniversalSearchItem[];
+  emptyTitle?: string;
+}) {
+  if (items.length === 0) {
+    if (!emptyTitle) {
+      return null;
+    }
+
+    return (
+      <EmptyState
+        icon={<SearchIcon size={24} />}
+        title={emptyTitle}
+        description="Try another keyword."
+      />
+    );
+  }
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
+        {title}
+      </h2>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {items.map((item) => (
+          <ResultCard key={`${item.type}-${item.id}`} item={item} compact />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SearchChip({
+  label,
+  onClick,
+  onDelete,
+}: {
+  label: string;
+  onClick: () => void;
+  onDelete?: () => void;
+}) {
+  return (
+    <div className="inline-flex max-w-full items-center overflow-hidden rounded-full border border-zinc-800 bg-zinc-950/60 text-xs text-zinc-300">
+      <button
+        type="button"
+        onClick={onClick}
+        className="min-w-0 truncate px-3 py-1.5 transition hover:text-orange-400"
+      >
+        {label}
+      </button>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="border-l border-zinc-800 px-2 py-1.5 text-zinc-500 transition hover:text-orange-400"
+          aria-label={`Remove ${label}`}
+        >
+          x
+        </button>
+      )}
+    </div>
+  );
+}
 
 function SearchPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = (searchParams.get("q") ?? "").trim();
+  const { accessToken } = useAuth();
+  const [searchData, setSearchData] = useState<UniversalSearchResponse>(emptySearchData);
+  const [guestRecent, setGuestRecent] = useState<SearchHistoryItem[]>(() =>
+    getGuestRecentSearches(),
+  );
+  const [activeTab, setActiveTab] = useState<SearchTab>("all");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Songs state (existing)
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [pagination, setPagination] = useState<SongPagination | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [songError, setSongError] = useState<string | null>(null);
-  const [loadedKeyword, setLoadedKeyword] = useState("");
-
-  // Artists state (new)
-  const [artists, setArtists] = useState<ArtistRecord[]>([]);
-  const [loadedArtistsKeyword, setLoadedArtistsKeyword] = useState("");
-
-  // Search filter tabs
-  const [activeTab, setActiveTab] = useState<"all" | "songs" | "artists">("all");
-  const [prevQuery, setPrevQuery] = useState(query);
-
-  if (query !== prevQuery) {
-    setPrevQuery(query);
-    setActiveTab("all");
-  }
-
-  const activeKeyword = query;
-  const hasSearched = activeKeyword.length > 0;
-  const isSearching = Boolean(query && query !== loadedKeyword);
-  const artistsLoading = Boolean(query && query !== loadedArtistsKeyword);
-
-  // Fetch songs (existing logic, unchanged)
   useEffect(() => {
-    let isMounted = true;
+    const controller = new AbortController();
 
-    if (!query) {
-      return () => {
-        isMounted = false;
-      };
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        setLoading(true);
+        setError(null);
+        setActiveTab("all");
+      }
+    });
+
+    if (query.length >= 2 && !accessToken) {
+      saveGuestRecentSearch(query);
+      queueMicrotask(() => {
+        if (!controller.signal.aborted) {
+          setGuestRecent(getGuestRecentSearches());
+        }
+      });
     }
 
-    void searchSongsRequest(query, 1, SONG_LIMIT)
-      .then((result) => {
-        if (!isMounted) {
-          return;
-        }
+    const request = query.length >= 2
+      ? searchUniversalRequest(query, RESULT_LIMIT, {
+          accessToken,
+          signal: controller.signal,
+          saveHistory: true,
+        })
+      : getSearchSuggestionsRequest("", 5, {
+          accessToken,
+          signal: controller.signal,
+        });
 
-        setSongs(result.items);
-        setPagination(result.pagination);
-        setSongError(null);
-        setLoadedKeyword(query);
+    void request
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          setSearchData(data);
+        }
       })
       .catch((searchError) => {
-        if (!isMounted) {
+        if (searchError instanceof DOMException && searchError.name === "AbortError") {
           return;
         }
 
-        setSongs([]);
-        setPagination(null);
-        setSongError(
+        setSearchData(emptySearchData);
+        setError(
           searchError instanceof Error
             ? searchError.message
-            : "Could not search songs.",
+            : "Could not search right now.",
         );
-        setLoadedKeyword(query);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [query]);
-
-  // Fetch artists (new — independent from songs)
-  useEffect(() => {
-    let isMounted = true;
-
-    if (!query) {
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    void searchRealtimeSuggestionsRequest(query, ARTIST_LIMIT)
-      .then((data) => {
-        if (!isMounted) {
-          return;
-        }
-
-        setArtists(data.artists ?? []);
-        setLoadedArtistsKeyword(query);
       })
-      .catch(() => {
-        if (!isMounted) {
-          return;
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
         }
-
-        // Silently ignore — songs still display
-        setArtists([]);
-        setLoadedArtistsKeyword(query);
       });
 
     return () => {
-      isMounted = false;
+      controller.abort();
     };
-  }, [query]);
+  }, [accessToken, query]);
 
-
+  const recentSearches = accessToken
+    ? searchData.recentSearches ?? []
+    : guestRecent;
+  const trendingSearches = searchData.trendingSearches ?? [];
+  const hasQuery = query.length > 0;
+  const hasResults =
+    Boolean(searchData.topResult) ||
+    searchData.songs.length > 0 ||
+    searchData.artists.length > 0 ||
+    searchData.playlists.length > 0;
 
   const handleSearch = (nextKeyword: string) => {
     router.push(`/search?q=${encodeURIComponent(nextKeyword.trim())}`);
   };
 
-  const handleLoadMore = async () => {
-    if (!pagination || !activeKeyword || loadingMore) {
+  const handleDeleteRecent = async (item: SearchHistoryItem) => {
+    if (!accessToken) {
+      deleteGuestRecentSearch(item.id);
+      setGuestRecent(getGuestRecentSearches());
       return;
     }
 
-    setLoadingMore(true);
-    setSongError(null);
-
     try {
-      const result = await searchSongsRequest(
-        activeKeyword,
-        pagination.page + 1,
-        SONG_LIMIT,
+      await deleteRecentSearchRequest(item.id, accessToken);
+      setSearchData((current) => ({
+        ...current,
+        recentSearches: (current.recentSearches ?? []).filter(
+          (recent) => recent.id !== item.id,
+        ),
+      }));
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Could not delete recent search.",
       );
-
-      setSongs((currentSongs) => [...currentSongs, ...result.items]);
-      setPagination(result.pagination);
-    } catch (loadMoreError) {
-      setSongError(
-        loadMoreError instanceof Error
-          ? loadMoreError.message
-          : "Could not load more songs.",
-      );
-    } finally {
-      setLoadingMore(false);
     }
   };
 
-  const canLoadMore = pagination
-    ? pagination.page < pagination.totalPages
-    : false;
+  const handleClearRecent = async () => {
+    if (!accessToken) {
+      clearGuestRecentSearches();
+      setGuestRecent([]);
+      return;
+    }
 
-  const noResults =
-    hasSearched &&
-    !isSearching &&
-    !artistsLoading &&
-    songs.length === 0 &&
-    artists.length === 0 &&
-    !songError;
+    try {
+      await clearRecentSearchesRequest(accessToken);
+      setSearchData((current) => ({ ...current, recentSearches: [] }));
+    } catch (clearError) {
+      setError(
+        clearError instanceof Error
+          ? clearError.message
+          : "Could not clear recent searches.",
+      );
+    }
+  };
+
+  const tabs: Array<{ value: SearchTab; label: string }> = [
+    { value: "all", label: "All" },
+    { value: "songs", label: "Songs" },
+    { value: "artists", label: "Artists" },
+    { value: "playlists", label: "Playlists" },
+  ];
 
   return (
     <div className="space-y-6 page-fade-in">
       <PageHeader
-        eyebrow={hasSearched ? "Search Results" : "Explore"}
-        title={hasSearched ? `Results for "${activeKeyword}"` : "Find your next song"}
+        eyebrow={hasQuery ? "Search Results" : "Search"}
+        title={hasQuery ? `Results for "${query}"` : "Find your next song"}
         description={
-          hasSearched
-            ? `We found ${songs.length} song${songs.length === 1 ? "" : "s"} and ${artists.length} artist${artists.length === 1 ? "" : "s"}.`
-            : "Search tracks and artists by entering keywords."
+          hasQuery
+            ? "Search across songs, artists, and playlists."
+            : "Explore recent searches and trending keywords."
         }
         action={
           <SearchBox
-            key={activeKeyword}
+            key={query}
             onSearch={handleSearch}
-            initialValue={activeKeyword}
-            loading={isSearching}
+            initialValue={query}
+            loading={loading}
             className="w-full sm:w-80 md:hidden"
           />
         }
       />
 
-      {/* Explore Section when no keyword is entered */}
-      {!hasSearched && (
-        <div className="space-y-6 pt-2 animate-fade-in">
-          <div className="space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
-              Browse Genres & Categories
-            </h3>
-            <p className="text-xs text-zinc-400">
-              Click on a card below to discover popular songs and matching content.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6">
-            {GENRES.map((genre) => (
+      {error && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      {!hasQuery && (
+        <div className="space-y-6">
+          {recentSearches.length > 0 && (
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
+                  Recent Searches
+                </h2>
+                <button
+                  type="button"
+                  onClick={handleClearRecent}
+                  className="text-xs font-semibold text-zinc-500 transition hover:text-orange-400"
+                >
+                  Clear all
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {recentSearches.map((item) => (
+                  <SearchChip
+                    key={item.id}
+                    label={item.query}
+                    onClick={() => handleSearch(item.query)}
+                    onDelete={() => handleDeleteRecent(item)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="space-y-3">
+            <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
+              Trending Searches
+            </h2>
+            {trendingSearches.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {trendingSearches.map((item) => (
+                  <SearchChip
+                    key={item}
+                    label={item}
+                    onClick={() => handleSearch(item)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon={<SearchIcon size={24} />}
+                title="No trending searches yet"
+                description="Search activity will appear here after users start searching."
+              />
+            )}
+          </section>
+        </div>
+      )}
+
+      {hasQuery && (
+        <>
+          <div className="flex items-center gap-2 border-b border-zinc-900/60 pb-3">
+            {tabs.map((tab) => (
               <button
-                key={genre.name}
-                onClick={() => handleSearch(genre.query)}
+                key={tab.value}
+                type="button"
+                onClick={() => setActiveTab(tab.value)}
                 className={cn(
-                  "group relative overflow-hidden rounded-2xl p-5 text-left h-28 transition-all duration-300 hover:scale-[1.03] hover:shadow-lg bg-gradient-to-br border border-white/5",
-                  genre.color
+                  "rounded-full px-4 py-1.5 text-xs font-bold transition",
+                  activeTab === tab.value
+                    ? "bg-orange-500 text-orange-950"
+                    : "border border-zinc-800 text-zinc-400 hover:text-white",
                 )}
               >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-85" />
-                <span className="relative z-10 text-sm font-extrabold text-white tracking-tight leading-tight block">
-                  {genre.name}
-                </span>
-                <div className="absolute bottom-3 right-4 text-3xl opacity-20 transition-all duration-300 group-hover:scale-110 group-hover:opacity-40 select-none">
-                  {genre.icon}
-                </div>
+                {tab.label}
               </button>
             ))}
           </div>
-        </div>
-      )}
 
-      {/* Filter Tabs when query is loaded */}
-      {hasSearched && !isSearching && !artistsLoading && !noResults && (
-        <div className="flex items-center gap-2 border-b border-zinc-900/60 pb-3">
-          <button
-            onClick={() => setActiveTab("all")}
-            className={cn(
-              "rounded-full px-4 py-1.5 text-xs font-bold transition duration-200",
-              activeTab === "all"
-                ? "bg-orange-500 text-orange-950 shadow-md shadow-orange-500/10"
-                : "border border-zinc-800/80 text-zinc-400 hover:border-zinc-700 hover:text-white"
-            )}
-          >
-            All Results
-          </button>
-          <button
-            onClick={() => setActiveTab("songs")}
-            className={cn(
-              "rounded-full px-4 py-1.5 text-xs font-bold transition duration-200",
-              activeTab === "songs"
-                ? "bg-orange-500 text-orange-950 shadow-md shadow-orange-500/10"
-                : "border border-zinc-800/80 text-zinc-400 hover:border-zinc-700 hover:text-white"
-            )}
-          >
-            Songs
-          </button>
-          <button
-            onClick={() => setActiveTab("artists")}
-            className={cn(
-              "rounded-full px-4 py-1.5 text-xs font-bold transition duration-200",
-              activeTab === "artists"
-                ? "bg-orange-500 text-orange-950 shadow-md shadow-orange-500/10"
-                : "border border-zinc-800/80 text-zinc-400 hover:border-zinc-700 hover:text-white"
-            )}
-          >
-            Artists
-          </button>
-        </div>
-      )}
-
-      {/* Loading state indicator */}
-      {(isSearching || artistsLoading) && (
-        <div className="grid min-h-40 place-items-center rounded-2xl border border-zinc-900 bg-zinc-950/40 p-8 text-sm text-zinc-500 animate-pulse">
-          Searching for &quot;{activeKeyword}&quot;...
-        </div>
-      )}
-
-      {/* Search Result Views */}
-      {hasSearched && !isSearching && !artistsLoading && !noResults && (
-        <div className="space-y-8">
-          {/* TAB: ALL RESULTS */}
-          {activeTab === "all" && (
-            <>
-              {/* Artists Preview */}
-              {artists.length > 0 && (
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
-                      Artists
-                    </h2>
-                    {artists.length > 6 && (
-                      <button
-                        onClick={() => setActiveTab("artists")}
-                        className="text-xs font-bold text-orange-500 hover:text-orange-450 transition"
-                      >
-                        See all ({artists.length})
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                    {artists.slice(0, 6).map((artist) => (
-                      <ArtistSearchCard key={artist.id} artist={artist} />
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Songs Preview */}
-              {songs.length > 0 && (
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
-                      Songs
-                    </h2>
-                    {songs.length > 6 && (
-                      <button
-                        onClick={() => setActiveTab("songs")}
-                        className="text-xs font-bold text-orange-500 hover:text-orange-450 transition"
-                      >
-                        See all
-                      </button>
-                    )}
-                  </div>
-                  <SongList
-                    songs={songs}
-                    loading={false}
-                    error={songError}
-                    emptyMessage={`No songs found for "${activeKeyword}".`}
-                    canLoadMore={canLoadMore}
-                    loadingMore={loadingMore}
-                    onLoadMore={handleLoadMore}
-                    variant="list"
-                  />
-                </section>
-              )}
-            </>
+          {loading && (
+            <div className="grid min-h-40 place-items-center rounded-xl border border-zinc-900 bg-zinc-950/40 p-8 text-sm text-zinc-500">
+              Searching for &quot;{query}&quot;...
+            </div>
           )}
 
-          {/* TAB: SONGS ONLY */}
-          {activeTab === "songs" && (
-            <section className="space-y-3">
-              <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
-                All Matching Songs
-              </h2>
-              <SongList
-                songs={songs}
-                loading={false}
-                error={songError}
-                emptyMessage={`No songs found for "${activeKeyword}".`}
-                canLoadMore={canLoadMore}
-                loadingMore={loadingMore}
-                onLoadMore={handleLoadMore}
-                variant="list"
-              />
-            </section>
+          {!loading && !hasResults && !error && (
+            <EmptyState
+              icon={<SearchIcon size={24} />}
+              title={`No results found for "${query}"`}
+              description="Try a different keyword or check the spelling."
+            />
           )}
 
-          {/* TAB: ARTISTS ONLY */}
-          {activeTab === "artists" && (
-            <section className="space-y-3">
-              <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
-                All Matching Artists
-              </h2>
-              {artists.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                  {artists.map((artist) => (
-                    <ArtistSearchCard key={artist.id} artist={artist} />
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  icon={<SearchIcon size={24} />}
-                  title="No artists found"
-                  description={`We couldn't find any artists matching "${activeKeyword}".`}
+          {!loading && hasResults && (
+            <div className="space-y-8">
+              {activeTab === "all" && (
+                <>
+                  {searchData.topResult && <TopResultCard item={searchData.topResult} />}
+                  <ResultSection title="Songs" items={searchData.songs.slice(0, 6)} />
+                  <ResultSection title="Artists" items={searchData.artists.slice(0, 6)} />
+                  <ResultSection title="Playlists" items={searchData.playlists.slice(0, 6)} />
+                </>
+              )}
+
+              {activeTab === "songs" && (
+                <ResultSection
+                  title="Songs"
+                  items={searchData.songs}
+                  emptyTitle={`No songs found for "${query}"`}
                 />
               )}
-            </section>
-          )}
-        </div>
-      )}
 
-      {/* Global empty state when both artists and songs are empty */}
-      {noResults && (
-        <EmptyState
-          icon={<SearchIcon size={24} />}
-          title="No results found"
-          description={`We couldn't find any songs or artists matching "${activeKeyword}". Try a different keyword.`}
-        />
+              {activeTab === "artists" && (
+                <ResultSection
+                  title="Artists"
+                  items={searchData.artists}
+                  emptyTitle={`No artists found for "${query}"`}
+                />
+              )}
+
+              {activeTab === "playlists" && (
+                <ResultSection
+                  title="Playlists"
+                  items={searchData.playlists}
+                  emptyTitle={`No playlists found for "${query}"`}
+                />
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -7,8 +7,8 @@ import { adminNav, authNav, mainNav, type NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 function isActivePath(pathname: string, href: string) {
-  if (href === "/") {
-    return pathname === "/";
+  if (href === "/home") {
+    return pathname === "/home";
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);

@@ -94,6 +94,16 @@ function buildSongPayload(form: SongFormState): SongWritePayload {
   };
 }
 
+function getUploaderLabel(song: Song) {
+  const uploader = song.uploadedByUser;
+
+  return (
+    uploader?.displayName?.trim() ||
+    uploader?.username?.trim() ||
+    "Unknown"
+  );
+}
+
 export default function AdminSongsPage() {
   const { accessToken } = useAuth();
   const [songs, setSongs] = useState<Song[]>([]);
@@ -386,6 +396,7 @@ export default function AdminSongsPage() {
                   <th scope="col" className="px-5 py-4 font-bold text-center w-16">Cover</th>
                   <th scope="col" className="px-5 py-4 font-bold">Title</th>
                   <th scope="col" className="px-5 py-4 font-bold">Artist</th>
+                  <th scope="col" className="px-5 py-4 font-bold">Uploader</th>
                   <th scope="col" className="px-5 py-4 font-bold">Album</th>
                   <th scope="col" className="px-5 py-4 font-bold">Genre</th>
                   <th scope="col" className="px-5 py-4 font-bold">Duration</th>
@@ -404,12 +415,13 @@ export default function AdminSongsPage() {
                       <td className="px-5 py-4"><div className="h-4 bg-zinc-900 rounded w-14"></div></td>
                       <td className="px-5 py-4"><div className="h-4 bg-zinc-900 rounded w-10"></div></td>
                       <td className="px-5 py-4"><div className="h-4 bg-zinc-900 rounded w-16"></div></td>
+                      <td className="px-5 py-4"><div className="h-4 bg-zinc-900 rounded w-16"></div></td>
                       <td className="px-5 py-4"><div className="h-7 bg-zinc-900 rounded w-24 mx-auto"></div></td>
                     </tr>
                   ))
                 ) : error ? (
                   <tr>
-                    <td colSpan={8} className="px-5 py-12 text-center text-rose-400 bg-rose-500/5">
+                    <td colSpan={9} className="px-5 py-12 text-center text-rose-400 bg-rose-500/5">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <svg className="h-6 w-6 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -420,7 +432,7 @@ export default function AdminSongsPage() {
                   </tr>
                 ) : filteredSongs.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-5 py-12 text-center text-zinc-500">
+                    <td colSpan={9} className="px-5 py-12 text-center text-zinc-500">
                       <div className="flex flex-col items-center justify-center gap-2.5">
                         <svg className="h-8 w-8 text-zinc-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
@@ -455,6 +467,7 @@ export default function AdminSongsPage() {
                         {song.title}
                       </td>
                       <td className="px-5 py-3 text-zinc-350">{song.artist.name}</td>
+                      <td className="px-5 py-3 text-zinc-400">{getUploaderLabel(song)}</td>
                       <td className="px-5 py-3 text-zinc-400">{song.album?.title ?? "Single"}</td>
                       <td className="px-5 py-3">
                         <span className="inline-flex rounded-full bg-zinc-900 px-2.5 py-1 text-xs text-zinc-400 border border-zinc-800/80">

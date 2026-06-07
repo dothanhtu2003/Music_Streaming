@@ -18,15 +18,24 @@ import type {
   Pagination,
   PlaylistDetail,
   RecentlyPlayedSong,
+  SearchHistoryItem,
   Song,
   SongPagination,
+  StudioActivity,
+  StudioOverview,
+  StudioTrack,
+  StudioTrackSort,
   SongWaveform,
   SongWritePayload,
+  UniversalSearchResponse,
   UserNotification,
   UserPlaylist,
+  ChartPeriod,
+  ChartTrack,
   FollowedArtist,
   PublicUserProfile,
   SongComment,
+  TrendingTrack,
 } from "@/types/music";
 import {
   clearTokens,
@@ -39,7 +48,7 @@ import {
   normalizeSongs,
 } from "@/lib/song-format";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
 
 export class ApiRequestError extends Error {
   statusCode: number;
@@ -68,6 +77,7 @@ type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   accessToken?: string | null;
+  signal?: AbortSignal;
 };
 
 function getResponseErrorMessage(response: Response, responseText: string) {
@@ -142,6 +152,17 @@ type PlaylistWritePayload = {
   is_public?: boolean;
 };
 
+type PlaylistVisibilityResult = {
+  id: string;
+  isPublic: boolean;
+  is_public: boolean;
+  slug: string | null;
+  shareCount: number;
+  share_count: number;
+  shareUrl: string;
+  share_url: string;
+};
+
 type UploadTrackToPlaylistResult = PlaylistSongActionResult & {
   song: Song;
   track: Song;
@@ -175,6 +196,7 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}) {
     headers,
     body: requestBody,
     cache: "no-store",
+    signal: options.signal,
   });
 
   const responseText = await response.text();
@@ -366,6 +388,94 @@ export async function searchSongsRequest(q: string, page = 1, limit = 9) {
   };
 }
 
+export async function searchUniversalRequest(
+  q: string,
+  limit = 8,
+  options: {
+    accessToken?: string | null;
+    signal?: AbortSignal;
+    include?: "all" | "songs" | "artists" | "playlists";
+    saveHistory?: boolean;
+  } = {},
+) {
+  const response = await apiRequest<UniversalSearchResponse>(
+    `/search${buildQuery({
+      q,
+      limit,
+      include: options.include ?? "all",
+      saveHistory: options.saveHistory === undefined ? undefined : String(options.saveHistory),
+    })}`,
+    {
+      accessToken: options.accessToken,
+      signal: options.signal,
+    },
+  );
+
+  return response.data ?? {
+    query: q,
+    normalizedQuery: q.trim().toLowerCase(),
+    topResult: null,
+    songs: [],
+    artists: [],
+    playlists: [],
+    suggestions: [],
+  };
+}
+
+export async function getSearchSuggestionsRequest(
+  q = "",
+  limit = 5,
+  options: { accessToken?: string | null; signal?: AbortSignal } = {},
+) {
+  const response = await apiRequest<UniversalSearchResponse>(
+    `/search/suggestions${buildQuery({ q, limit })}`,
+    {
+      accessToken: options.accessToken,
+      signal: options.signal,
+    },
+  );
+
+  return response.data ?? {
+    query: q,
+    normalizedQuery: q.trim().toLowerCase(),
+    topResult: null,
+    songs: [],
+    artists: [],
+    playlists: [],
+    suggestions: [],
+    recentSearches: [],
+    trendingSearches: [],
+  };
+}
+
+export async function getRecentSearchesRequest(accessToken: string) {
+  const response = await apiRequest<SearchHistoryItem[]>("/search/recent", {
+    accessToken,
+  });
+
+  return response.data ?? [];
+}
+
+export async function deleteRecentSearchRequest(id: string, accessToken: string) {
+  await apiRequest<{ id: string }>(`/search/recent/${id}`, {
+    method: "DELETE",
+    accessToken,
+  });
+}
+
+export async function clearRecentSearchesRequest(accessToken: string) {
+  await apiRequest<{ cleared: boolean }>("/search/recent", {
+    method: "DELETE",
+    accessToken,
+  });
+}
+
+export async function getTrendingSearchesRequest() {
+  const response = await apiRequest<string[]>("/search/trending");
+
+  return response.data ?? [];
+}
+
 export async function getSongRequest(id: string) {
   const response = await apiRequest<Song>(`/songs/${id}`);
 
@@ -411,11 +521,7 @@ export async function saveSongWaveformRequest(
 }
 
 export async function searchRealtimeSuggestionsRequest(q: string, limit = 5) {
-  const response = await apiRequest<{ songs: Song[]; artists: ArtistRecord[] }>(
-    `/search${buildQuery({ q, limit })}`
-  );
-
-  return response.data ?? { songs: [], artists: [] };
+  return getSearchSuggestionsRequest(q, limit);
 }
 
 export async function listenSongRequest(
@@ -604,6 +710,60 @@ export async function getPlaylistRequest(id: string, accessToken: string) {
   }
 
   return normalizePlaylistDetail(response.data);
+}
+
+export async function getPublicPlaylistRequest(slugOrId: string) {
+  const response = await apiRequest<PlaylistDetail>(
+    `/playlists/public/${encodeURIComponent(slugOrId)}`,
+  );
+
+  if (!response.data) {
+    throw new Error("Public playlist response is missing data.");
+  }
+
+  return normalizePlaylistDetail(response.data);
+}
+
+export async function updatePlaylistVisibilityRequest(
+  id: string,
+  isPublic: boolean,
+  accessToken: string,
+) {
+  const response = await apiRequest<PlaylistVisibilityResult>(
+    `/playlists/${id}/visibility`,
+    {
+      method: "PATCH",
+      body: { isPublic },
+      accessToken,
+    },
+  );
+
+  if (!response.data) {
+    throw new Error("Visibility response is missing data.");
+  }
+
+  return response.data;
+}
+
+export async function incrementPlaylistShareRequest(
+  id: string,
+  accessToken?: string | null,
+) {
+  const response = await apiRequest<{ shareCount?: number; share_count?: number }>(
+    `/playlists/${id}/share`,
+    {
+      method: "POST",
+      accessToken,
+    },
+  );
+
+  if (!response.data) {
+    throw new Error("Share response is missing data.");
+  }
+
+  return {
+    shareCount: response.data.shareCount ?? response.data.share_count ?? 0,
+  };
 }
 
 export async function createPlaylistRequest(
@@ -1324,6 +1484,69 @@ export async function getFeedRequest(accessToken: string, page = 1, limit = 9) {
   };
 }
 
+export async function getStudioOverviewRequest(accessToken: string) {
+  const response = await apiRequest<StudioOverview>("/studio/overview", {
+    accessToken,
+  });
+
+  if (!response.data) {
+    throw new Error("Studio overview response is missing data.");
+  }
+
+  return response.data;
+}
+
+export async function getStudioTopTracksRequest(
+  accessToken: string,
+  limit = 5,
+) {
+  const response = await apiRequest<{ items: StudioTrack[] }>(
+    `/studio/top-tracks${buildQuery({ limit })}`,
+    { accessToken },
+  );
+
+  return response.data?.items ?? [];
+}
+
+export async function getStudioTracksRequest(
+  accessToken: string,
+  options: {
+    page?: number;
+    limit?: number;
+    sort?: StudioTrackSort;
+    q?: string;
+  } = {},
+) {
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 10;
+  const response = await apiRequest<StudioTrack[]>(
+    `/studio/tracks${buildQuery({
+      page,
+      limit,
+      sort: options.sort ?? "newest",
+      q: options.q,
+    })}`,
+    { accessToken },
+  );
+
+  return {
+    items: response.data ?? [],
+    pagination: getPagination(response, page, limit),
+  };
+}
+
+export async function getStudioRecentActivityRequest(
+  accessToken: string,
+  limit = 10,
+) {
+  const response = await apiRequest<{ items: StudioActivity[] }>(
+    `/studio/recent-activity${buildQuery({ limit })}`,
+    { accessToken },
+  );
+
+  return response.data?.items ?? [];
+}
+
 export async function getArtistRequest(id: string) {
   const response = await apiRequest<ArtistRecord>(`/artists/${id}`);
 
@@ -1394,6 +1617,25 @@ export async function getUserPlaylistsRequest(id: string, page = 1, limit = 12) 
     items: response.data ?? [],
     pagination: getPagination(response, page, limit),
   };
+}
+
+export async function getChartTracksRequest(
+  period: ChartPeriod = "week",
+  limit = 50,
+) {
+  const response = await apiRequest<{ period: ChartPeriod; items: ChartTrack[] }>(
+    `/charts${buildQuery({ period, limit })}`,
+  );
+
+  return response.data ?? { period, items: [] };
+}
+
+export async function getTrendingTracksRequest(limit = 30) {
+  const response = await apiRequest<{ items: TrendingTrack[] }>(
+    `/trending${buildQuery({ limit })}`,
+  );
+
+  return response.data?.items ?? [];
 }
 
 export async function getFollowersRequest(userId: string) {

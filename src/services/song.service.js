@@ -20,6 +20,7 @@ const songSelect = `
   s.title,
   s.description,
   s.artist_id,
+  s.uploaded_by,
   s.album_id,
   s.genre_id,
   s.file_url,
@@ -40,6 +41,9 @@ const songSelect = `
   al.release_date AS album_release_date,
   g.name AS genre_name,
   g.slug AS genre_slug,
+  uploader.username AS uploader_username,
+  uploader.display_name AS uploader_display_name,
+  uploader.avatar_url AS uploader_avatar_url,
   (SELECT COUNT(*)::int FROM likes WHERE song_id = s.id) AS likes_count,
   COALESCE((SELECT COUNT(*)::int FROM follows WHERE "followingId" = u.id), 0) AS artist_followers_count
 `;
@@ -50,6 +54,7 @@ const songFromClause = `
   ${artistLinkedUserJoin}
   LEFT JOIN albums al ON al.id = s.album_id
   LEFT JOIN genres g ON g.id = s.genre_id
+  LEFT JOIN users uploader ON uploader.id = s.uploaded_by
 `;
 const waveformMaxChannels = 2;
 const waveformMaxPeaksPerChannel = 2000;
@@ -67,6 +72,16 @@ const formatSong = (song) => {
     is_active: song.is_active,
     created_at: song.created_at,
     updated_at: song.updated_at,
+    uploaded_by: song.uploaded_by,
+    uploadedBy: song.uploaded_by,
+    uploadedByUser: song.uploaded_by
+      ? {
+          id: song.uploaded_by,
+          username: song.uploader_username,
+          displayName: song.uploader_display_name,
+          avatarUrl: song.uploader_avatar_url,
+        }
+      : null,
     artist: {
       id: song.artist_id,
       name: song.artist_name,
@@ -455,16 +470,8 @@ const getSongs = async (query) => {
 
 const getSongsByUser = async (user, query = {}) => {
   const { page, limit, offset } = parsePagination(query);
-  const username = String(user.username || "").trim();
   const params = [user.id];
-  const ownerConditions = ["ar.user_id = $1"];
-
-  if (username) {
-    params.push(username);
-    ownerConditions.push(`LOWER(ar.name) = LOWER($${params.length})`);
-  }
-
-  const whereClause = `WHERE s.is_active = TRUE AND (${ownerConditions.join(" OR ")})`;
+  const whereClause = "WHERE s.is_active = TRUE AND s.uploaded_by = $1";
 
   const countResult = await pool.query(
     `SELECT COUNT(*) AS total
@@ -601,14 +608,16 @@ const saveSongWaveform = async (id, data = {}) => {
   return formatWaveformCache(result.rows[0]);
 };
 
-const createSong = async (data) => {
+const createSong = async (data, uploadedBy) => {
   const fields = await validateSongInput(data);
+  validateUuid(uploadedBy, "uploadedBy");
 
   const result = await pool.query(
     `INSERT INTO songs (
       title,
       description,
       artist_id,
+      uploaded_by,
       album_id,
       genre_id,
       file_url,
@@ -616,12 +625,13 @@ const createSong = async (data) => {
       duration_sec,
       is_active
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING id`,
     [
       fields.title,
       fields.description,
       fields.artist_id,
+      uploadedBy,
       fields.album_id,
       fields.genre_id,
       fields.file_url,
@@ -644,6 +654,7 @@ const createUploadedSong = async (data, user) => {
   const fileUrl = validateRequiredString(data.file_url, "file_url", 1000);
   const coverUrl = validateOptionalString(data.cover_url, "cover_url", 1000);
   const artistName = await getUserArtistName(user);
+  validateUuid(user.id, "uploadedBy");
   const artistId = await findOrCreateArtistByName(artistName, user.id);
   const genreId = await findOrCreateGenreByName(data.genre);
 
@@ -652,15 +663,16 @@ const createUploadedSong = async (data, user) => {
       title,
       description,
       artist_id,
+      uploaded_by,
       genre_id,
       file_url,
       cover_url,
       duration_sec,
       is_active
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING id`,
-    [title, description, artistId, genreId, fileUrl, coverUrl, 0, true]
+    [title, description, artistId, user.id, genreId, fileUrl, coverUrl, 0, true]
   );
 
   return getSongByIdRecord(result.rows[0].id, true);

@@ -1,4 +1,5 @@
 const notificationService = require("../services/notification.service");
+const notificationStreamService = require("../services/notification-stream.service");
 const { successResponse } = require("../utils/apiResponse");
 
 const getNotifications = async (req, res, next) => {
@@ -57,9 +58,35 @@ const markAllAsRead = async (req, res, next) => {
   }
 };
 
+const streamNotifications = async (req, res, next) => {
+  try {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+
+    if (typeof res.flushHeaders === "function") {
+      res.flushHeaders();
+    }
+
+    const userId = req.user.id;
+    const cleanup = notificationStreamService.addClient(userId, res);
+
+    console.log(`SSE client connected userId=${userId}`);
+
+    req.on("close", () => {
+      cleanup();
+      console.log(`SSE client disconnected userId=${userId}`);
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getNotifications,
   getUnreadCount,
   markAsRead,
   markAllAsRead,
+  streamNotifications,
 };

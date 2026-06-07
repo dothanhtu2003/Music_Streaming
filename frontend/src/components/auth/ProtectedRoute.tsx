@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 type ProtectedRouteProps = {
   children: ReactNode;
   adminOnly?: boolean;
+  loginPath?: string;
 };
 
 function LoadingScreen({ message }: { message: string }) {
@@ -24,6 +25,7 @@ function LoadingScreen({ message }: { message: string }) {
 export function ProtectedRoute({
   children,
   adminOnly = false,
+  loginPath,
 }: ProtectedRouteProps) {
   const { user, isAdmin, isLoading } = useAuth();
   const pathname = usePathname();
@@ -35,14 +37,14 @@ export function ProtectedRoute({
     }
 
     if (!user) {
-      router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+      router.replace(loginPath ?? `/login?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
 
     if (adminOnly && !isAdmin) {
       router.replace("/");
     }
-  }, [adminOnly, isAdmin, isLoading, pathname, router, user]);
+  }, [adminOnly, isAdmin, isLoading, loginPath, pathname, router, user]);
 
   if (isLoading) {
     return <LoadingScreen message="Checking your session" />;

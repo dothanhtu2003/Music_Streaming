@@ -50,6 +50,18 @@ const getPlaylistDetail = async (req, res, next) => {
   }
 };
 
+const getPublicPlaylistDetail = async (req, res, next) => {
+  try {
+    const playlist = await playlistService.getPublicPlaylistDetail(
+      req.params.slugOrId
+    );
+
+    return successResponse(res, "Public playlist fetched successfully", playlist);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const updatePlaylist = async (req, res, next) => {
   try {
     const playlist = await playlistService.updatePlaylist(
@@ -59,6 +71,33 @@ const updatePlaylist = async (req, res, next) => {
     );
 
     return successResponse(res, "Playlist updated successfully", playlist);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const updatePlaylistVisibility = async (req, res, next) => {
+  try {
+    const playlist = await playlistService.updatePlaylistVisibility(
+      req.params.id,
+      req.user,
+      req.body
+    );
+
+    return successResponse(res, "Playlist visibility updated successfully", playlist);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const incrementPlaylistShare = async (req, res, next) => {
+  try {
+    const result = await playlistService.incrementPlaylistShare(
+      req.params.id,
+      req.user || null
+    );
+
+    return successResponse(res, "Playlist share count updated successfully", result);
   } catch (error) {
     return next(error);
   }
@@ -162,8 +201,11 @@ module.exports = {
   createPlaylist,
   getMyPlaylists,
   getPublicPlaylists,
+  getPublicPlaylistDetail,
   getPlaylistDetail,
   updatePlaylist,
+  updatePlaylistVisibility,
+  incrementPlaylistShare,
   deletePlaylist,
   addSongToPlaylist,
   removeSongFromPlaylist,

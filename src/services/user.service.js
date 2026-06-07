@@ -100,15 +100,30 @@ const getPublicUserPlaylists = async (userId, query = {}) => {
        p.user_id,
        p.name,
        p.description,
-       p.cover_url,
+       COALESCE(
+         p.cover_url,
+         (
+           SELECT COALESCE(s_cover.cover_url, al_cover.cover_url)
+           FROM playlist_songs ps_cover
+           JOIN songs s_cover ON s_cover.id = ps_cover.song_id
+           LEFT JOIN albums al_cover ON al_cover.id = s_cover.album_id
+           WHERE ps_cover.playlist_id = p.id AND s_cover.is_active = TRUE
+           ORDER BY ps_cover.position ASC, ps_cover.added_at ASC
+           LIMIT 1
+         )
+       ) AS cover_url,
        p.is_public,
+       p.slug,
+       p.share_count,
        p.created_at,
        p.updated_at,
+       u.username AS owner_name,
        COUNT(ps.song_id)::int AS song_count
      FROM playlists p
+     JOIN users u ON u.id = p.user_id
      LEFT JOIN playlist_songs ps ON ps.playlist_id = p.id
      WHERE p.user_id = $1 AND p.is_public = TRUE
-     GROUP BY p.id
+     GROUP BY p.id, u.username
      ORDER BY p.created_at DESC
      LIMIT $2 OFFSET $3`,
     [userId, limit, offset]
@@ -125,8 +140,11 @@ const getPublicUserPlaylists = async (userId, query = {}) => {
       description: row.description,
       cover_url: row.cover_url,
       is_public: row.is_public,
+      slug: row.slug,
+      share_count: Number(row.share_count || 0),
       song_count: Number(row.song_count || 0),
       track_count: Number(row.song_count || 0),
+      owner_name: row.owner_name,
       created_at: row.created_at,
       updated_at: row.updated_at,
     })),

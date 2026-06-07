@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS songs (
   title VARCHAR(200) NOT NULL,
   description TEXT,
   artist_id UUID NOT NULL,
+  uploaded_by UUID,
   album_id UUID,
   genre_id UUID,
   file_url TEXT NOT NULL,
@@ -95,6 +96,10 @@ CREATE TABLE IF NOT EXISTS songs (
     FOREIGN KEY (artist_id)
     REFERENCES artists(id)
     ON DELETE RESTRICT,
+  CONSTRAINT songs_uploaded_by_fk
+    FOREIGN KEY (uploaded_by)
+    REFERENCES users(id)
+    ON DELETE SET NULL,
   CONSTRAINT songs_album_id_fk
     FOREIGN KEY (album_id)
     REFERENCES albums(id)
@@ -237,6 +242,8 @@ CREATE INDEX IF NOT EXISTS idx_follows_following_id ON follows("followingId");
 CREATE INDEX IF NOT EXISTS idx_albums_artist_id ON albums(artist_id);
 
 CREATE INDEX IF NOT EXISTS idx_songs_artist_id ON songs(artist_id);
+CREATE INDEX IF NOT EXISTS idx_songs_uploaded_by ON songs(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_songs_uploaded_by_active ON songs(uploaded_by, is_active);
 CREATE INDEX IF NOT EXISTS idx_songs_album_id ON songs(album_id);
 CREATE INDEX IF NOT EXISTS idx_songs_genre_id ON songs(genre_id);
 CREATE INDEX IF NOT EXISTS idx_songs_is_active ON songs(is_active);

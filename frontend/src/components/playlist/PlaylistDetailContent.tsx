@@ -10,10 +10,13 @@ import {
   type PlaylistFormPayload,
 } from "@/components/playlist/PlaylistProvider";
 import {
+  getPublicPlaylistRequest,
   getPlaylistRequest,
+  incrementPlaylistShareRequest,
   removeSongFromPlaylistRequest,
   reorderPlaylistSongsRequest,
   resolveApiAssetUrl,
+  updatePlaylistVisibilityRequest,
   uploadTrackToPlaylistRequest,
 } from "@/lib/api";
 import { notifySongUploaded } from "@/lib/song-events";
@@ -38,6 +41,10 @@ const emptyUploadForm: UploadTrackFormState = {
   genre: "",
   description: "",
 };
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
 
 function isMp3File(file: File) {
   return file.type === "audio/mpeg" || file.name.toLowerCase().endsWith(".mp3");
@@ -337,20 +344,22 @@ export function PlaylistDetailContent({
   const [playlist, setPlaylist] = useState<PlaylistDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [visibilityUpdating, setVisibilityUpdating] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadPlaylist = useCallback(async () => {
-    if (!accessToken) {
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
-      const result = await getPlaylistRequest(playlistId, accessToken);
+      const result =
+        accessToken && isUuid(playlistId)
+          ? await getPlaylistRequest(playlistId, accessToken)
+          : await getPublicPlaylistRequest(playlistId);
       setPlaylist({
         ...result,
         title: result.title || result.name,
@@ -387,6 +396,126 @@ export function PlaylistDetailContent({
     }
 
     playSong(playlist.songs[0], playlist.songs);
+  };
+
+  const getShareUrl = useCallback(() => {
+    if (!playlist) {
+      return "";
+    }
+
+    if (playlist.share_url) {
+      return playlist.share_url;
+    }
+
+    if (typeof window === "undefined") {
+      return `/playlists/${playlist.slug || playlist.id}`;
+    }
+
+    return `${window.location.origin}/playlists/${playlist.slug || playlist.id}`;
+  }, [playlist]);
+
+  const copyShareLink = useCallback(async () => {
+    const shareUrl = getShareUrl();
+
+    if (!shareUrl) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(shareUrl);
+    setShareNotice("Link copied.");
+  }, [getShareUrl]);
+
+  const handleShare = async () => {
+    if (!playlist) {
+      return;
+    }
+
+    const shareUrl = getShareUrl();
+    setSharing(true);
+    setShareNotice(null);
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: playlist.title,
+          text: playlist.description || "Listen to this playlist.",
+          url: shareUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareNotice("Link copied.");
+      }
+
+      const result = await incrementPlaylistShareRequest(
+        playlist.id,
+        accessToken,
+      );
+      setPlaylist((currentPlaylist) =>
+        currentPlaylist
+          ? {
+              ...currentPlaylist,
+              share_count: result.shareCount,
+            }
+          : currentPlaylist,
+      );
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === "AbortError") {
+        return;
+      }
+
+      const message =
+        shareError instanceof Error
+          ? shareError.message
+          : "Could not share playlist.";
+
+      setShareNotice(message);
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleVisibilityToggle = async () => {
+    if (!playlist || !accessToken || !playlist.is_owner) {
+      return;
+    }
+
+    setVisibilityUpdating(true);
+    setError(null);
+
+    try {
+      const result = await updatePlaylistVisibilityRequest(
+        playlist.id,
+        !playlist.is_public,
+        accessToken,
+      );
+
+      setPlaylist((currentPlaylist) =>
+        currentPlaylist
+          ? {
+              ...currentPlaylist,
+              is_public: result.isPublic,
+              slug: result.slug,
+              share_count: result.shareCount,
+              share_url: result.shareUrl,
+            }
+          : currentPlaylist,
+      );
+      await refreshPlaylists();
+      showNotice({
+        type: "success",
+        text: result.isPublic ? "Playlist is now public." : "Playlist is now private.",
+      });
+    } catch (visibilityError) {
+      const message =
+        visibilityError instanceof Error
+          ? visibilityError.message
+          : "Could not update playlist visibility.";
+
+      setError(message);
+      showNotice({ type: "error", text: message });
+    } finally {
+      setVisibilityUpdating(false);
+    }
   };
 
   const handleRemoveSong = async (songId: string) => {
@@ -629,6 +758,8 @@ export function PlaylistDetailContent({
                 <span className="rounded-full bg-zinc-900 border border-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
                   {playlist.is_public ? "Public" : "Private"}
                 </span>
+                <span className="text-zinc-600">â€¢</span>
+                <span>{playlist.share_count ?? 0} shares</span>
               </div>
               
               {playlist.description && (
@@ -647,9 +778,44 @@ export function PlaylistDetailContent({
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                   Play All
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    void copyShareLink();
+                  }}
+                  className="inline-flex items-center justify-center rounded-full border border-zinc-800 px-5 py-3 text-xs font-bold text-zinc-300 transition hover:border-zinc-700 hover:text-white"
+                >
+                  Copy Link
+                </button>
+
+                <button
+                  type="button"
+                  disabled={sharing}
+                  onClick={() => {
+                    void handleShare();
+                  }}
+                  className="inline-flex items-center justify-center rounded-full border border-zinc-800 px-5 py-3 text-xs font-bold text-zinc-300 transition hover:border-zinc-700 hover:text-white disabled:opacity-50"
+                >
+                  {sharing ? "Sharing..." : "Share"}
+                </button>
                 
                 {playlist.is_owner && (
                   <>
+                    <button
+                      type="button"
+                      disabled={visibilityUpdating}
+                      onClick={() => {
+                        void handleVisibilityToggle();
+                      }}
+                      className="inline-flex items-center justify-center rounded-full border border-zinc-800 px-5 py-3 text-xs font-bold text-zinc-300 transition hover:border-zinc-700 hover:text-white disabled:opacity-50"
+                    >
+                      {visibilityUpdating
+                        ? "Updating..."
+                        : playlist.is_public
+                          ? "Make Private"
+                          : "Make Public"}
+                    </button>
                     <button
                       type="button"
                       onClick={() => setUploadOpen(true)}
@@ -677,6 +843,11 @@ export function PlaylistDetailContent({
                   </>
                 )}
               </div>
+              {shareNotice && (
+                <p className="mt-3 text-xs font-medium text-orange-300">
+                  {shareNotice}
+                </p>
+              )}
             </div>
           </div>
 

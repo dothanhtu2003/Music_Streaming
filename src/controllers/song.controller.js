@@ -75,7 +75,7 @@ const saveSongWaveform = async (req, res, next) => {
 
 const createSong = async (req, res, next) => {
   try {
-    const song = await songService.createSong(req.body);
+    const song = await songService.createSong(req.body, req.user.id);
 
     return successResponse(res, "Song created successfully", song, 201);
   } catch (error) {

@@ -1,9 +1,19 @@
 const express = require("express");
 const playlistController = require("../controllers/playlist.controller");
-const { authMiddleware } = require("../middlewares/auth.middleware");
+const {
+  authMiddleware,
+  optionalAuthMiddleware,
+} = require("../middlewares/auth.middleware");
 const { uploadTrack } = require("../middlewares/upload.middleware");
 
 const router = express.Router();
+
+router.get("/public/:slugOrId", playlistController.getPublicPlaylistDetail);
+router.post(
+  "/:id/share",
+  optionalAuthMiddleware,
+  playlistController.incrementPlaylistShare
+);
 
 router.use(authMiddleware);
 
@@ -12,6 +22,7 @@ router.get("/me", playlistController.getMyPlaylists);
 router.get("/", playlistController.getPublicPlaylists);
 router.get("/:id", playlistController.getPlaylistDetail);
 router.put("/:id", playlistController.updatePlaylist);
+router.patch("/:id/visibility", playlistController.updatePlaylistVisibility);
 router.delete("/:id", playlistController.deletePlaylist);
 router.post("/:id/songs", playlistController.addSongToPlaylist);
 router.post("/:id/tracks", playlistController.addSongToPlaylist);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { NOTIFICATION_NEW_EVENT } from "@/components/providers/NotificationStreamProvider";
 import {
   BellIcon,
   CommentIcon,
@@ -120,6 +121,38 @@ export function NotificationBell() {
       void fetchUnreadCount();
     });
   }, [fetchUnreadCount]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    const handleRealtimeNotification = (event: Event) => {
+      const notification = (event as CustomEvent<UserNotification>).detail;
+
+      if (!notification?.id) {
+        return;
+      }
+
+      setNotifications((current) => {
+        if (current.some((item) => item.id === notification.id)) {
+          return current;
+        }
+
+        return [notification, ...current].slice(0, 20);
+      });
+
+      if (!notification.is_read) {
+        setUnreadCount((count) => count + 1);
+      }
+    };
+
+    window.addEventListener(NOTIFICATION_NEW_EVENT, handleRealtimeNotification);
+
+    return () => {
+      window.removeEventListener(NOTIFICATION_NEW_EVENT, handleRealtimeNotification);
+    };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

@@ -8,11 +8,13 @@ import {
   SearchIcon,
   LibraryIcon,
   UserIcon,
+  MusicIcon,
 } from "@/components/ui/Icons";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 function isActivePath(pathname: string, href: string) {
-  if (href === "/") {
-    return pathname === "/";
+  if (href === "/home") {
+    return pathname === "/home";
   }
   if (href === "/playlists") {
     return (
@@ -26,11 +28,15 @@ function isActivePath(pathname: string, href: string) {
 
 export function MiniSidebar() {
   const pathname = usePathname();
+  const { isAuthenticated } = useAuth();
 
   const menuItems = [
-    { label: "Home", href: "/", icon: HomeIcon },
+    { label: "Home", href: "/home", icon: HomeIcon },
     { label: "Feed", href: "/feed", icon: LibraryIcon },
     { label: "Search", href: "/search", icon: SearchIcon },
+    ...(isAuthenticated
+      ? [{ label: "Studio", href: "/studio", icon: MusicIcon }]
+      : []),
     { label: "Library", href: "/playlists", icon: LibraryIcon },
     { label: "Profile", href: "/profile", icon: UserIcon },
   ];

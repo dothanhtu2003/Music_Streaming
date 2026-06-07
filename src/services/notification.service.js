@@ -1,5 +1,6 @@
 const { pool } = require("../db/pool");
 const AppError = require("../utils/appError");
+const notificationStreamService = require("./notification-stream.service");
 const {
   buildPagination,
   parsePagination,
@@ -40,6 +41,14 @@ const formatNotification = (row) => ({
   is_read: row.is_read,
   created_at: row.created_at,
 });
+
+const emitRealtimeNotification = (notification) => {
+  try {
+    notificationStreamService.sendToUser(notification.user_id, notification);
+  } catch (error) {
+    console.warn("SSE notification send failed:", error.message);
+  }
+};
 
 const validateNotificationInput = (data = {}) => {
   validateUuid(data.userId, "userId");
@@ -185,7 +194,10 @@ const createNotification = async (data) => {
     ]
   );
 
-  return formatNotification(result.rows[0]);
+  const notification = formatNotification(result.rows[0]);
+  emitRealtimeNotification(notification);
+
+  return notification;
 };
 
 const getNotifications = async (userId, query = {}) => {
@@ -277,6 +289,7 @@ const createBroadcastNotification = async (data) => {
 const createAdminNotification = async (data) => {
   const fields = validateAdminSendInput(data);
   const client = await pool.connect();
+  const createdNotifications = [];
 
   try {
     await client.query("BEGIN");
@@ -305,11 +318,12 @@ const createAdminNotification = async (data) => {
            $3
          FROM users
          WHERE is_banned = FALSE
-         RETURNING id`,
+         RETURNING id, user_id, actor_id, type, entity_type, entity_id, title, message, is_read, created_at`,
         [fields.actorId, fields.title, fields.message]
       );
 
       sentCount = result.rowCount;
+      createdNotifications.push(...result.rows.map(formatNotification));
     } else if (fields.targetType === "user") {
       const targetResult = await client.query(
         `SELECT id, is_banned
@@ -339,11 +353,12 @@ const createAdminNotification = async (data) => {
            message
          )
          VALUES ($1, $2, 'SYSTEM', 'system', NULL, $3, $4)
-         RETURNING id`,
+         RETURNING id, user_id, actor_id, type, entity_type, entity_id, title, message, is_read, created_at`,
         [fields.targetUserId, fields.actorId, fields.title, fields.message]
       );
 
       sentCount = result.rowCount;
+      createdNotifications.push(...result.rows.map(formatNotification));
     } else {
       const result = await client.query(
         `INSERT INTO notifications (
@@ -366,11 +381,12 @@ const createAdminNotification = async (data) => {
          FROM users
          WHERE id = ANY($4::uuid[])
            AND is_banned = FALSE
-         RETURNING id`,
+         RETURNING id, user_id, actor_id, type, entity_type, entity_id, title, message, is_read, created_at`,
         [fields.actorId, fields.title, fields.message, fields.targetUserIds]
       );
 
       sentCount = result.rowCount;
+      createdNotifications.push(...result.rows.map(formatNotification));
     }
 
     await client.query(
@@ -396,6 +412,8 @@ const createAdminNotification = async (data) => {
     );
 
     await client.query("COMMIT");
+
+    createdNotifications.forEach(emitRealtimeNotification);
 
     return {
       sent: sentCount,

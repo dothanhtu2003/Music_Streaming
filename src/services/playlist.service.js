@@ -21,6 +21,8 @@ const playlistSummarySelect = `
   p.description,
   p.cover_url,
   p.is_public,
+  p.slug,
+  p.share_count,
   p.created_at,
   p.updated_at,
   u.username AS owner_name,
@@ -48,6 +50,7 @@ const playlistSongSelect = `
   s.id,
   s.title,
   s.artist_id,
+  s.uploaded_by,
   s.album_id,
   s.genre_id,
   s.file_url,
@@ -62,6 +65,9 @@ const playlistSongSelect = `
   COALESCE(NULLIF(u_artist.bio, ''), ar.bio) AS artist_bio,
   COALESCE(u_artist.avatar_url, ar.avatar_url) AS artist_avatar_url,
   ar.user_id AS artist_user_id,
+  uploader.username AS uploader_username,
+  uploader.display_name AS uploader_display_name,
+  uploader.avatar_url AS uploader_avatar_url,
   al.title AS album_title,
   al.cover_url AS album_cover_url,
   al.release_date AS album_release_date,
@@ -79,6 +85,9 @@ const formatPlaylist = (playlist) => {
     cover_url: playlist.display_cover_url || playlist.cover_url || null,
     custom_cover_url: playlist.cover_url || null,
     is_public: playlist.is_public,
+    slug: playlist.slug || null,
+    share_count: Number(playlist.share_count || 0),
+    share_url: playlist.share_url || null,
     song_count: Number(playlist.song_count || 0),
     track_count: Number(playlist.song_count || 0),
     owner_name: playlist.owner_name || null,
@@ -102,6 +111,16 @@ const formatPlaylistSong = (row) => {
     is_active: row.is_active,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    uploaded_by: row.uploaded_by,
+    uploadedBy: row.uploaded_by,
+    uploadedByUser: row.uploaded_by
+      ? {
+          id: row.uploaded_by,
+          username: row.uploader_username,
+          displayName: row.uploader_display_name,
+          avatarUrl: row.uploader_avatar_url,
+        }
+      : null,
     artist: {
       id: row.artist_id,
       name: row.artist_name,
@@ -165,7 +184,7 @@ const validatePlaylistInput = (body = {}, isUpdate = false) => {
   if (!isUpdate) {
     fields.is_public =
       body.is_public === undefined
-        ? true
+        ? false
         : validateBoolean(body.is_public, "is_public");
   } else if (Object.prototype.hasOwnProperty.call(body, "is_public")) {
     fields.is_public = validateOptionalBoolean(body.is_public, "is_public");
@@ -187,6 +206,8 @@ const getPlaylistById = async (playlistId, client = pool) => {
        p.description,
        p.cover_url,
        p.is_public,
+       p.slug,
+       p.share_count,
        p.created_at,
        p.updated_at,
        u.username AS owner_name
@@ -198,6 +219,53 @@ const getPlaylistById = async (playlistId, client = pool) => {
   );
 
   return result.rows[0] || null;
+};
+
+const slugifyPlaylistName = (value) => {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+};
+
+const randomHex = () => {
+  return Math.floor(Math.random() * 0x10000)
+    .toString(16)
+    .padStart(4, "0");
+};
+
+const buildShareUrl = (slugOrId) => {
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  return `${frontendUrl.replace(/\/$/, "")}/playlists/${slugOrId}`;
+};
+
+const generateUniquePlaylistSlug = async (playlist, client = pool) => {
+  const shortId = String(playlist.id).slice(0, 8);
+  const baseSlug = slugifyPlaylistName(playlist.name) || `playlist-${shortId}`;
+  let slug = baseSlug;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const result = await client.query(
+      `SELECT id
+       FROM playlists
+       WHERE slug = $1 AND id <> $2
+       LIMIT 1`,
+      [slug, playlist.id]
+    );
+
+    if (result.rowCount === 0) {
+      return slug;
+    }
+
+    const prefix = baseSlug.slice(0, 115);
+    slug = `${prefix}-${randomHex()}`;
+  }
+
+  return `playlist-${shortId}-${randomHex()}`;
 };
 
 const ensurePlaylistReadable = async (playlistId, user, client = pool) => {
@@ -229,6 +297,22 @@ const ensurePlaylistOwner = async (playlistId, userId, client = pool) => {
   }
 
   if (playlist.user_id !== userId) {
+    throw new AppError("You do not have permission to modify this playlist", 403);
+  }
+
+  return playlist;
+};
+
+const ensurePlaylistOwnerOrAdmin = async (playlistId, user, client = pool) => {
+  validateUuid(playlistId, "playlistId");
+
+  const playlist = await getPlaylistById(playlistId, client);
+
+  if (!playlist) {
+    throw new AppError("Playlist not found", 404);
+  }
+
+  if (playlist.user_id !== user.id && user.role !== "admin") {
     throw new AppError("You do not have permission to modify this playlist", 403);
   }
 
@@ -345,6 +429,7 @@ const getPlaylistDetail = async (playlistId, user) => {
      JOIN songs s ON s.id = ps.song_id
      JOIN artists ar ON ar.id = s.artist_id
      ${artistUserJoin}
+     LEFT JOIN users uploader ON uploader.id = s.uploaded_by
      LEFT JOIN albums al ON al.id = s.album_id
      LEFT JOIN genres g ON g.id = s.genre_id
      WHERE ps.playlist_id = $1 AND s.is_active = TRUE
@@ -361,6 +446,73 @@ const getPlaylistDetail = async (playlistId, user) => {
       song_count: songs.length,
       is_owner: isOwner,
     }),
+    songs,
+    tracks: songs,
+  };
+};
+
+const getPublicPlaylistDetail = async (slugOrId) => {
+  const value = validateRequiredString(slugOrId, "slugOrId", 160);
+  const isPlaylistId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  const result = await pool.query(
+    `SELECT
+       p.id,
+       p.user_id,
+       p.name,
+       p.description,
+       p.cover_url,
+       p.is_public,
+       p.slug,
+       p.share_count,
+       p.created_at,
+       p.updated_at,
+       u.username AS owner_name,
+       u.username AS owner_username,
+       u.display_name AS owner_display_name,
+       u.avatar_url AS owner_avatar_url
+     FROM playlists p
+     JOIN users u ON u.id = p.user_id
+     WHERE (${isPlaylistId ? "p.id = $1" : "p.slug = $1"}) AND p.is_public = TRUE
+     LIMIT 1`,
+    [value]
+  );
+
+  const playlist = result.rows[0];
+
+  if (!playlist) {
+    throw new AppError("Public playlist not found or this playlist is private", 404);
+  }
+
+  const songsResult = await pool.query(
+    `SELECT ${playlistSongSelect}
+     FROM playlist_songs ps
+     JOIN songs s ON s.id = ps.song_id
+     JOIN artists ar ON ar.id = s.artist_id
+     ${artistUserJoin}
+     LEFT JOIN users uploader ON uploader.id = s.uploaded_by
+     LEFT JOIN albums al ON al.id = s.album_id
+     LEFT JOIN genres g ON g.id = s.genre_id
+     WHERE ps.playlist_id = $1 AND s.is_active = TRUE
+     ORDER BY ps.position ASC, ps.added_at ASC`,
+    [playlist.id]
+  );
+  const songs = songsResult.rows.map(formatPlaylistSong);
+  const firstSongCoverUrl = songs[0]?.cover_url || songs[0]?.album?.cover_url || null;
+
+  return {
+    ...formatPlaylist({
+      ...playlist,
+      display_cover_url: playlist.cover_url || firstSongCoverUrl,
+      song_count: songs.length,
+      is_owner: false,
+      share_url: buildShareUrl(playlist.slug || playlist.id),
+    }),
+    owner: {
+      id: playlist.user_id,
+      username: playlist.owner_username,
+      displayName: playlist.owner_display_name,
+      avatarUrl: playlist.owner_avatar_url,
+    },
     songs,
     tracks: songs,
   };
@@ -405,6 +557,83 @@ const updatePlaylist = async (playlistId, userId, body) => {
     song_count: songCount,
     display_cover_url: result.rows[0].cover_url,
   });
+};
+
+const updatePlaylistVisibility = async (playlistId, user, body) => {
+  const isPublic =
+    body.isPublic === undefined
+      ? validateBoolean(body.is_public, "isPublic")
+      : validateBoolean(body.isPublic, "isPublic");
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+    const playlist = await ensurePlaylistOwnerOrAdmin(playlistId, user, client);
+    const slug = isPublic && !playlist.slug
+      ? await generateUniquePlaylistSlug(playlist, client)
+      : playlist.slug;
+
+    const result = await client.query(
+      `UPDATE playlists
+       SET is_public = $2,
+           slug = $3,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING id, is_public, slug, share_count`,
+      [playlistId, isPublic, slug]
+    );
+
+    await client.query("COMMIT");
+
+    const updated = result.rows[0];
+
+    return {
+      id: updated.id,
+      isPublic: updated.is_public,
+      is_public: updated.is_public,
+      slug: updated.slug,
+      shareCount: Number(updated.share_count || 0),
+      share_count: Number(updated.share_count || 0),
+      shareUrl: buildShareUrl(updated.slug || updated.id),
+      share_url: buildShareUrl(updated.slug || updated.id),
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const incrementPlaylistShare = async (playlistId, user = null) => {
+  validateUuid(playlistId, "playlistId");
+  const playlist = await getPlaylistById(playlistId);
+
+  if (!playlist) {
+    throw new AppError("Playlist not found", 404);
+  }
+
+  const canShare =
+    playlist.is_public ||
+    (user && (user.id === playlist.user_id || user.role === "admin"));
+
+  if (!canShare) {
+    throw new AppError("Cannot share a private playlist", 403);
+  }
+
+  const result = await pool.query(
+    `UPDATE playlists
+     SET share_count = share_count + 1,
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING share_count`,
+    [playlistId]
+  );
+
+  return {
+    shareCount: Number(result.rows[0].share_count || 0),
+    share_count: Number(result.rows[0].share_count || 0),
+  };
 };
 
 const deletePlaylist = async (playlistId, userId) => {
@@ -609,9 +838,12 @@ const uploadTrackToPlaylist = async (playlistId, user, data) => {
 module.exports = {
   getMyPlaylists,
   getPublicPlaylists,
+  getPublicPlaylistDetail,
   getPlaylistDetail,
   createPlaylist,
   updatePlaylist,
+  updatePlaylistVisibility,
+  incrementPlaylistShare,
   deletePlaylist,
   addSongToPlaylist,
   removeSongFromPlaylist,

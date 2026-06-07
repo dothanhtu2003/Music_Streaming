@@ -16,7 +16,6 @@ const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
 
 export function AuthForm({
   mode,
-  redirectTo = "/",
   successMessage,
 }: AuthFormProps) {
   const isRegister = mode === "register";
@@ -69,7 +68,11 @@ export function AuthForm({
           username: username.trim(),
           password,
         });
-        router.push("/login?registered=1");
+        await login({
+          email: normalizedEmail,
+          password,
+        });
+        router.push("/home");
         return;
       }
 
@@ -77,7 +80,7 @@ export function AuthForm({
         email: normalizedEmail,
         password,
       });
-      router.push(redirectTo);
+      router.push("/home");
     } catch (submitError) {
       setError(
         submitError instanceof Error

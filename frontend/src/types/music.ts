@@ -10,6 +10,14 @@ export type Song = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  uploaded_by?: string | null;
+  uploadedBy?: string | null;
+  uploadedByUser?: {
+    id: string;
+    username: string | null;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
   artist: {
     id: string;
     name: string;
@@ -92,6 +100,9 @@ export type UserPlaylist = {
   cover_url: string | null;
   custom_cover_url?: string | null;
   is_public: boolean;
+  slug?: string | null;
+  share_count?: number;
+  share_url?: string | null;
   song_count: number;
   track_count: number;
   owner_name: string | null;
@@ -107,8 +118,35 @@ export type PlaylistSong = Song & {
 };
 
 export type PlaylistDetail = UserPlaylist & {
+  owner?: {
+    id: string;
+    username: string | null;
+    displayName: string | null;
+    avatarUrl: string | null;
+  };
   songs: PlaylistSong[];
   tracks?: PlaylistSong[];
+};
+
+export type ChartPeriod = "today" | "week" | "month" | "all";
+
+export type ChartTrack = {
+  rank: number;
+  id: string;
+  title: string;
+  artistName: string;
+  coverUrl: string | null;
+  fileUrl: string;
+  playCount: number;
+  totalPlayCount?: number;
+  likeCount: number;
+  commentCount: number;
+  duration: number;
+  createdAt: string;
+};
+
+export type TrendingTrack = Omit<ChartTrack, "rank"> & {
+  score: number;
 };
 
 export type Pagination = {
@@ -119,6 +157,71 @@ export type Pagination = {
 };
 
 export type SongPagination = Pagination;
+
+export type SearchResultType = "song" | "artist" | "playlist";
+
+export type UniversalSearchItem = {
+  type: SearchResultType;
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  imageUrl?: string | null;
+  href: string;
+  score?: number;
+};
+
+export type SearchHistoryItem = {
+  id: string;
+  query: string;
+  normalizedQuery: string;
+  createdAt: string;
+};
+
+export type UniversalSearchResponse = {
+  query: string;
+  normalizedQuery: string;
+  topResult: UniversalSearchItem | null;
+  songs: UniversalSearchItem[];
+  artists: UniversalSearchItem[];
+  playlists: UniversalSearchItem[];
+  suggestions: string[];
+  recentSearches?: SearchHistoryItem[];
+  trendingSearches?: string[];
+};
+
+export type StudioOverview = {
+  totalTracks: number;
+  totalPlays: number;
+  totalLikes: number;
+  totalComments: number;
+  followers: number;
+  following: number;
+};
+
+export type StudioTrackSort = "newest" | "oldest" | "plays" | "likes" | "comments";
+
+export type StudioTrack = {
+  id: string;
+  title: string;
+  coverUrl?: string | null;
+  artistName?: string | null;
+  playCount: number;
+  likeCount: number;
+  commentCount: number;
+  duration?: number | null;
+  createdAt: string;
+  isActive?: boolean;
+  fileUrl?: string | null;
+};
+
+export type StudioActivity = {
+  id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  isRead: boolean;
+  createdAt: string;
+};
 
 export type ArtistRecord = {
   id: string;

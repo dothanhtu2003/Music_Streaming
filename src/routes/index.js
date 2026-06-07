@@ -15,8 +15,11 @@ const uploadRoutes = require("./upload.routes");
 const followRoutes = require("./follow.routes");
 const feedRoutes = require("./feed.routes");
 const searchRoutes = require("./search.routes");
+const studioRoutes = require("./studio.routes");
 const userRoutes = require("./user.routes");
 const commentRoutes = require("./comment.routes");
+const chartsRoutes = require("./charts.routes");
+const trendingRoutes = require("./trending.routes");
 
 const router = express.Router();
 
@@ -36,7 +39,10 @@ router.use("/upload", uploadRoutes);
 router.use("/follow", followRoutes);
 router.use("/feed", feedRoutes);
 router.use("/search", searchRoutes);
+router.use("/studio", studioRoutes);
 router.use("/users", userRoutes);
 router.use("/comments", commentRoutes);
+router.use("/charts", chartsRoutes);
+router.use("/trending", trendingRoutes);
 
 module.exports = router;

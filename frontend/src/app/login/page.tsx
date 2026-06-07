@@ -15,7 +15,7 @@ const waveformBars = [
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
-  const redirectTo = getSafeRedirectPath(params.redirect);
+  const redirectTo = getSafeRedirectPath(params.redirect, "/home");
   const registered = Array.isArray(params.registered)
     ? params.registered[0] === "1"
     : params.registered === "1";
