@@ -120,8 +120,8 @@ The database runs on PostgreSQL, leveraging relations, cascading foreign keys, a
 erDiagram
     users {
         uuid id PK
-        varchar email UK
-        varchar username UK
+        varchar email
+        varchar username
         varchar display_name
         varchar bio
         text avatar_url
@@ -143,7 +143,7 @@ erDiagram
     genres {
         uuid id PK
         varchar name
-        varchar slug UK
+        varchar slug
     }
 
     albums {
@@ -199,7 +199,7 @@ erDiagram
     refresh_tokens {
         uuid id PK
         uuid user_id FK
-        text token_hash UK
+        text token_hash
         timestamptz expires_at
         timestamptz revoked_at
     }
@@ -220,9 +220,9 @@ erDiagram
 
     follows {
         uuid id PK
-        uuid followerId FK
-        uuid followingId FK
-        timestamptz createdAt
+        uuid follower_id FK
+        uuid following_id FK
+        timestamptz created_at
     }
 
     notifications {
@@ -271,38 +271,38 @@ erDiagram
     search_trends {
         uuid id PK
         text query
-        text normalized_query UK
+        text normalized_query
         integer search_count
         timestamptz last_searched_at
     }
 
-    users ||--o| artists : "manages"
-    users ||--o{ playlists : "creates"
-    users ||--o{ likes : "likes"
-    users ||--o{ refresh_tokens : "owns"
-    users ||--o{ listening_history : "records"
-    users ||--o{ recently_played : "views"
-    users ||--o{ follows : "engages"
-    users ||--o{ notifications : "receives"
-    users ||--o{ admin_notification_logs : "sends"
-    users ||--o{ song_comments : "writes"
-    users ||--o{ search_history : "searches"
+    users ||--o| artists : manages
+    users ||--o{ playlists : creates
+    users ||--o{ likes : likes
+    users ||--o{ refresh_tokens : owns
+    users ||--o{ listening_history : records
+    users ||--o{ recently_played : views
+    users ||--o{ follows : engages
+    users ||--o{ notifications : receives
+    users ||--o{ admin_notification_logs : sends
+    users ||--o{ song_comments : writes
+    users ||--o{ search_history : searches
 
-    artists ||--o{ albums : "releases"
-    artists ||--o{ songs : "composes"
-    users ||--o{ songs : "uploads"
+    artists ||--o{ albums : releases
+    artists ||--o{ songs : composes
+    users ||--o{ songs : uploads
 
-    albums ||--o{ songs : "includes"
-    genres ||--o{ songs : "classifies"
+    albums ||--o{ songs : includes
+    genres ||--o{ songs : classifies
 
-    songs ||--o{ likes : "liked_by"
-    songs ||--o{ song_comments : "has"
-    song_comments ||--o{ song_comments : "replies_to"
+    songs ||--o{ likes : liked_by
+    songs ||--o{ song_comments : has
+    song_comments ||--o{ song_comments : replies_to
 
-    playlists ||--o{ playlist_songs : "contains"
-    songs ||--o{ playlist_songs : "references"
-    songs ||--o{ listening_history : "tracks"
-    songs ||--o{ recently_played : "logs"
+    playlists ||--o{ playlist_songs : contains
+    songs ||--o{ playlist_songs : references
+    songs ||--o{ listening_history : tracks
+    songs ||--o{ recently_played : logs
 ```
 
 ---
