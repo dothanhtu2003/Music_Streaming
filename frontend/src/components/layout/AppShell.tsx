@@ -19,13 +19,14 @@ export function AppShell({ children }: AppShellProps) {
   const isFullWidthPage =
     pathname === "/" ||
     pathname.startsWith("/studio") ||
-    pathname.startsWith("/about");
+    pathname.startsWith("/about") ||
+    pathname.startsWith("/popular");
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-black text-zinc-100">
       <div className={cn(
         "min-h-screen transition-all duration-300",
-        currentSong ? "pb-40 md:pb-28" : "pb-20 md:pb-8"
+        currentSong ? "pb-56 md:pb-28" : "pb-20 md:pb-8"
       )}>
         <AppHeader />
         {pathname === "/" || pathname === "/about" ? (

@@ -1,6 +1,7 @@
 const ACCESS_TOKEN_KEY = "music_access_token";
 const REFRESH_TOKEN_KEY = "music_refresh_token";
 export const AUTH_TOKEN_CLEARED_EVENT = "music_auth_token_cleared";
+export const AUTH_TOKEN_UPDATED_EVENT = "music_auth_token_updated";
 
 function hasLocalStorage() {
   return typeof window !== "undefined" && Boolean(window.localStorage);
@@ -43,5 +44,11 @@ export function clearTokens() {
 export function notifyAuthTokenCleared() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(AUTH_TOKEN_CLEARED_EVENT));
+  }
+}
+
+export function notifyAuthTokenUpdated() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_TOKEN_UPDATED_EVENT));
   }
 }

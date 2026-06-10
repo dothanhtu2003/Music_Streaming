@@ -188,10 +188,10 @@ function ArtistItem({ artist }: { artist: DiscoveryArtist }) {
           type="button"
           disabled={loading}
           onClick={() => void toggleFollow(artist.id, artist.name)}
-          className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold transition-all duration-200 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`shrink-0 rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${
             followed
-              ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
-              : "bg-orange-500 text-orange-950 hover:bg-orange-400"
+              ? "border border-zinc-800 bg-zinc-900/40 text-zinc-350 hover:bg-zinc-800 hover:text-white"
+              : "bg-orange-500 text-zinc-950 hover:bg-orange-400 font-bold"
           }`}
         >
           {loading ? "..." : followed ? "Following" : "Follow"}
@@ -455,7 +455,7 @@ export function RightSidebar() {
         )}
 
         {popularTracks.length > 0 && (
-          <SidebarSection title="Popular tracks" href="/search">
+          <SidebarSection title="Popular tracks" href="/popular">
             {popularTracks.map((song) => (
               <TrackItem key={song.id} song={song} queue={popularTracks} />
             ))}

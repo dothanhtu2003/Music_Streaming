@@ -246,7 +246,6 @@ function SearchInputInner({ q, router, accessToken }: SearchInputInnerProps) {
       const controller = new AbortController();
       abortRef.current = controller;
       setLoading(true);
-      setShowDropdown(true);
 
       try {
         const data = await getSearchSuggestionsRequest(trimmed, 5, {
@@ -395,7 +394,10 @@ function SearchInputInner({ q, router, accessToken }: SearchInputInnerProps) {
           value={query}
           onFocus={handleFocus}
           onKeyDown={handleKeyDown}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setShowDropdown(true);
+          }}
           placeholder="Search songs, artists..."
           className="h-9 w-full rounded border border-zinc-700 bg-[#303030] py-2 pl-10 pr-4 text-sm text-white placeholder-zinc-400 outline-none transition focus:border-[#ff5500] focus:bg-[#303030] focus:ring-1 focus:ring-[#ff5500]/30"
         />

@@ -29,6 +29,7 @@ const RECENTLY_PLAYED_DISPLAY_LIMIT = 5;
 const GENRE_LIMIT = 12;
 const GENRE_EXPANDED_DISPLAY_LIMIT = 10;
 const GENRE_FETCH_LIMIT = GENRE_EXPANDED_DISPLAY_LIMIT;
+const EQ_BAR_HEIGHTS = [42, 78, 55, 88, 36, 64, 94, 48, 72, 58];
 
 type GenreSongRow = {
   genre: GenreRecord;
@@ -38,15 +39,21 @@ type GenreSongRow = {
   error: string | null;
 };
 
+
+
 function HomeContent() {
   const { accessToken, isLoading: authLoading } = useAuth();
   const currentSong = usePlayerStore((state) => state.currentSong);
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  
   const [recentlyPlayed, setRecentlyPlayed] = useState<RecentlyPlayedSong[]>([]);
   const [genreRows, setGenreRows] = useState<GenreSongRow[]>([]);
   const [genreRowsLoading, setGenreRowsLoading] = useState(true);
   const [recentlyLoading, setRecentlyLoading] = useState(true);
   const [genreRowsError, setGenreRowsError] = useState<string | null>(null);
   const [recentlyError, setRecentlyError] = useState<string | null>(null);
+
+
 
   const loadGenreRows = useCallback(
     async ({ quiet = false }: { quiet?: boolean } = {}) => {
@@ -182,99 +189,79 @@ function HomeContent() {
     };
   }, [accessToken, authLoading]);
 
-  const handleLoadMoreGenre = async (genreId: string) => {
-    const row = genreRows.find((item) => item.genre.id === genreId);
-
-    if (!row || row.loadingMore || row.pagination.page >= row.pagination.totalPages) {
-      return;
-    }
-
-    setGenreRows((currentRows) =>
-      currentRows.map((item) =>
-        item.genre.id === genreId
-          ? { ...item, loadingMore: true, error: null }
-          : item,
-      ),
-    );
-
-    try {
-      const result = await getSongsRequest(
-        row.pagination.page + 1,
-        GENRE_EXPANDED_DISPLAY_LIMIT,
-        { genre_id: genreId, sort: "random" },
-      );
-
-      setGenreRows((currentRows) =>
-        currentRows.map((item) =>
-          item.genre.id === genreId
-            ? {
-                ...item,
-                songs: [...item.songs, ...result.items],
-                pagination: result.pagination,
-                loadingMore: false,
-              }
-            : item,
-        ),
-      );
-    } catch (loadError) {
-      setGenreRows((currentRows) =>
-        currentRows.map((item) =>
-          item.genre.id === genreId
-            ? {
-                ...item,
-                loadingMore: false,
-                error:
-                  loadError instanceof Error
-                    ? loadError.message
-                    : "Could not load more songs.",
-              }
-            : item,
-        ),
-      );
-    } finally {
-      setGenreRows((currentRows) =>
-        currentRows.map((item) =>
-          item.genre.id === genreId ? { ...item, loadingMore: false } : item,
-        ),
-      );
-    }
-  };
-
   return (
-    <div className="space-y-8 page-fade-in">
+    <div className="space-y-10 page-fade-in relative pb-10">
+      {/* Dynamic Background Glow representing the Vibe */}
+      <div 
+        className="absolute top-0 right-0 w-[40vw] h-[40vw] rounded-full blur-[140px] pointer-events-none opacity-60"
+        style={{ background: "radial-gradient(circle at top right, rgba(249,115,22,0.08), transparent 50%)" }}
+      />
+
+      {/* Main Hero Section */}
       {currentSong ? (
-        <NowPlayingHero song={currentSong} />
+        <div className="relative group rounded-2xl overflow-hidden transition-all duration-300">
+          <NowPlayingHero song={currentSong} />
+            {isPlaying && (
+              <div className="absolute inset-0 border-[2px] rounded-2xl pointer-events-none opacity-40 border-orange-500 glow-cyber-orange" />
+            )}
+        </div>
       ) : (
-        <section className="hero-fade-in relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-gradient-to-r from-zinc-950 via-zinc-900 to-black p-6 shadow-2xl sm:p-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.1),transparent_45%)]" />
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
-                Welcome back
-              </p>
-              <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-5xl bg-clip-text">
+        <section className="hero-fade-in relative overflow-hidden rounded-[2rem] border border-zinc-900 bg-[#09090b]/80 p-8 sm:p-10 shadow-2xl backdrop-blur-sm">
+          <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(circle at top right, rgba(249,115,22,0.08), transparent 50%)" }} />
+          {/* Cyber scanline backplate overlay */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.002)_50%,rgba(0,0,0,0.1)_50%)] bg-[size:100%_4px] pointer-events-none" />
+
+          <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl space-y-4">
+              <span className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-[9px] font-black uppercase tracking-[0.2em] shadow-sm text-orange-500 border-orange-500/20 bg-orange-500/10">
+                <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
+                VIBE CHANNEL: ACTIVE
+              </span>
+              <h1 className="text-3xl font-black tracking-tight text-white sm:text-5xl uppercase italic text-stroke-cyber hover:text-white transition-all duration-300">
                 Listen to your favorite tracks
               </h1>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-zinc-400 sm:text-base">
+              <p className="max-w-xl text-xs sm:text-sm leading-relaxed text-zinc-400 font-medium">
                 Discover, play, and save your music. Browse songs from the catalog, create playlists, and build your personal collection.
               </p>
             </div>
-            {/* <Link
-              href="/search"
-              className="inline-flex w-fit items-center rounded-full bg-orange-500 px-6 py-3 text-sm font-bold text-orange-950 transition hover:bg-orange-400 hover:scale-105 shadow-lg shadow-orange-500/10"
-            >
-              Exploresongs
-            </Link> */}
+
+            {/* Dynamic visual monitor block inside Hero */}
+            <div className="flex items-center gap-4 bg-black/40 border border-zinc-900 p-4 rounded-2xl shrink-0 font-mono text-[9px] text-zinc-500 max-w-xs">
+              <div className="flex gap-1 items-end h-8">
+                {EQ_BAR_HEIGHTS.map((height, i) => (
+                  <span
+                    key={i}
+                    className="w-[3px] rounded-t transition-all duration-300 eq-bar bg-orange-500"
+                    style={{
+                      height: `${height}%`,
+                      animationDelay: `${0.1 * (i % 4)}s`,
+                      animationDuration: "0.8s"
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="space-y-1">
+                <p className="text-white font-bold tracking-widest text-[10px]">MONITOR DECK</p>
+                <p>SIGNAL: ONLINE</p>
+                <p>BUFFER: LOCKED</p>
+              </div>
+            </div>
           </div>
         </section>
       )}
 
-      {/* Conditionally Render Recently Played Section */}
+      {/* Recently Played Section */}
       {!recentlyLoading && recentlyPlayed.length > 0 && (
-        <section className="space-y-4">
-          <div className="border-b border-zinc-900 pb-2">
-            <h2 className="text-xl font-bold text-white tracking-tight">Recently Played</h2>
-            <p className="text-xs text-zinc-500">Your latest played songs, kept newest first.</p>
+        <section className="bg-zinc-950/40 border border-zinc-900/60 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl backdrop-blur-sm">
+          <div className="border-b border-zinc-900 pb-3 flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-black text-white tracking-tight uppercase italic">Recently Played</h2>
+              <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mt-0.5">Your latest audio frequencies</p>
+            </div>
+            {/* Spinning visual cue */}
+            {isPlaying && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+            )}
           </div>
           <RecentlyPlayedList
             songs={recentlyPlayed.slice(0, RECENTLY_PLAYED_DISPLAY_LIMIT)}
@@ -284,27 +271,28 @@ function HomeContent() {
         </section>
       )}
 
-      <section className="space-y-6">
+      {/* Main Music Stream Section */}
+      <section className="bg-zinc-950/40 border border-zinc-900/60 rounded-3xl p-6 sm:p-8 space-y-8 shadow-xl backdrop-blur-sm">
         <div className="flex flex-col gap-2 border-b border-zinc-900 pb-4">
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-orange-400"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-500">
+            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500">
               Community Hotspot
             </span>
           </div>
-          <h2 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">
+          <h2 className="text-xl font-black tracking-tight text-white sm:text-2xl uppercase italic">
             Hear what’s trending in the community
           </h2>
-          <p className="text-xs text-zinc-400">
+          <p className="text-xs text-zinc-400 font-medium">
             Fresh tracks and new vibes picked straight from the latest uploads.
           </p>
         </div>
 
         {genreRowsError && (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 text-sm text-red-300">
+          <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-5 text-sm text-red-300">
             {genreRowsError}
           </div>
         )}
@@ -324,19 +312,19 @@ function HomeContent() {
         )}
 
         {!genreRowsError && !genreRowsLoading && genreRows.length === 0 && (
-          <div className="rounded-xl border border-zinc-900 bg-zinc-950/20 p-8 text-center text-zinc-500">
-            <p className="font-semibold text-zinc-400">No songs available yet.</p>
-            <p className="mt-1 text-sm text-zinc-500">Upload a track or explore music to start building the catalog.</p>
+          <div className="rounded-2xl border border-zinc-900 bg-zinc-950/20 py-12 text-center text-zinc-500 font-mono text-xs">
+            <p className="font-bold text-zinc-400">NO FREQUENCIES FOUND</p>
+            <p className="mt-2 text-zinc-650 max-w-sm mx-auto leading-relaxed">
+              Upload a new track under this genre or explore other songs to build the catalog.
+            </p>
           </div>
         )}
 
         {!genreRowsError && !genreRowsLoading && genreRows.length > 0 && (
-          <div className="space-y-9">
+          <div className="space-y-10">
             {genreRows.map((row) => {
-              const canLoadMore = row.pagination.page < row.pagination.totalPages;
-
               return (
-                <div key={row.genre.id} className="space-y-4">
+                <div key={row.genre.id} className="space-y-4 group">
                   <HorizontalSongCarousel
                     title={row.genre.name}
                     subtitle={`${row.pagination.totalItems} tracks`}
@@ -344,12 +332,7 @@ function HomeContent() {
                     error={row.error}
                     emptyTitle={`No ${row.genre.name} tracks`}
                     emptyDescription="Tracks in this genre will appear here."
-                    canLoadMore={canLoadMore}
-                    loadingMore={row.loadingMore}
-                    onLoadMore={() => {
-                      void handleLoadMoreGenre(row.genre.id);
-                    }}
-                    viewAllHref={`/search?q=${encodeURIComponent(row.genre.name)}`}
+                    viewAllHref={`/genres/${row.genre.id}`}
                     viewAllLabel="View all"
                   />
                 </div>
@@ -360,7 +343,6 @@ function HomeContent() {
       </section>
     </div>
   );
-
 }
 
 export default function HomePage() {

@@ -253,6 +253,14 @@ input[type="range"].slider-premium:hover::-moz-range-thumb {
   opacity: 1;
 }
 
+input[type="range"].slider-premium.slider-mobile::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+input[type="range"].slider-premium.slider-mobile::-moz-range-thumb {
+  opacity: 1;
+}
+
 /* Trending section redesign */
 @keyframes glow-pulse {
   0%, 100% {
@@ -397,3 +405,40 @@ input[type="range"].slider-premium:hover::-moz-range-thumb {
   transform: translateY(-4px);
 }
 
+/* Profile Page Redesign - Custom Ambient Glows */
+@keyframes ambient-glow {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+    opacity: 0.25;
+  }
+  33% {
+    transform: translate(40px, -30px) scale(1.2);
+    opacity: 0.45;
+  }
+  66% {
+    transform: translate(-30px, 40px) scale(0.8);
+    opacity: 0.15;
+  }
+}
+
+.animate-ambient-1 {
+  animation: ambient-glow 14s infinite alternate ease-in-out;
+}
+.animate-ambient-2 {
+  animation: ambient-glow 18s infinite alternate-reverse ease-in-out;
+}
+.animate-ambient-3 {
+  animation: ambient-glow 22s infinite alternate ease-in-out;
+}
+
+@keyframes spin-slow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spin-slow 15s linear infinite;
+}

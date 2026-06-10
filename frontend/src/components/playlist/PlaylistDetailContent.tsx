@@ -63,15 +63,24 @@ function isCoverFile(file: File) {
 
 
 function PlaylistCover({ playlist }: { playlist: PlaylistDetail }) {
+  const [imageError, setImageError] = useState(false);
   const coverUrl = resolveApiAssetUrl(playlist.cover_url);
 
-  if (coverUrl) {
+  if (coverUrl && !imageError) {
     return (
-      <div
-        className="h-36 w-36 shrink-0 rounded-lg bg-cover bg-center md:h-44 md:w-44"
-        style={{ backgroundImage: `url(${coverUrl})` }}
-        aria-label={`${playlist.title} cover`}
-      />
+      <div className="relative h-36 w-36 shrink-0 md:h-44 md:w-44">
+        <img
+          src={coverUrl}
+          alt=""
+          className="hidden"
+          onError={() => setImageError(true)}
+        />
+        <div
+          className="h-full w-full rounded-lg bg-cover bg-center"
+          style={{ backgroundImage: `url(${coverUrl})` }}
+          aria-label={`${playlist.title} cover`}
+        />
+      </div>
     );
   }
 
@@ -142,6 +151,17 @@ function EditPlaylistModal({
     if (form.title.trim().length < 2) {
       setFormError("Playlist title must be at least 2 characters.");
       return;
+    }
+
+    if (form.coverUrl && form.coverUrl.trim()) {
+      const trimmedUrl = form.coverUrl.trim();
+      const isValid = /^(https?:|data:|blob:|\/)/i.test(trimmedUrl);
+      if (!isValid) {
+        setFormError(
+          "Cover URL must be a valid URL (starting with http://, https://) or a path (starting with /).",
+        );
+        return;
+      }
     }
 
     setFormError(null);

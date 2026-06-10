@@ -93,8 +93,8 @@ function ProfileTabs({
   counts: Record<ProfileTab, number | null>;
 }) {
   return (
-    <nav className="overflow-x-auto no-scrollbar border-b border-zinc-900">
-      <div className="flex min-w-max items-center gap-2">
+    <nav className="overflow-x-auto no-scrollbar p-2 bg-[#09090b]/80 border-b border-zinc-900/80 select-none">
+      <div className="flex min-w-max items-center gap-2 px-2">
         {profileTabs.map((tab) => {
           const isActive = tab.id === activeTab;
           const count = counts[tab.id];
@@ -105,20 +105,22 @@ function ProfileTabs({
               type="button"
               onClick={() => onChange(tab.id)}
               className={cn(
-                "relative px-4 py-4 text-sm font-bold transition",
+                "relative px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-300 rounded-xl cursor-pointer select-none flex items-center gap-2",
                 isActive
-                  ? "text-white"
-                  : "text-zinc-500 hover:text-zinc-200",
+                  ? "bg-gradient-to-r from-orange-500 to-pink-600 text-zinc-950 shadow-md shadow-orange-500/10 scale-[1.02]"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60 border border-transparent hover:border-zinc-850"
               )}
             >
-              <span>{tab.label}</span>
+              <span className="relative z-10">{tab.label}</span>
               {count !== null && (
-                <span className="ml-2 rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-400">
+                <span className={cn(
+                  "rounded-full px-1.5 py-0.5 text-[10px] font-mono font-black border transition duration-300",
+                  isActive
+                    ? "bg-black/10 border-black/10 text-zinc-950"
+                    : "bg-zinc-900/85 border-zinc-800 text-zinc-500"
+                )}>
                   {formatPlayCount(count)}
                 </span>
-              )}
-              {isActive && (
-                <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-orange-400" />
               )}
             </button>
           );
@@ -135,22 +137,32 @@ function ProfileAvatar({
   username: string;
   avatarUrl: string | null;
 }) {
-  if (avatarUrl) {
-    return (
-      <div
-        className="h-28 w-28 shrink-0 rounded-full border border-white/10 ring-4 ring-zinc-950 bg-zinc-950 bg-cover bg-center shadow-lg shadow-black/30 sm:h-36 sm:w-36 md:h-40 md:w-40 animate-fade-in"
-        style={{ backgroundImage: `url(${avatarUrl})` }}
-        role="img"
-        aria-label={`${username} avatar`}
-      />
-    );
-  }
+  const fallbackLetter = getFallbackLetter(username);
 
   return (
-    <div className="grid h-28 w-28 shrink-0 place-items-center rounded-full border border-orange-500/20 ring-4 ring-zinc-950 bg-zinc-950 bg-gradient-to-br from-orange-500/20 to-zinc-900 shadow-lg shadow-black/30 sm:h-36 sm:w-36 md:h-40 md:w-40 animate-fade-in">
-      <span className="text-5xl font-extrabold text-orange-400 sm:text-6xl select-none">
-        {getFallbackLetter(username)}
-      </span>
+    <div className="group relative h-28 w-28 sm:h-36 sm:w-36 md:h-40 md:w-40 shrink-0 select-none">
+      {/* Outer Rotating Glowing Ring */}
+      <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-orange-500 via-pink-500 to-purple-600 p-[2px] opacity-70 blur-[8px] transition-all duration-700 group-hover:opacity-100 group-hover:blur-[12px] animate-spin-slow" />
+      
+      {/* Inner Border Ring */}
+      <div className="absolute -inset-[3px] rounded-full bg-gradient-to-tr from-orange-500 via-pink-500 to-purple-600 p-[3px] transition-all duration-500 group-hover:scale-[1.02]">
+        <div className="h-full w-full rounded-full bg-zinc-950 p-[2px]">
+          {avatarUrl ? (
+            <div
+              className="h-full w-full rounded-full bg-zinc-900 bg-cover bg-center border border-black/60 shadow-inner"
+              style={{ backgroundImage: `url(${avatarUrl})` }}
+              role="img"
+              aria-label={`${username} avatar`}
+            />
+          ) : (
+            <div className="grid h-full w-full place-items-center rounded-full bg-gradient-to-br from-zinc-900 to-zinc-950 text-orange-400 border border-black/60">
+              <span className="text-5xl font-black tracking-tight sm:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-pink-500 to-purple-400 drop-shadow">
+                {fallbackLetter}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -248,72 +260,72 @@ function EditProfileModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 px-4 pt-20 pb-28 backdrop-blur-sm">
-      <div className="w-full max-w-xl max-h-[calc(100vh-120px)] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-950 p-6 shadow-2xl">
-        <div className="mb-5">
-          <h2 className="text-xl font-black text-white">Edit profile</h2>
-          <p className="text-sm text-zinc-500">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 px-4 pt-20 pb-28 backdrop-blur-md select-none">
+      <div className="w-full max-w-lg max-h-[calc(100vh-120px)] overflow-y-auto rounded-3xl border border-zinc-800/80 bg-[#09090b]/95 p-8 shadow-2xl shadow-black/80 animate-[hero-fade-in_300ms_ease-out] dark-scrollbar">
+        <div className="mb-6">
+          <h2 className="text-xl font-black text-white tracking-tight">Edit profile</h2>
+          <p className="text-xs text-zinc-500 mt-1">
             Update your public profile details.
           </p>
         </div>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
+            <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
               Display name / username
             </label>
             <input
               value={form.username}
               onChange={(event) => updateForm("username", event.target.value)}
-              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2.5 text-sm font-semibold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400"
+              className="mt-2 w-full rounded-xl border border-zinc-850 bg-zinc-950/50 px-4 py-3 text-sm font-semibold text-white outline-none transition duration-300 placeholder:text-zinc-650 focus:border-orange-500/50 focus:bg-zinc-950 focus:ring-1 focus:ring-orange-500/10"
               placeholder="Your display name"
               maxLength={40}
             />
           </div>
 
           <div>
-            <label className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
+            <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
               Bio
             </label>
             <textarea
               value={form.bio}
               onChange={(event) => updateForm("bio", event.target.value)}
-              className="mt-2 min-h-28 w-full resize-none rounded-lg border border-zinc-800 bg-black px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400"
+              className="mt-2 min-h-28 w-full resize-none rounded-xl border border-zinc-850 bg-zinc-950/50 px-4 py-3 text-sm font-medium text-white outline-none transition duration-300 placeholder:text-zinc-655 focus:border-orange-500/50 focus:bg-zinc-950 focus:ring-1 focus:ring-orange-500/10 leading-relaxed"
               placeholder="Tell listeners a little about you."
               maxLength={300}
             />
-            <p className="mt-1 text-right text-xs text-zinc-600">
+            <p className="mt-1 text-right text-[10px] text-zinc-600 font-mono">
               {form.bio.length}/300
             </p>
           </div>
 
           <div>
-            <label className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
+            <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
               Avatar image
             </label>
-            <div className="mt-2 flex items-center gap-4 rounded-lg border border-zinc-800 bg-black p-3">
+            <div className="mt-2 flex items-center gap-4 rounded-xl border border-zinc-850 bg-zinc-950/30 p-4 backdrop-blur-sm">
               {avatarPreviewUrl ? (
                 <div
-                  className="h-16 w-16 shrink-0 rounded-full bg-zinc-900 bg-cover bg-center"
+                  className="h-16 w-16 shrink-0 rounded-full bg-zinc-900 bg-cover bg-center border border-zinc-800 shadow-md shadow-black/20"
                   style={{ backgroundImage: `url(${avatarPreviewUrl})` }}
                   role="img"
                   aria-label="Avatar preview"
                 />
               ) : (
-                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-orange-500 to-zinc-950 text-xl font-black text-white">
+                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-orange-500 to-pink-600 text-xl font-black text-white shadow-md shadow-black/20">
                   {getFallbackLetter(form.username)}
                 </div>
               )}
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 space-y-2">
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   onChange={(event) => {
                     handleAvatarChange(event.target.files?.[0] ?? null);
                   }}
-                  className="block w-full text-sm text-zinc-300 file:mr-3 file:rounded-full file:border-0 file:bg-orange-500 file:px-4 file:py-2 file:text-sm file:font-black file:text-orange-950 hover:file:bg-orange-400"
+                  className="block w-full text-xs text-zinc-400 file:mr-3 file:rounded-xl file:border-0 file:bg-orange-500/10 file:border file:border-orange-500/20 file:text-orange-400 file:px-3.5 file:py-1.5 file:text-xs file:font-black hover:file:bg-orange-500/20 file:cursor-pointer file:transition-all cursor-pointer"
                 />
-                <p className="mt-2 text-xs text-zinc-600">
+                <p className="text-[10px] text-zinc-650 font-medium">
                   JPG, PNG, or WebP. Max 2MB.
                 </p>
               </div>
@@ -321,24 +333,24 @@ function EditProfileModal({
           </div>
 
           {(formError || error) && (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+            <div className="rounded-xl border border-red-500/25 bg-red-500/5 px-4 py-2.5 text-xs font-semibold text-red-400 animate-pulse">
               {formError || error}
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-3 pt-3">
             <button
               type="button"
               onClick={onCancel}
               disabled={saving}
-              className="rounded-full border border-zinc-700 bg-black px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl border border-zinc-800 bg-zinc-900/30 px-5 py-2.5 text-xs font-semibold text-zinc-400 transition hover:bg-zinc-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-black text-orange-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-gradient-to-r from-orange-500 to-pink-600 px-6 py-2.5 text-xs font-bold text-zinc-950 transition hover:opacity-95 hover:shadow-lg hover:shadow-orange-500/10 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
             >
               {saving ? "Saving..." : "Save"}
             </button>
@@ -435,42 +447,50 @@ function CompactRecentActivityRow({ song, queue }: { song: Song; queue: Song[] }
   return (
     <article
       className={cn(
-        "group flex items-center justify-between gap-4 rounded-xl border border-zinc-900/60 bg-zinc-950/20 p-2.5 transition hover:border-zinc-800 hover:bg-zinc-900/30",
+        "group flex items-center justify-between gap-4 rounded-xl border border-zinc-900/60 bg-zinc-950/20 p-2.5 transition hover:border-zinc-800 hover:bg-zinc-900/30 relative overflow-hidden",
         isCurrentSong && "border-orange-500/20 bg-orange-500/[0.02]",
       )}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        {/* Cover Art */}
-        <Link
-          href={`/songs/${song.id}`}
-          className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-zinc-900 bg-zinc-900/60 bg-cover bg-center"
-          style={coverUrl ? { backgroundImage: `url(${coverUrl})` } : undefined}
-          aria-label={`Open ${songTitle}`}
-        >
-          {!coverUrl && (
-            <span className="grid h-full w-full place-items-center bg-gradient-to-br from-orange-500/20 to-zinc-950 text-sm font-black text-orange-400/80">
-              {getFallbackLetter(songTitle)}
-            </span>
-          )}
-          {/* Overlay play button on hover */}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              type="button"
-              onClick={handlePlay}
-              className="rounded-full bg-orange-500 p-2 text-orange-950 hover:bg-orange-400 transition"
-              aria-label={isCurrentSong && isPlaying ? "Pause" : "Play"}
-            >
-              {isCurrentSong && isPlaying ? (
-                <PauseIcon size={12} />
-              ) : (
-                <PlayIcon size={12} className="ml-0.5" />
-              )}
-            </button>
+      <div className="flex min-w-0 flex-1 items-center gap-3 z-10">
+        {/* Cover Art Wrapper with Vinyl */}
+        <div className="relative h-12 w-12 shrink-0 select-none">
+          {/* Vinyl Disc Behind */}
+          <div className="absolute top-0.5 left-0.5 w-11 h-11 rounded-full bg-[#111] border-2 border-zinc-700/80 flex items-center justify-center transition-all duration-500 group-hover:translate-x-3.5 group-hover:rotate-180 z-0 shadow-md">
+            {/* Grooves */}
+            <div className="w-8 h-8 rounded-full border border-zinc-800/80 flex items-center justify-center">
+              <div className="w-5 h-5 rounded-full bg-orange-500/80 flex items-center justify-center border border-black/40">
+                <div className="w-1.5 h-1.5 rounded-full bg-black" />
+              </div>
+            </div>
           </div>
-        </Link>
+
+          {/* Front Cover Container */}
+          <Link
+            href={`/songs/${song.id}`}
+            className="relative h-12 w-12 block overflow-hidden rounded-lg border border-zinc-900 bg-zinc-900/60 bg-cover bg-center z-10"
+            style={coverUrl ? { backgroundImage: `url(${coverUrl})` } : undefined}
+            aria-label={`Open ${songTitle}`}
+          >
+            {!coverUrl && (
+              <span className="grid h-full w-full place-items-center bg-gradient-to-br from-orange-500/20 to-zinc-950 text-sm font-black text-orange-400/80">
+                {getFallbackLetter(songTitle)}
+              </span>
+            )}
+            {/* Overlay play button on hover */}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="rounded-full bg-orange-500 p-2 text-orange-950 hover:bg-orange-400 transition transform scale-90">
+                {isCurrentSong && isPlaying ? (
+                  <PauseIcon size={12} />
+                ) : (
+                  <PlayIcon size={12} className="ml-0.5" />
+                )}
+              </span>
+            </div>
+          </Link>
+        </div>
 
         {/* Text information */}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 pl-1">
           <Link
             href={`/songs/${song.id}`}
             className={cn(
@@ -485,12 +505,12 @@ function CompactRecentActivityRow({ song, queue }: { song: Song; queue: Song[] }
             {artistId ? (
               <Link
                 href={`/artists/${artistId}`}
-                className="hover:text-orange-400 transition font-medium truncate max-w-[150px] inline-block"
+                className="hover:text-orange-400 transition font-medium truncate max-w-[150px] inline-block font-semibold"
               >
                 {artistName}
               </Link>
             ) : (
-              <span className="truncate max-w-[150px] inline-block">{artistName}</span>
+              <span className="truncate max-w-[150px] inline-block font-semibold">{artistName}</span>
             )}
             <span className="text-zinc-700 font-normal select-none">•</span>
             <span>played recently</span>
@@ -503,7 +523,7 @@ function CompactRecentActivityRow({ song, queue }: { song: Song; queue: Song[] }
         type="button"
         onClick={handlePlay}
         className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-orange-500 hover:text-orange-950 hover:border-orange-500 transition group-hover:border-zinc-700 md:opacity-0 group-hover:opacity-100 focus:opacity-100",
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-orange-500 hover:text-orange-950 hover:border-orange-500 transition group-hover:border-zinc-700 md:opacity-0 group-hover:opacity-100 focus:opacity-100 z-10",
           isCurrentSong && "border-orange-500/30 text-orange-400 md:opacity-100",
         )}
         aria-label={isCurrentSong && isPlaying ? "Pause" : "Play"}
@@ -575,19 +595,28 @@ function CompactRecentActivitySection({
 }
 
 function PlaylistCover({ playlist }: { playlist: UserPlaylist }) {
+  const [imageError, setImageError] = useState(false);
   const coverUrl = resolveApiAssetUrl(
     playlist.custom_cover_url ?? playlist.cover_url,
   );
   const title = playlist.title || playlist.name || "Playlist";
 
-  if (coverUrl) {
+  if (coverUrl && !imageError) {
     return (
-      <div
-        className="aspect-square rounded-lg bg-zinc-900 bg-cover bg-center"
-        style={{ backgroundImage: `url(${coverUrl})` }}
-        role="img"
-        aria-label={`${title} cover`}
-      />
+      <div className="relative aspect-square w-full">
+        <img
+          src={coverUrl}
+          alt=""
+          className="hidden"
+          onError={() => setImageError(true)}
+        />
+        <div
+          className="aspect-square rounded-lg bg-zinc-900 bg-cover bg-center w-full h-full"
+          style={{ backgroundImage: `url(${coverUrl})` }}
+          role="img"
+          aria-label={`${title} cover`}
+        />
+      </div>
     );
   }
 
@@ -1196,8 +1225,18 @@ export default function ProfilePage() {
       <div className="space-y-6 page-fade-in pb-32">
       <section className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/30">
         {/* Banner area */}
-        <div className="relative h-36 sm:h-48 w-full bg-gradient-to-r from-zinc-800 via-zinc-900 to-orange-950/40">
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+        <div className="relative h-44 sm:h-60 w-full bg-[#08080f] overflow-hidden border-b border-white/5 select-none">
+          {/* Animated gradient mesh bubbles */}
+          <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[100%] rounded-full bg-gradient-to-br from-orange-600/20 to-pink-600/5 blur-[80px] animate-ambient-1" />
+          <div className="absolute top-[30%] right-[-10%] w-[50%] h-[90%] rounded-full bg-gradient-to-br from-purple-600/20 to-blue-600/5 blur-[95px] animate-ambient-2" />
+          <div className="absolute bottom-[-10%] left-[20%] w-[45%] h-[80%] rounded-full bg-gradient-to-tr from-pink-600/15 to-orange-500/5 blur-[85px] animate-ambient-3" />
+          
+          {/* Cyber grid and scanlines */}
+          <div className="absolute inset-0 cyber-grid opacity-[0.4]" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.001)_50%,rgba(0,0,0,0.08)_50%)] bg-[size:100%_4px]" />
+          
+          {/* Subtle gradient vignette overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-black/30 z-10" />
         </div>
         
         {/* Profile info area */}
@@ -1207,31 +1246,34 @@ export default function ProfilePage() {
             <ProfileAvatar username={username} avatarUrl={avatarUrl} />
             
             {/* Desktop Actions */}
-            <div className="hidden sm:flex flex-wrap items-center gap-3">
+            <div className="hidden sm:flex flex-wrap items-center gap-2 select-none">
               <button
                 type="button"
                 onClick={() => {
                   setProfileError(null);
                   setEditProfileOpen(true);
                 }}
-                className="rounded-full border border-zinc-700 bg-black/35 px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-orange-400/60 hover:bg-orange-500/10 hover:text-orange-200"
+                className="flex items-center gap-1.5 rounded-xl bg-zinc-900/40 px-4 py-2 text-xs font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800/40 transition-all duration-300 cursor-pointer active:scale-95 select-none"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500 shrink-0"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                 Edit profile
               </button>
 
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-full border border-red-500/30 bg-black/35 px-5 py-2.5 text-sm font-bold text-red-300 transition hover:bg-red-500/10 hover:text-red-200"
+                className="flex items-center gap-1.5 rounded-xl bg-zinc-900/10 px-4 py-2 text-xs font-semibold text-zinc-400 hover:text-red-400 hover:bg-red-500/5 transition-all duration-300 cursor-pointer active:scale-95 select-none"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400 group-hover:text-red-400 shrink-0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
                 Log out
               </button>
 
               {canShowArtistActions && (
                 <Link
                   href="/upload"
-                  className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-black text-orange-950 transition hover:bg-orange-400"
+                  className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-pink-600 px-4.5 py-2 text-xs font-bold text-zinc-950 hover:opacity-90 hover:scale-[1.01] hover:shadow-[0_0_15px_rgba(239,68,68,0.25)] transition-all duration-300 active:scale-95 select-none cursor-pointer"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
                   Upload track
                 </Link>
               )}
@@ -1239,8 +1281,9 @@ export default function ProfilePage() {
               {roleLabel === "admin" && (
                 <Link
                   href="/admin/songs"
-                  className="rounded-full border border-zinc-700 bg-black/35 px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-zinc-500 hover:bg-black/60 hover:text-white"
+                  className="flex items-center gap-1.5 rounded-xl bg-zinc-900/10 px-4 py-2 text-xs font-semibold text-zinc-400 hover:text-cyan-400 hover:bg-cyan-500/5 transition-all duration-300 cursor-pointer active:scale-95 select-none"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-500 shrink-0"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></svg>
                   Manage tracks
                 </Link>
               )}
@@ -1276,75 +1319,91 @@ export default function ProfilePage() {
               </div>
 
               {/* Profile Stats with premium styling and responsive wrapping */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider select-none pt-1">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2 max-w-2xl select-none">
                 <button
                   type="button"
                   onClick={() => setActiveFollowModal("followers")}
-                  className="hover:text-white transition cursor-pointer focus:outline-none text-left"
+                  className="group/stat relative bg-zinc-900/30 backdrop-blur-md border border-zinc-800/80 hover:border-orange-500/40 p-4 rounded-xl text-left transition-all duration-300 cursor-pointer focus:outline-none hover:-translate-y-0.5 hover:shadow-[0_0_25px_rgba(249,115,22,0.1)] flex items-center justify-between"
                 >
-                  <span className="text-white font-extrabold mr-1">{user.followersCount ?? 0}</span>
-                  {user.followersCount === 1 ? "follower" : "followers"}
+                  <div>
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider transition duration-300 group-hover/stat:text-orange-400">Followers</p>
+                    <p className="text-2xl font-black text-white tracking-tight mt-0.5 font-mono">{user.followersCount ?? 0}</p>
+                  </div>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500 group-hover/stat:text-orange-500 group-hover/stat:scale-110 group-hover/stat:drop-shadow-[0_0_8px_rgba(249,115,22,0.5)] transition-all duration-300 shrink-0 ml-2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </button>
-                <span className="text-zinc-800 hidden sm:inline select-none">&bull;</span>
+
                 <button
                   type="button"
                   onClick={() => setActiveFollowModal("following")}
-                  className="hover:text-white transition cursor-pointer focus:outline-none text-left"
+                  className="group/stat relative bg-zinc-900/30 backdrop-blur-md border border-zinc-800/80 hover:border-purple-500/40 p-4 rounded-xl text-left transition-all duration-300 cursor-pointer focus:outline-none hover:-translate-y-0.5 hover:shadow-[0_0_25px_rgba(168,85,247,0.1)] flex items-center justify-between"
                 >
-                  <span className="text-white font-extrabold mr-1">{user.followingCount ?? following.length}</span>
-                  following
+                  <div>
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider transition duration-300 group-hover/stat:text-purple-400">Following</p>
+                    <p className="text-2xl font-black text-white tracking-tight mt-0.5 font-mono">{user.followingCount ?? following.length}</p>
+                  </div>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500 group-hover/stat:text-purple-500 group-hover/stat:scale-110 group-hover/stat:drop-shadow-[0_0_8px_rgba(168,85,247,0.5)] transition-all duration-300 shrink-0 ml-2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
                 </button>
-                <span className="text-zinc-800 hidden sm:inline select-none">&bull;</span>
-                <div>
-                  <span className="text-white font-extrabold mr-1">{myTracks.length}</span>
-                  tracks
+
+                <div className="group/stat relative bg-zinc-900/30 backdrop-blur-md border border-zinc-800/80 hover:border-cyan-500/40 p-4 rounded-xl text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_25px_rgba(6,182,212,0.1)] flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider transition duration-300 group-hover/stat:text-cyan-400">Tracks</p>
+                    <p className="text-2xl font-black text-white tracking-tight mt-0.5 font-mono">{myTracks.length}</p>
+                  </div>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500 group-hover/stat:text-cyan-500 group-hover/stat:scale-110 group-hover/stat:drop-shadow-[0_0_8px_rgba(6,182,212,0.5)] transition-all duration-300 shrink-0 ml-2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                 </div>
-                <span className="text-zinc-800 hidden sm:inline select-none">&bull;</span>
-                <div>
-                  <span className="text-white font-extrabold mr-1">{playlists.length}</span>
-                  playlists
+
+                <div className="group/stat relative bg-zinc-900/30 backdrop-blur-md border border-zinc-800/80 hover:border-pink-500/40 p-4 rounded-xl text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_25px_rgba(236,72,153,0.1)] flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider transition duration-300 group-hover/stat:text-pink-400">Playlists</p>
+                    <p className="text-2xl font-black text-white tracking-tight mt-0.5 font-mono">{playlists.length}</p>
+                  </div>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500 group-hover/stat:text-pink-500 group-hover/stat:scale-110 group-hover/stat:drop-shadow-[0_0_8px_rgba(236,72,153,0.5)] transition-all duration-300 shrink-0 ml-2"><path d="M21 15V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/><path d="M3 10h18"/><path d="M10 21V10"/></svg>
                 </div>
               </div>
             </div>
 
             {/* Mobile Actions: clean grid and primary/secondary layout hierarchy */}
-            <div className="flex sm:hidden flex-col gap-2.5 pt-3.5 border-t border-zinc-900/60 w-full">
+            <div className="flex sm:hidden flex-col gap-2 pt-3 border-t border-zinc-900/80 w-full">
               {canShowArtistActions && (
                 <Link
                   href="/upload"
-                  className="flex h-11 items-center justify-center rounded-full bg-orange-500 text-sm font-black text-orange-950 transition active:scale-[0.98] shadow-md shadow-orange-500/10"
+                  className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-pink-600 text-xs font-bold text-zinc-950 transition active:scale-[0.98] shadow-md shadow-orange-500/10 cursor-pointer"
                 >
-                  Upload track
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                  Upload Track
                 </Link>
               )}
 
               {roleLabel === "admin" && (
                 <Link
                   href="/admin/songs"
-                  className="flex h-11 items-center justify-center rounded-full border border-zinc-700 bg-black/35 text-sm font-bold text-zinc-200 transition active:scale-[0.98]"
+                  className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-zinc-900/30 text-xs font-semibold text-cyan-400 hover:bg-cyan-500/5 active:scale-[0.98] cursor-pointer"
                 >
-                  Manage tracks
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-500 shrink-0"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></svg>
+                  Manage Tracks
                 </Link>
               )}
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setProfileError(null);
                     setEditProfileOpen(true);
                   }}
-                  className="flex h-11 items-center justify-center rounded-full border border-zinc-700 bg-black/35 text-sm font-bold text-zinc-200 transition active:scale-[0.98]"
+                  className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-zinc-900/30 text-xs font-semibold text-zinc-300 transition active:scale-[0.98] cursor-pointer"
                 >
-                  Edit profile
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500 shrink-0"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  Edit
                 </button>
 
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex h-11 items-center justify-center rounded-full border border-red-500/30 bg-black/35 text-sm font-bold text-red-300 transition active:scale-[0.98]"
+                  className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-red-500/5 text-xs font-semibold text-red-400 transition active:scale-[0.98] cursor-pointer"
                 >
-                  Log out
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-400/80 shrink-0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                  Log Out
                 </button>
               </div>
             </div>
@@ -1385,12 +1444,12 @@ function ContentBlock({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-xl font-black text-white">{title}</h2>
-        <p className="text-sm text-zinc-500">{description}</p>
+    <section className="space-y-4 p-5 rounded-2xl bg-zinc-950/40 border border-zinc-900/80 backdrop-blur-sm shadow-xl shadow-black/10 animate-[page-fade-in_300ms_ease-out] hover:border-zinc-800/40 transition-colors duration-300">
+      <div className="flex flex-col gap-1 border-b border-zinc-900/60 pb-3">
+        <h2 className="text-base font-black text-white tracking-tight">{title}</h2>
+        <p className="text-xs text-zinc-500 font-medium">{description}</p>
       </div>
-      {children}
+      <div className="pt-1">{children}</div>
     </section>
   );
 }

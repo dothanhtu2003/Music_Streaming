@@ -156,38 +156,57 @@ function ArtistAvatar({
   name: string;
   avatarUrl: string | null;
 }) {
-  if (avatarUrl) {
-    return (
-      <div
-        className="h-28 w-28 shrink-0 rounded-full border-4 border-black/70 bg-zinc-900 bg-cover bg-center shadow-2xl sm:h-36 sm:w-36 md:h-40 md:w-40"
-        style={{ backgroundImage: `url(${avatarUrl})` }}
-        role="img"
-        aria-label={`${name} avatar`}
-      />
-    );
-  }
+  const fallbackLetter = getFallbackLetter(name);
 
   return (
-    <div className="grid h-28 w-28 shrink-0 place-items-center rounded-full border-4 border-black/70 bg-gradient-to-br from-orange-500 to-zinc-950 shadow-2xl sm:h-36 sm:w-36 md:h-40 md:w-40">
-      <span className="text-5xl font-black text-white sm:text-6xl">
-        {getFallbackLetter(name)}
-      </span>
+    <div className="group relative h-28 w-28 sm:h-36 sm:w-36 md:h-40 md:w-40 shrink-0 select-none">
+      {/* Outer Rotating Glowing Ring */}
+      <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-orange-500 via-pink-500 to-purple-600 p-[2px] opacity-70 blur-[8px] transition-all duration-700 group-hover:opacity-100 group-hover:blur-[12px] animate-spin-slow" />
+      
+      {/* Inner Border Ring */}
+      <div className="absolute -inset-[3px] rounded-full bg-gradient-to-tr from-orange-500 via-pink-500 to-purple-600 p-[3px] transition-all duration-500 group-hover:scale-[1.02]">
+        <div className="h-full w-full rounded-full bg-zinc-950 p-[2px]">
+          {avatarUrl ? (
+            <div
+              className="h-full w-full rounded-full bg-zinc-900 bg-cover bg-center border border-black/60 shadow-inner"
+              style={{ backgroundImage: `url(${avatarUrl})` }}
+              role="img"
+              aria-label={`${name} avatar`}
+            />
+          ) : (
+            <div className="grid h-full w-full place-items-center rounded-full bg-gradient-to-br from-zinc-900 to-zinc-950 text-orange-400 border border-black/60">
+              <span className="text-5xl font-black tracking-tight sm:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-pink-500 to-purple-400 drop-shadow">
+                {fallbackLetter}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
 function PlaylistCover({ playlist }: { playlist: UserPlaylist }) {
+  const [imageError, setImageError] = useState(false);
   const coverUrl = resolveApiAssetUrl(playlist.cover_url);
   const title = playlist.title || playlist.name || "Playlist";
 
-  if (coverUrl) {
+  if (coverUrl && !imageError) {
     return (
-      <div
-        className="aspect-square rounded-lg bg-zinc-900 bg-cover bg-center"
-        style={{ backgroundImage: `url(${coverUrl})` }}
-        role="img"
-        aria-label={`${title} cover`}
-      />
+      <div className="relative aspect-square w-full">
+        <img
+          src={coverUrl}
+          alt=""
+          className="hidden"
+          onError={() => setImageError(true)}
+        />
+        <div
+          className="aspect-square rounded-lg bg-zinc-900 bg-cover bg-center w-full h-full"
+          style={{ backgroundImage: `url(${coverUrl})` }}
+          role="img"
+          aria-label={`${title} cover`}
+        />
+      </div>
     );
   }
 
@@ -212,8 +231,8 @@ function ProfileTabs({
   playlistCount: number;
 }) {
   return (
-    <nav className="overflow-x-auto no-scrollbar border-b border-zinc-900">
-      <div className="flex min-w-max items-center gap-2">
+    <nav className="overflow-x-auto no-scrollbar p-2 bg-[#09090b]/80 border-b border-zinc-900/80 select-none">
+      <div className="flex min-w-max items-center gap-2 px-2">
         {tabs.map((tab) => {
           const isActive = tab.id === activeTab;
           const countLabel =
@@ -229,20 +248,22 @@ function ProfileTabs({
               type="button"
               onClick={() => onChange(tab.id)}
               className={cn(
-                "relative px-4 py-4 text-sm font-bold transition",
+                "relative px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-300 rounded-xl cursor-pointer select-none flex items-center gap-2",
                 isActive
-                  ? "text-white"
-                  : "text-zinc-500 hover:text-zinc-200",
+                  ? "bg-gradient-to-r from-orange-500 to-pink-600 text-zinc-950 shadow-md shadow-orange-500/10 scale-[1.02]"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60 border border-transparent hover:border-zinc-850"
               )}
             >
-              <span>{tab.label}</span>
+              <span className="relative z-10">{tab.label}</span>
               {countLabel !== null && (
-                <span className="ml-2 rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-400">
+                <span className={cn(
+                  "rounded-full px-1.5 py-0.5 text-[10px] font-mono font-black border transition duration-300",
+                  isActive
+                    ? "bg-black/10 border-black/10 text-zinc-950"
+                    : "bg-zinc-900/85 border-zinc-800 text-zinc-550"
+                )}>
                   {formatPlayCount(countLabel)}
                 </span>
-              )}
-              {isActive && (
-                <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-orange-400" />
               )}
             </button>
           );
@@ -616,19 +637,26 @@ export function ArtistDetailContent() {
     <div className="space-y-6 page-fade-in">
       <section className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/30">
         {/* Banner area */}
-        <div
-          className={cn(
-            "relative h-36 sm:h-48 w-full bg-cover bg-center",
-            !headerData.bannerUrl &&
-              "bg-gradient-to-r from-zinc-800 via-zinc-900 to-orange-950/40",
+        <div className="relative h-44 sm:h-60 w-full bg-[#08080f] overflow-hidden border-b border-white/5 select-none">
+          {/* Animated gradient mesh bubbles */}
+          <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[100%] rounded-full bg-gradient-to-br from-orange-600/20 to-pink-600/5 blur-[80px] animate-ambient-1" />
+          <div className="absolute top-[30%] right-[-10%] w-[50%] h-[90%] rounded-full bg-gradient-to-br from-purple-600/20 to-blue-600/5 blur-[95px] animate-ambient-2" />
+          <div className="absolute bottom-[-10%] left-[20%] w-[45%] h-[80%] rounded-full bg-gradient-to-tr from-pink-600/15 to-orange-500/5 blur-[85px] animate-ambient-3" />
+          
+          {/* Custom user banner cover if provided */}
+          {headerData.bannerUrl && (
+            <div 
+              className="absolute inset-0 bg-cover bg-center opacity-65 mix-blend-screen"
+              style={{ backgroundImage: `url(${headerData.bannerUrl})` }}
+            />
           )}
-          style={
-            headerData.bannerUrl
-              ? { backgroundImage: `url(${headerData.bannerUrl})` }
-              : undefined
-          }
-        >
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+
+          {/* Cyber grid and scanlines */}
+          <div className="absolute inset-0 cyber-grid opacity-[0.4]" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.001)_50%,rgba(0,0,0,0.08)_50%)] bg-[size:100%_4px]" />
+          
+          {/* Subtle gradient vignette overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-black/30 z-10" />
         </div>
 
         {/* Profile info area */}
@@ -637,19 +665,20 @@ export function ArtistDetailContent() {
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between -mt-14 sm:-mt-16 md:-mt-20 gap-4 mb-5">
             <ArtistAvatar name={artistName} avatarUrl={headerData.avatarUrl} />
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 select-none">
               {!isSelf && (
                 <button
                   type="button"
                   disabled={followLoading}
                   onClick={() => void toggleFollow(artist.id, artistName)}
                   className={cn(
-                    "rounded-full px-6 py-2.5 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60",
+                    "flex items-center gap-1.5 rounded-xl px-4.5 py-2 text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 disabled:cursor-not-allowed disabled:opacity-60",
                     isArtistFollowed
-                      ? "border border-zinc-600 bg-black/40 text-white hover:bg-zinc-800"
-                      : "bg-orange-500 text-orange-950 hover:bg-orange-400",
+                      ? "bg-zinc-900/40 text-zinc-300 hover:bg-zinc-800/40"
+                      : "bg-gradient-to-r from-orange-500 to-pink-600 text-zinc-950 shadow-md shadow-orange-500/10 hover:opacity-90 hover:scale-[1.01]"
                   )}
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
                   {followLoading
                     ? "Loading..."
                     : isArtistFollowed
@@ -661,8 +690,9 @@ export function ArtistDetailContent() {
               <button
                 type="button"
                 onClick={handleShareArtist}
-                className="rounded-full border border-zinc-700 bg-black/35 px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-zinc-500 hover:bg-black/60 hover:text-white"
+                className="flex items-center gap-1.5 rounded-xl bg-zinc-900/40 px-4 py-2 text-xs font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800/40 transition-all duration-300 cursor-pointer active:scale-95 select-none"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400 shrink-0"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
                 Share
               </button>
             </div>
@@ -687,28 +717,39 @@ export function ArtistDetailContent() {
               )}
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-zinc-400 select-none">
+            {/* Profile Stats with premium styling and responsive wrapping */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-2 max-w-xl select-none">
               <button
                 type="button"
                 onClick={() => setActiveFollowModal("followers")}
-                className="hover:text-white transition cursor-pointer focus:outline-none"
+                className="group/stat relative bg-zinc-900/30 backdrop-blur-md border border-zinc-800/80 hover:border-orange-500/40 p-4 rounded-xl text-left transition-all duration-300 cursor-pointer focus:outline-none hover:-translate-y-0.5 hover:shadow-[0_0_25px_rgba(249,115,22,0.1)] flex items-center justify-between"
               >
-                {headerData.followersCount}{" "}
-                {headerData.followersCount === 1 ? "follower" : "followers"}
+                <div>
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider transition duration-300 group-hover/stat:text-orange-400">Followers</p>
+                  <p className="text-2xl font-black text-white tracking-tight mt-0.5 font-mono">{headerData.followersCount}</p>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500 group-hover/stat:text-orange-500 group-hover/stat:scale-110 group-hover/stat:drop-shadow-[0_0_8px_rgba(249,115,22,0.5)] transition-all duration-300 shrink-0 ml-2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               </button>
-              <span className="text-zinc-700 select-none">&middot;</span>
+
               <button
                 type="button"
                 onClick={() => setActiveFollowModal("following")}
-                className="hover:text-white transition cursor-pointer focus:outline-none"
+                className="group/stat relative bg-zinc-900/30 backdrop-blur-md border border-zinc-800/80 hover:border-purple-500/40 p-4 rounded-xl text-left transition-all duration-300 cursor-pointer focus:outline-none hover:-translate-y-0.5 hover:shadow-[0_0_25px_rgba(168,85,247,0.1)] flex items-center justify-between"
               >
-                {headerData.followingCount} following
+                <div>
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider transition duration-300 group-hover/stat:text-purple-400">Following</p>
+                  <p className="text-2xl font-black text-white tracking-tight mt-0.5 font-mono">{headerData.followingCount}</p>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500 group-hover/stat:text-purple-500 group-hover/stat:scale-110 group-hover/stat:drop-shadow-[0_0_8px_rgba(168,85,247,0.5)] transition-all duration-300 shrink-0 ml-2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
               </button>
-              <span className="text-zinc-700 select-none">&middot;</span>
-              <span>
-                {headerData.trackCount}{" "}
-                {headerData.trackCount === 1 ? "track" : "tracks"}
-              </span>
+
+              <div className="group/stat relative bg-zinc-900/30 backdrop-blur-md border border-zinc-800/80 hover:border-cyan-500/40 p-4 rounded-xl text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_25px_rgba(6,182,212,0.1)] flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider transition duration-300 group-hover/stat:text-cyan-400">Tracks</p>
+                  <p className="text-2xl font-black text-white tracking-tight mt-0.5 font-mono">{headerData.trackCount}</p>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500 group-hover/stat:text-cyan-500 group-hover/stat:scale-110 group-hover/stat:drop-shadow-[0_0_8px_rgba(6,182,212,0.5)] transition-all duration-300 shrink-0 ml-2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+              </div>
             </div>
           </div>
         </div>

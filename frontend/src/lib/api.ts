@@ -39,7 +39,11 @@ import type {
 } from "@/types/music";
 import {
   clearTokens,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  notifyAuthTokenUpdated,
   notifyAuthTokenCleared,
+  saveTokens,
 } from "@/lib/auth-storage";
 import {
   normalizeArtistProfile,
@@ -78,6 +82,7 @@ type RequestOptions = {
   body?: unknown;
   accessToken?: string | null;
   signal?: AbortSignal;
+  skipAuthRefresh?: boolean;
 };
 
 function getResponseErrorMessage(response: Response, responseText: string) {
@@ -139,6 +144,7 @@ type PlaylistSongActionResult = {
 type UploadTrackPayload = {
   title: string;
   genre?: string;
+  genre_id?: string;
   description?: string;
   audioFile: File;
   coverFile?: File | null;
@@ -172,10 +178,52 @@ function isFormDataBody(body: unknown): body is FormData {
   return typeof FormData !== "undefined" && body instanceof FormData;
 }
 
+let refreshSessionPromise: Promise<LoginResult> | null = null;
+
+export async function refreshAuthSession() {
+  if (refreshSessionPromise) {
+    return refreshSessionPromise;
+  }
+
+  const refreshToken = getStoredRefreshToken();
+
+  if (!refreshToken) {
+    throw new ApiRequestError("Refresh token is missing.", 401);
+  }
+
+  refreshSessionPromise = apiRequest<LoginResult>("/auth/refresh", {
+    method: "POST",
+    body: { refreshToken },
+    skipAuthRefresh: true,
+  })
+    .then((response) => {
+      if (
+        !response.data?.user ||
+        !response.data.accessToken ||
+        !response.data.refreshToken
+      ) {
+        throw new Error("Refresh response is missing token data.");
+      }
+
+      saveTokens(response.data.accessToken, response.data.refreshToken);
+      notifyAuthTokenUpdated();
+
+      return response.data;
+    })
+    .finally(() => {
+      refreshSessionPromise = null;
+    });
+
+  return refreshSessionPromise;
+}
+
 async function apiRequest<T>(path: string, options: RequestOptions = {}) {
   const headers = new Headers();
   const isFormData = isFormDataBody(options.body);
   let requestBody: BodyInit | undefined;
+  const accessToken = options.accessToken
+    ? getStoredAccessToken() ?? options.accessToken
+    : null;
 
   if (options.body !== undefined) {
     requestBody = isFormDataBody(options.body)
@@ -187,8 +235,8 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}) {
     headers.set("Content-Type", "application/json");
   }
 
-  if (options.accessToken) {
-    headers.set("Authorization", `Bearer ${options.accessToken}`);
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
   const response = await fetch(`${API_URL}${path}`, {
@@ -214,7 +262,20 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}) {
     const message =
       result?.message ?? getResponseErrorMessage(response, responseText);
 
-    if (response.status === 401 && options.accessToken) {
+    if (response.status === 401 && accessToken && !options.skipAuthRefresh) {
+      try {
+        const refreshedSession = await refreshAuthSession();
+
+        return apiRequest<T>(path, {
+          ...options,
+          accessToken: refreshedSession.accessToken,
+          skipAuthRefresh: true,
+        });
+      } catch {
+        clearTokens();
+        notifyAuthTokenCleared();
+      }
+    } else if (response.status === 401 && accessToken) {
       clearTokens();
       notifyAuthTokenCleared();
     }
@@ -1119,8 +1180,8 @@ export async function uploadTrackRequest(
   formData.append("title", payload.title);
   formData.append("audio", payload.audioFile);
 
-  if (payload.genre?.trim()) {
-    formData.append("genre", payload.genre.trim());
+  if (payload.genre_id?.trim()) {
+    formData.append("genre_id", payload.genre_id.trim());
   }
 
   if (payload.description?.trim()) {
@@ -1258,6 +1319,17 @@ export async function getAlbumsRequest(page = 1, limit = 100, q = "") {
   };
 }
 
+export async function getAlbumRequest(id: string) {
+  const response = await apiRequest<AlbumRecord>(`/albums/${id}`);
+
+  if (!response.data) {
+    throw new Error("Album response is missing data.");
+  }
+
+  return response.data;
+}
+
+
 export async function createAlbumRequest(
   payload: {
     title: string;
@@ -1325,6 +1397,16 @@ export async function getGenresRequest(page = 1, limit = 100, q = "") {
     items: response.data ?? [],
     pagination: getPagination(response, page, limit),
   };
+}
+
+export async function getGenreRequest(id: string) {
+  const response = await apiRequest<GenreRecord>(`/genres/${id}`);
+
+  if (!response.data) {
+    throw new Error("Genre response is missing data.");
+  }
+
+  return response.data;
 }
 
 export async function createGenreRequest(

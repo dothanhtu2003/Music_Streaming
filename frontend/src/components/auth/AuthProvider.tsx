@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   AUTH_TOKEN_CLEARED_EVENT,
+  AUTH_TOKEN_UPDATED_EVENT,
   getStoredAccessToken,
   getStoredRefreshToken,
   saveTokens,
@@ -65,11 +66,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       clearAuthState();
       setError(null);
     };
+    const handleTokenUpdated = () => {
+      const token = getStoredAccessToken();
+
+      if (token) {
+        setAccessToken(token);
+      }
+    };
 
     window.addEventListener(AUTH_TOKEN_CLEARED_EVENT, handleTokenCleared);
+    window.addEventListener(AUTH_TOKEN_UPDATED_EVENT, handleTokenUpdated);
 
     return () => {
       window.removeEventListener(AUTH_TOKEN_CLEARED_EVENT, handleTokenCleared);
+      window.removeEventListener(AUTH_TOKEN_UPDATED_EVENT, handleTokenUpdated);
     };
   }, [clearAuthState]);
 
@@ -86,7 +96,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     try {
       const currentUser = await getCurrentUserRequest(token);
-      setAccessToken(token);
+      setAccessToken(getStoredAccessToken() ?? token);
       setUser(currentUser);
     } catch (currentUserError) {
       clearAuthState();
@@ -122,7 +132,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        setAccessToken(token);
+        setAccessToken(getStoredAccessToken() ?? token);
         setUser(currentUser);
       })
       .catch((currentUserError) => {

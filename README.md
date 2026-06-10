@@ -40,7 +40,7 @@ This **Music Streaming Web App** is a portfolio-ready, full-stack streaming plat
 - **User Track Upload**: Authenticated users can upload their own tracks (MP3 + cover art) via a drag-and-drop upload page, with automatic notification on successful upload.
 - **Dynamic Content Discovery**:
   - **Personalized Feed**: A chronological pipeline displaying new releases specifically from artists the user is following.
-  - **Realtime Search**: Multi-model backend search suggestions across songs and artists using PostgreSQL `ILIKE` queries backed by trigram indexes.
+  - **Realtime Search**: Multi-model backend search suggestions, recent searches, and trending searches backed by PostgreSQL trigram and unaccent indexes.
   - **Recent Activity**: Logged-in user activity tracking via deduplicated recently played items and full listening history.
 
 ### 💬 Social & Engagement
@@ -159,6 +159,7 @@ erDiagram
         varchar title
         text description
         uuid artist_id FK
+        uuid uploaded_by FK
         uuid album_id FK
         uuid genre_id FK
         text file_url
@@ -184,6 +185,8 @@ erDiagram
         text description
         text cover_url
         boolean is_public
+        text slug
+        integer share_count
     }
 
     playlist_songs {
@@ -257,6 +260,22 @@ erDiagram
         timestamptz updated_at
     }
 
+    search_history {
+        uuid id PK
+        uuid user_id FK
+        text query
+        text normalized_query
+        timestamptz created_at
+    }
+
+    search_trends {
+        uuid id PK
+        text query
+        text normalized_query UK
+        integer search_count
+        timestamptz last_searched_at
+    }
+
     users ||--o| artists : "manages"
     users ||--o{ playlists : "creates"
     users ||--o{ likes : "likes"
@@ -267,9 +286,11 @@ erDiagram
     users ||--o{ notifications : "receives"
     users ||--o{ admin_notification_logs : "sends"
     users ||--o{ song_comments : "writes"
+    users ||--o{ search_history : "searches"
 
     artists ||--o{ albums : "releases"
     artists ||--o{ songs : "composes"
+    users ||--o{ songs : "uploads"
 
     albums ||--o{ songs : "includes"
     genres ||--o{ songs : "classifies"
@@ -291,11 +312,12 @@ erDiagram
 ```text
 .
 ├── src/                      # Backend Core (Node.js/Express)
-│   ├── config/               # DB connections & Cloudinary settings
+│   ├── config/               # Environment and Cloudinary settings
 │   ├── controllers/          # Request routers & response formatters
 │   ├── db/                   # Raw SQL schema & migrations
-│   │   ├── schema.sql        # Main schema (12 tables)
-│   │   └── migrations/       # Incremental migrations (notifications, comments)
+│   │   ├── pool.js           # PostgreSQL connection pool
+│   │   ├── schema.sql        # Base schema
+│   │   └── migrations/       # Incremental migrations for current features
 │   ├── middlewares/          # Security, error boundaries, uploads
 │   ├── routes/               # Modular Express routing tree
 │   ├── services/             # Transaction scopes & database queries
@@ -305,11 +327,11 @@ erDiagram
 │
 ├── frontend/                 # Frontend Interface (Next.js 16)
 │   └── src/
-│       ├── app/              # Page router, layout hierarchy
+│       ├── app/              # App Router pages and layout hierarchy
 │       │   ├── login/        # Login page
 │       │   ├── register/     # Registration page
 │       │   ├── (main)/       # Main app pages
-│       │   │   ├── (home)    # Landing page with genre carousels
+│       │   │   ├── home/     # Home page with song and genre sections
 │       │   │   ├── search/   # Multi-tab search (songs, artists, genres)
 │       │   │   ├── feed/     # Personalized feed from followed artists
 │       │   │   ├── liked/    # Liked songs collection
@@ -404,9 +426,23 @@ CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 ```
 
 #### 2. Configure the Database
-Create your local PostgreSQL database, then apply the SQL schema:
+Create your local PostgreSQL database, then apply the base schema and all migrations:
 ```bash
 psql -U postgres -d music_streaming -f src/db/schema.sql
+```
+
+On PowerShell, run migrations in filename order:
+```powershell
+Get-ChildItem src/db/migrations/*.sql |
+  Sort-Object Name |
+  ForEach-Object { psql -U postgres -d music_streaming -f $_.FullName }
+```
+
+On bash, run:
+```bash
+for file in src/db/migrations/*.sql; do
+  psql -U postgres -d music_streaming -f "$file"
+done
 ```
 
 #### 3. Run Backend Server
@@ -448,18 +484,21 @@ All routes are mounted under `/api`. Paths below are relative to each module bas
 | **Songs** | `/api/songs` | Mixed | `GET /`, `GET /search`, `GET /me`, `GET /:id`, `GET /:id/waveform`, `POST /:id/waveform`, `POST /upload`, `POST /:id/listen`, `PATCH /:id/play`, `GET /:songId/comments`, `POST /:songId/comments`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
 | **Comments** | `/api/comments` | User Session | `DELETE /:commentId` |
 | **Upload** | `/api/upload` | Admin Session | `POST /audio`, `POST /cover` |
-| **Playlists** | `/api/playlists` | User Session | `POST /`, `GET /me`, `GET /`, `GET /:id`, `PUT /:id`, `DELETE /:id`, `POST /:id/songs`, `POST /:id/tracks`, `POST /:id/upload-track`, `DELETE /:id/songs/:songId`, `DELETE /:id/tracks/:songId`, `DELETE /:id/songs`, `DELETE /:id/tracks`, `PATCH /:id/songs/reorder`, `PATCH /:id/tracks/reorder` |
+| **Playlists** | `/api/playlists` | Mixed | `GET /public/:slugOrId`, `POST /:id/share`, `POST /`, `GET /me`, `GET /`, `GET /:id`, `PUT /:id`, `PATCH /:id/visibility`, `DELETE /:id`, `POST /:id/songs`, `POST /:id/tracks`, `POST /:id/upload-track`, `DELETE /:id/songs/:songId`, `DELETE /:id/tracks/:songId`, `DELETE /:id/songs`, `DELETE /:id/tracks`, `PATCH /:id/songs/reorder`, `PATCH /:id/tracks/reorder` |
 | **Likes** | `/api/likes` | User Session | `POST /`, `DELETE /`, `GET /me` |
 | **Recently Played** | `/api/recently-played` | Mixed | `POST /` with optional auth, `GET /` with user session |
 | **Follows** | `/api/follow` | Mixed | `GET /following`, `GET /status/:artistId`, `POST /:userId`, `DELETE /:userId`, `GET /list/:userId/followers`, `GET /list/:userId/following` |
 | **Feed** | `/api/feed` | User Session | `GET /` |
-| **Search** | `/api/search` | Open | `GET /` |
+| **Search** | `/api/search` | Mixed | `GET /`, `GET /suggestions`, `GET /recent`, `DELETE /recent`, `DELETE /recent/:id`, `GET /trending` |
 | **History** | `/api/history` | User Session | `GET /me`, `DELETE /me` |
-| **Notifications** | `/api/notifications` | User Session | `GET /`, `GET /unread-count`, `PATCH /read-all`, `PATCH /:id/read` |
+| **Notifications** | `/api/notifications` | User Session | `GET /`, `GET /unread-count`, `GET /stream`, `PATCH /read-all`, `PATCH /:id/read` |
 | **Users** | `/api/users` | Open | `GET /:id`, `GET /:id/songs`, `GET /:id/playlists` |
 | **Artists** | `/api/artists` | Mixed | `GET /`, `GET /:id/songs`, `GET /:id`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
 | **Albums** | `/api/albums` | Mixed | `GET /`, `GET /:id`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
 | **Genres** | `/api/genres` | Mixed | `GET /`, `GET /:id`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
+| **Studio** | `/api/studio` | User Session | `GET /overview`, `GET /top-tracks`, `GET /tracks`, `GET /recent-activity` |
+| **Charts** | `/api/charts` | Open | `GET /` |
+| **Trending** | `/api/trending` | Open | `GET /` |
 | **Admin** | `/api/admin` | Admin Session | `GET /dashboard`, `GET /users`, `GET /users/options`, `GET /playlists`, `DELETE /playlists/:id`, `PATCH /users/:id/role`, `PATCH /users/:id/ban`, `PATCH /users/:id/unban`, `POST /notifications/send`, `POST /notifications/broadcast`, `GET /notifications/history` |
 
 ---

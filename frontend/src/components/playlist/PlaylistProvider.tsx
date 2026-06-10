@@ -96,15 +96,24 @@ function buildPlaylistPayload(payload: PlaylistFormPayload) {
 }
 
 function PlaylistAvatar({ playlist }: { playlist: UserPlaylist }) {
+  const [imageError, setImageError] = useState(false);
   const coverUrl = resolveApiAssetUrl(playlist.cover_url);
 
-  if (coverUrl) {
+  if (coverUrl && !imageError) {
     return (
-      <div
-        className="h-12 w-12 shrink-0 rounded-lg bg-cover bg-center"
-        style={{ backgroundImage: `url(${coverUrl})` }}
-        aria-label={`${playlist.title} cover`}
-      />
+      <div className="relative h-12 w-12 shrink-0">
+        <img
+          src={coverUrl}
+          alt=""
+          className="hidden"
+          onError={() => setImageError(true)}
+        />
+        <div
+          className="h-full w-full rounded-lg bg-cover bg-center"
+          style={{ backgroundImage: `url(${coverUrl})` }}
+          aria-label={`${playlist.title} cover`}
+        />
+      </div>
     );
   }
 
@@ -150,6 +159,17 @@ function AddSongModal() {
     if (form.title.trim().length < 2) {
       setFormError("Playlist title must be at least 2 characters.");
       return;
+    }
+
+    if (form.coverUrl && form.coverUrl.trim()) {
+      const trimmedUrl = form.coverUrl.trim();
+      const isValid = /^(https?:|data:|blob:|\/)/i.test(trimmedUrl);
+      if (!isValid) {
+        setFormError(
+          "Cover URL must be a valid URL (starting with http://, https://) or a path (starting with /).",
+        );
+        return;
+      }
     }
 
     setFormError(null);

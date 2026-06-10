@@ -45,7 +45,11 @@ const errorHandler = (err, req, res, next) => {
   const errors = env.nodeEnv === "development" ? { stack: err.stack } : null;
 
   if (env.nodeEnv !== "test") {
-    console.error(err);
+    if (statusCode >= 500) {
+      console.error(err);
+    } else {
+      console.warn(`${req.method} ${req.originalUrl} ${statusCode}: ${message}`);
+    }
   }
 
   return errorResponse(res, message, statusCode, errors);

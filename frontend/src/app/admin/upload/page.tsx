@@ -306,12 +306,11 @@ export default function AdminUploadPage() {
   const handleBulkAudioChange = async (files: FileList | null) => {
     const selectedFiles = Array.from(files ?? []);
 
-    revokeBulkTrackPreviews(bulkTracksRef.current);
     setBulkError(null);
     setBulkSummary(null);
 
     const nextTracks = selectedFiles.map((file, index) => ({
-      id: `${Date.now()}-${index}-${file.name}`,
+      id: `${Date.now()}-${bulkTracksRef.current.length + index}-${file.lastModified}-${file.name}`,
       file,
       title: getDefaultTitle(file.name),
       durationSec: null,
@@ -322,7 +321,7 @@ export default function AdminUploadPage() {
       message: isMp3File(file) ? "Ready" : "Only MP3 files are supported.",
     }));
 
-    setBulkTracks(nextTracks);
+    setBulkTracks((currentTracks) => [...currentTracks, ...nextTracks]);
 
     await Promise.all(
       nextTracks.map(async (track) => {
@@ -342,6 +341,20 @@ export default function AdminUploadPage() {
         });
       }),
     );
+  };
+
+  const removeBulkTrack = (trackId: string) => {
+    const track = bulkTracksRef.current.find((item) => item.id === trackId);
+
+    if (track) {
+      revokeCoverPreview(track.coverPreviewUrl);
+    }
+
+    setBulkTracks((currentTracks) =>
+      currentTracks.filter((currentTrack) => currentTrack.id !== trackId),
+    );
+    setBulkError(null);
+    setBulkSummary(null);
   };
 
   const handleBulkTitleChange = (trackId: string, title: string) => {
@@ -749,7 +762,10 @@ export default function AdminUploadPage() {
                 multiple
                 accept="audio/*,.mp3,audio/mpeg"
                 disabled={bulkUploading}
-                onChange={(event) => void handleBulkAudioChange(event.target.files)}
+                onChange={(event) => {
+                  void handleBulkAudioChange(event.target.files);
+                  event.currentTarget.value = "";
+                }}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
               />
               
@@ -904,12 +920,26 @@ export default function AdminUploadPage() {
                     bulkTracks.map((track) => (
                       <tr key={track.id} className="text-zinc-300 hover:bg-zinc-900/35 transition-colors">
                         <td className="max-w-xs px-5 py-4">
-                          <p className="truncate font-semibold text-zinc-100">
-                            {track.file.name}
-                          </p>
-                          <p className="mt-0.5 text-xs text-zinc-550">
-                            {(track.file.size / (1024 * 1024)).toFixed(1)} MB
-                          </p>
+                          <div className="flex min-w-0 items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => removeBulkTrack(track.id)}
+                              disabled={bulkUploading}
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-xs font-bold text-zinc-400 transition hover:border-rose-500/50 hover:bg-rose-950/60 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label={`Remove ${track.title || track.file.name} from selected tracks`}
+                              title="Remove track"
+                            >
+                              x
+                            </button>
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold text-zinc-100">
+                                {track.file.name}
+                              </p>
+                              <p className="mt-0.5 text-xs text-zinc-550">
+                                {(track.file.size / (1024 * 1024)).toFixed(1)} MB
+                              </p>
+                            </div>
+                          </div>
                         </td>
                         <td className="min-w-64 px-5 py-4">
                           <input
@@ -1052,4 +1082,3 @@ export default function AdminUploadPage() {
     </div>
   );
 }
-

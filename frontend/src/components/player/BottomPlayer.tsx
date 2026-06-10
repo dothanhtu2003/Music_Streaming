@@ -84,7 +84,7 @@ export function BottomPlayer() {
     <footer
       className={cn(
         "fixed z-50 left-1/2 -translate-x-1/2 transition-all duration-500 ease-out transform",
-        "w-[calc(100%-24px)] h-[64px] rounded-xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-xl shadow-2xl",
+        "w-[calc(100%-24px)] h-[118px] rounded-xl border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-xl shadow-2xl",
         "md:w-[calc(100%-32px)] md:max-w-6xl md:h-[68px] md:rounded-2xl md:shadow-[0_8px_32px_rgba(0,0,0,0.7)]",
         currentSong
           ? "bottom-20 md:bottom-4 translate-y-0 opacity-100 pointer-events-auto"
@@ -101,37 +101,91 @@ export function BottomPlayer() {
 
       <div className="relative w-full h-full px-4 md:px-6">
         {/* MOBILE LAYOUT */}
-        <div className="flex h-full w-full items-center justify-between gap-3 md:hidden">
-          {currentSong ? (
-            <Link
-              href={`/songs/${currentSong.id}`}
-              className="flex min-w-0 flex-1 items-center gap-2.5"
-            >
-              <CoverThumb />
-              <div className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-bold leading-tight text-white">
-                  {currentSong.title}
-                </span>
-                <span className="block truncate text-[10px] leading-tight text-zinc-400">
-                  {currentSong.artist.name}
-                </span>
+        <div className="flex h-full w-full flex-col justify-center gap-2 py-2 md:hidden">
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            {currentSong ? (
+              <Link
+                href={`/songs/${currentSong.id}`}
+                className="flex min-w-0 flex-1 items-center gap-2.5"
+              >
+                <CoverThumb />
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-bold leading-tight text-white">
+                    {currentSong.title}
+                  </span>
+                  <span className="block truncate text-[10px] leading-tight text-zinc-400">
+                    {currentSong.artist.name}
+                  </span>
+                </div>
+              </Link>
+            ) : (
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                <CoverThumb />
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-bold leading-tight text-white">
+                    No song selected
+                  </span>
+                  <span className="block truncate text-[10px] leading-tight text-zinc-500">
+                    Select a song to play
+                  </span>
+                </div>
               </div>
-            </Link>
-          ) : (
-            <div className="flex min-w-0 flex-1 items-center gap-2.5">
-              <CoverThumb />
-              <div className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-bold leading-tight text-white">
-                  No song selected
-                </span>
-                <span className="block truncate text-[10px] leading-tight text-zinc-500">
-                  Select a song to play
-                </span>
-              </div>
-            </div>
-          )}
+            )}
 
-          <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                disabled={!canControl || likeLoading}
+                onClick={() => currentSong && void toggleLike(currentSong)}
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30",
+                  isLiked ? "text-orange-500" : "hover:bg-zinc-800/60 hover:text-white",
+                )}
+                title={isLiked ? "Unlike" : "Like"}
+              >
+                <HeartIcon size={14} filled={isLiked} />
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleMute}
+                disabled={!canControl}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-800/60 hover:text-white active:scale-95 disabled:opacity-30"
+                title={volume === 0 ? "Unmute" : "Mute"}
+              >
+                {volume === 0 ? (
+                  <VolumeMuteIcon size={14} />
+                ) : (
+                  <VolumeIcon size={14} />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={toggleShuffle}
+              disabled={!canControl}
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-full transition active:scale-95 disabled:opacity-30",
+                shuffle ? "text-orange-500" : "text-zinc-400 hover:bg-zinc-800/60 hover:text-white",
+              )}
+              title="Shuffle"
+            >
+              <ShuffleIcon size={14} />
+            </button>
+
+            <button
+              type="button"
+              onClick={previousSong}
+              disabled={!canControl}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-800/60 hover:text-white active:scale-95 disabled:opacity-30"
+              title="Previous"
+            >
+              <PrevIcon size={14} />
+            </button>
+
             <button
               type="button"
               onClick={togglePlay}
@@ -145,6 +199,53 @@ export function BottomPlayer() {
                 <PlayIcon size={12} className="ml-0.5 text-black" />
               )}
             </button>
+
+            <button
+              type="button"
+              onClick={nextSong}
+              disabled={!canControl}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-800/60 hover:text-white active:scale-95 disabled:opacity-30"
+              title="Next"
+            >
+              <NextIcon size={14} />
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleRepeatMode}
+              disabled={!canControl}
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-full transition active:scale-95 disabled:opacity-30",
+                repeatActive ? "text-orange-500" : "text-zinc-400 hover:bg-zinc-800/60 hover:text-white",
+              )}
+              title={`Repeat: ${repeatMode}`}
+            >
+              <RepeatIcon size={14} />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="w-8 text-right text-[9px] font-semibold text-zinc-500 tabular-nums">
+              {formatDuration(progressValue)}
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={totalDuration || 0}
+              step={1}
+              value={totalDuration ? progressValue : 0}
+              disabled={!canControl || totalDuration === 0}
+              onInput={(event) => seek(Number(event.currentTarget.value))}
+              onChange={(event) => seek(Number(event.target.value))}
+              className="slider-premium slider-mobile block min-w-0 flex-1 focus:outline-none"
+              style={{
+                background: `linear-gradient(to right, #ff5500 0%, #ff5500 ${progressPercent}%, #27272a ${progressPercent}%, #27272a 100%)`
+              }}
+              aria-label="Seek song"
+            />
+            <span className="w-8 text-left text-[9px] font-semibold text-zinc-500 tabular-nums">
+              {formatDuration(totalDuration)}
+            </span>
           </div>
         </div>
 

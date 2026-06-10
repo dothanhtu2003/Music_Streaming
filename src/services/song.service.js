@@ -449,6 +449,8 @@ const getSongs = async (query) => {
   let orderBy = "s.created_at DESC";
   if (query.sort === "random") {
     orderBy = "RANDOM()";
+  } else if (query.sort === "popular") {
+    orderBy = "s.play_count DESC, s.created_at DESC";
   }
 
   const result = await pool.query(
@@ -656,7 +658,9 @@ const createUploadedSong = async (data, user) => {
   const artistName = await getUserArtistName(user);
   validateUuid(user.id, "uploadedBy");
   const artistId = await findOrCreateArtistByName(artistName, user.id);
-  const genreId = await findOrCreateGenreByName(data.genre);
+  const genreId = validateRequiredString(data.genre_id, "genre_id", 100);
+  validateUuid(genreId, "genre_id");
+  await ensureRecordExists("genres", genreId, "Genre not found");
 
   const result = await pool.query(
     `INSERT INTO songs (

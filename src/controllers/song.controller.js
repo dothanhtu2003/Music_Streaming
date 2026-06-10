@@ -92,7 +92,7 @@ const uploadSong = async (req, res, next) => {
     const song = await songService.createUploadedSong(
       {
         title: req.body.title,
-        genre: req.body.genre,
+        genre_id: req.body.genre_id,
         description: req.body.description,
         file_url: getUploadedFileUrl(audioFile) || "",
         cover_url: getUploadedFileUrl(coverFile),

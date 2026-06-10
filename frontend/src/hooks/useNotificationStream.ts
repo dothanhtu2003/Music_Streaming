@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { API_URL } from "@/lib/api";
+import { API_URL, refreshAuthSession } from "@/lib/api";
+import { clearTokens, notifyAuthTokenCleared } from "@/lib/auth-storage";
 import type { UserNotification } from "@/types/music";
 
 type SseMessage = {
@@ -99,6 +100,18 @@ export function useNotificationStream({
             },
             signal: controller.signal,
           });
+
+          if (response.status === 401) {
+            try {
+              await refreshAuthSession();
+            } catch {
+              clearTokens();
+              notifyAuthTokenCleared();
+            }
+
+            stopped = true;
+            return;
+          }
 
           if (!response.ok || !response.body) {
             throw new Error("Notification stream request failed.");
