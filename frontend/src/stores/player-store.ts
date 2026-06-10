@@ -4,9 +4,16 @@ import { create } from "zustand";
 import type { Song } from "@/types/music";
 
 export type RepeatMode = "off" | "one" | "all";
+export type RecentlyPlayedContext =
+  | {
+      type: "playlist";
+      playlistId: string;
+    }
+  | null;
 
 type PlayerState = {
   currentSong: Song | null;
+  recentlyPlayedContext: RecentlyPlayedContext;
   isPlaying: boolean;
   queue: Song[];
   volume: number;
@@ -20,7 +27,11 @@ type PlayerState = {
 };
 
 type PlayerActions = {
-  playSong: (song: Song, queue?: Song[]) => void;
+  playSong: (
+    song: Song,
+    queue?: Song[],
+    recentlyPlayedContext?: RecentlyPlayedContext,
+  ) => void;
   pauseSong: () => void;
   togglePlay: () => void;
   nextSong: () => void;
@@ -131,6 +142,7 @@ function getPreviousSong(state: PlayerStore) {
 
 export const usePlayerStore = create<PlayerStore>((set, get) => ({
   currentSong: null,
+  recentlyPlayedContext: null,
   isPlaying: false,
   queue: [],
   volume: 0.8,
@@ -142,10 +154,11 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   seekTarget: null,
   seekVersion: 0,
 
-  playSong: (song, nextQueue) => {
+  playSong: (song, nextQueue, recentlyPlayedContext = null) => {
     set((state) => ({
       ...selectSong(song)(state),
       queue: buildQueue(song, nextQueue),
+      recentlyPlayedContext,
       shuffle: hasPlayableQueue(nextQueue) ? false : state.shuffle,
     }));
   },

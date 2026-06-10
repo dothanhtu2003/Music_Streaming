@@ -91,6 +91,39 @@ export type RecentlyPlayedSong = Song & {
   played_at: string;
 };
 
+export type RecentlyPlayedItemType = "song" | "playlist";
+
+export type RecentlyPlayedPlaylistItem = {
+  type: "playlist";
+  id: string;
+  title?: string | null;
+  name?: string | null;
+  cover_url?: string | null;
+  custom_cover_url?: string | null;
+  track_count?: number | null;
+  song_count?: number | null;
+  owner_name?: string | null;
+  owner?: {
+    id?: string | null;
+    username?: string | null;
+    display_name?: string | null;
+    displayName?: string | null;
+    avatar_url?: string | null;
+    avatarUrl?: string | null;
+  } | null;
+};
+
+export type RecentlyPlayedSongItem = Song & {
+  type?: "song";
+};
+
+export type RecentlyPlayedEntry = {
+  recentlyPlayedId: string;
+  itemType: RecentlyPlayedItemType;
+  playedAt: string;
+  item: RecentlyPlayedSongItem | RecentlyPlayedPlaylistItem;
+};
+
 export type UserPlaylist = {
   id: string;
   user_id: string;

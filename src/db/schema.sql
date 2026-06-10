@@ -204,12 +204,20 @@ CREATE TABLE IF NOT EXISTS listening_history (
 
 COMMENT ON TABLE listening_history IS 'Stores when users listen to songs.';
 
--- Stores the latest played songs per user without duplicates.
+-- Stores the latest played songs and playlists per user without duplicates.
 CREATE TABLE IF NOT EXISTS recently_played (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL,
-  song_id UUID NOT NULL,
+  item_type VARCHAR(20) NOT NULL DEFAULT 'song',
+  song_id UUID,
+  playlist_id UUID,
   played_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT recently_played_item_type_check CHECK (item_type IN ('song', 'playlist')),
+  CONSTRAINT recently_played_item_reference_check CHECK (
+    (item_type = 'song' AND song_id IS NOT NULL AND playlist_id IS NULL)
+    OR
+    (item_type = 'playlist' AND playlist_id IS NOT NULL AND song_id IS NULL)
+  ),
   CONSTRAINT recently_played_user_id_fk
     FOREIGN KEY (user_id)
     REFERENCES users(id)
@@ -218,10 +226,13 @@ CREATE TABLE IF NOT EXISTS recently_played (
     FOREIGN KEY (song_id)
     REFERENCES songs(id)
     ON DELETE CASCADE,
-  CONSTRAINT recently_played_user_id_song_id_unique UNIQUE (user_id, song_id)
+  CONSTRAINT recently_played_playlist_id_fk
+    FOREIGN KEY (playlist_id)
+    REFERENCES playlists(id)
+    ON DELETE CASCADE
 );
 
-COMMENT ON TABLE recently_played IS 'Stores each user latest played songs without duplicate song rows.';
+COMMENT ON TABLE recently_played IS 'Stores each user latest played songs and playlists without duplicate item rows.';
 
 -- Stores social connections between users and/or artists.
 CREATE TABLE IF NOT EXISTS follows (
@@ -269,7 +280,15 @@ CREATE INDEX IF NOT EXISTS idx_listening_history_listened_at ON listening_histor
 
 CREATE INDEX IF NOT EXISTS idx_recently_played_user_id ON recently_played(user_id);
 CREATE INDEX IF NOT EXISTS idx_recently_played_song_id ON recently_played(song_id);
+CREATE INDEX IF NOT EXISTS idx_recently_played_playlist_id ON recently_played(playlist_id);
+CREATE INDEX IF NOT EXISTS idx_recently_played_user_item_type ON recently_played(user_id, item_type);
 CREATE INDEX IF NOT EXISTS idx_recently_played_played_at ON recently_played(user_id, played_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_recently_played_user_song_unique
+ON recently_played(user_id, song_id)
+WHERE item_type = 'song';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_recently_played_user_playlist_unique
+ON recently_played(user_id, playlist_id)
+WHERE item_type = 'playlist';
 
 -- Basic text search indexes for common search screens.
 CREATE INDEX IF NOT EXISTS idx_users_email_search ON users USING GIN (email gin_trgm_ops);

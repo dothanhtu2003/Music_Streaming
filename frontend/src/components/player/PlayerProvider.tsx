@@ -14,7 +14,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import {
   isUnauthorizedError,
   listenSongRequest,
-  saveRecentlyPlayedRequest,
+  saveRecentlyPlayedSong,
 } from "@/lib/api";
 import {
   RECENTLY_PLAYED_UPDATED_EVENT,
@@ -61,6 +61,9 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const listenedSongIdRef = useRef<string | null>(null);
 
   const currentSong = usePlayerStore((state) => state.currentSong);
+  const recentlyPlayedContext = usePlayerStore(
+    (state) => state.recentlyPlayedContext,
+  );
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const volume = usePlayerStore((state) => state.volume);
   const queue = usePlayerStore((state) => state.queue);
@@ -145,7 +148,10 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     }
 
     listenedSongIdRef.current = currentSong.id;
-    saveLocalRecentlyPlayed(currentSong);
+
+    if (!recentlyPlayedContext) {
+      saveLocalRecentlyPlayed(currentSong);
+    }
 
     const handleActivityError = (error: unknown, message: string) => {
       if (isUnauthorizedError(error)) {
@@ -176,17 +182,16 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       );
     });
 
-    void saveRecentlyPlayedRequest(currentSong.id, accessToken)
-      .catch((recentlyPlayedError) => {
-        handleActivityError(
-          recentlyPlayedError,
-          "Audio is playing, but play activity could not be saved.",
-        );
-      })
-      .finally(() => {
-        window.dispatchEvent(new Event(RECENTLY_PLAYED_UPDATED_EVENT));
-      });
-  }, [accessToken, currentSong, setPlayerError]);
+    if (!recentlyPlayedContext) {
+      void saveRecentlyPlayedSong(currentSong.id, accessToken)
+        .catch((recentlyPlayedError) => {
+          console.warn("Failed to save recently played song", recentlyPlayedError);
+        })
+        .finally(() => {
+          window.dispatchEvent(new Event(RECENTLY_PLAYED_UPDATED_EVENT));
+        });
+    }
+  }, [accessToken, currentSong, recentlyPlayedContext, setPlayerError]);
 
   const handleLoadedMetadata = useCallback(() => {
     const audio = audioRef.current;

@@ -8,7 +8,7 @@ import { useLikes } from "@/components/like/LikeProvider";
 import { usePlaylists } from "@/components/playlist/PlaylistProvider";
 import { PlayIcon, UsersIcon, MusicIcon, VerifiedBadge } from "@/components/ui/Icons";
 import {
-  getRecentlyPlayedRequest,
+  getRecentlyPlayed,
   getSongsRequest,
   resolveApiAssetUrl,
 } from "@/lib/api";
@@ -24,7 +24,12 @@ import {
   getSongCoverUrl,
 } from "@/lib/song-format";
 import { usePlayerStore } from "@/stores/player-store";
-import type { RecentlyPlayedSong, Song, UserPlaylist } from "@/types/music";
+import type {
+  RecentlyPlayedEntry,
+  RecentlyPlayedPlaylistItem,
+  Song,
+  UserPlaylist,
+} from "@/types/music";
 
 type DiscoveryArtist = {
   id: string;
@@ -225,6 +230,51 @@ function PlaylistItem({ playlist }: { playlist: UserPlaylist }) {
   );
 }
 
+function RecentlyPlayedSidebarItem({
+  entry,
+  songQueue,
+}: {
+  entry: RecentlyPlayedEntry;
+  songQueue: Song[];
+}) {
+  if (entry.itemType === "song" && "file_url" in entry.item) {
+    return (
+      <TrackItem
+        song={entry.item}
+        queue={songQueue.length ? songQueue : [entry.item]}
+        meta="Song"
+      />
+    );
+  }
+
+  const playlist = entry.item as RecentlyPlayedPlaylistItem;
+  const title = playlist.title || playlist.name || "Untitled playlist";
+  const ownerName =
+    playlist.owner?.displayName ||
+    playlist.owner?.display_name ||
+    playlist.owner_name ||
+    playlist.owner?.username ||
+    "Unknown owner";
+  const coverUrl = resolveApiAssetUrl(
+    playlist.custom_cover_url ?? playlist.cover_url,
+  );
+
+  return (
+    <Link
+      href={`/playlists/${playlist.id}`}
+      className="group flex items-center gap-3 rounded-lg p-1.5 transition-all duration-200 hover:bg-zinc-900/40 hover:scale-[1.02] hover:translate-x-1 active:scale-[0.98]"
+    >
+      <CoverImage url={coverUrl} fallback={title} />
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate text-sm font-semibold text-zinc-100 transition group-hover:text-orange-400">
+          {title}
+        </h3>
+        <p className="truncate text-xs text-zinc-500">Playlist - {ownerName}</p>
+      </div>
+    </Link>
+  );
+}
+
 function DiscoverySkeleton() {
   return (
     <aside className="hidden w-72 shrink-0 xl:block" aria-label="Discovery">
@@ -299,7 +349,7 @@ export function RightSidebar() {
   const { likedSongs } = useLikes();
   const { playlists } = usePlaylists();
   const [songs, setSongs] = useState<Song[]>([]);
-  const [recentlyPlayed, setRecentlyPlayed] = useState<RecentlyPlayedSong[]>(
+  const [recentlyPlayed, setRecentlyPlayed] = useState<RecentlyPlayedEntry[]>(
     [],
   );
   const [loadingSongs, setLoadingSongs] = useState(true);
@@ -341,9 +391,24 @@ export function RightSidebar() {
   useEffect(() => {
     let isMounted = true;
 
-    const loadLocalHistory = () => {
+    const loadRecentlyPlayed = () => {
       if (isMounted) {
-        setRecentlyPlayed(getLocalRecentlyPlayed());
+        if (!accessToken) {
+          setRecentlyPlayed(getLocalRecentlyPlayed());
+          return;
+        }
+
+        void getRecentlyPlayed(20, accessToken)
+          .then((items) => {
+            if (isMounted) {
+              setRecentlyPlayed(items);
+            }
+          })
+          .catch(() => {
+            if (isMounted) {
+              setRecentlyPlayed(getLocalRecentlyPlayed());
+            }
+          });
       }
     };
 
@@ -354,33 +419,26 @@ export function RightSidebar() {
     }
 
     if (!accessToken) {
-      loadLocalHistory();
-      window.addEventListener(RECENTLY_PLAYED_UPDATED_EVENT, loadLocalHistory);
+      loadRecentlyPlayed();
+      window.addEventListener(RECENTLY_PLAYED_UPDATED_EVENT, loadRecentlyPlayed);
 
       return () => {
         isMounted = false;
         window.removeEventListener(
           RECENTLY_PLAYED_UPDATED_EVENT,
-          loadLocalHistory,
+          loadRecentlyPlayed,
         );
       };
     }
 
-    void getRecentlyPlayedRequest(accessToken)
-      .then((items) => {
-        if (isMounted) {
-          setRecentlyPlayed(items as RecentlyPlayedSong[]);
-        }
-      })
-      .catch(loadLocalHistory);
-
-    window.addEventListener(RECENTLY_PLAYED_UPDATED_EVENT, loadLocalHistory);
+    loadRecentlyPlayed();
+    window.addEventListener(RECENTLY_PLAYED_UPDATED_EVENT, loadRecentlyPlayed);
 
     return () => {
       isMounted = false;
       window.removeEventListener(
         RECENTLY_PLAYED_UPDATED_EVENT,
-        loadLocalHistory,
+        loadRecentlyPlayed,
       );
     };
   }, [accessToken, authLoading]);
@@ -395,6 +453,11 @@ export function RightSidebar() {
   );
   const recentLiked = likedSongs.slice(0, 3);
   const recentHistory = recentlyPlayed.slice(0, 3);
+  const recentHistorySongs = recentHistory
+    .filter((entry): entry is RecentlyPlayedEntry & { item: Song } => {
+      return entry.itemType === "song" && "file_url" in entry.item;
+    })
+    .map((entry) => entry.item);
   const userPlaylists = playlists.slice(0, 3);
   const hasContent =
     artists.length > 0 ||
@@ -434,13 +497,12 @@ export function RightSidebar() {
         )}
 
         {recentHistory.length > 0 && (
-          <SidebarSection title="Recently played">
-            {recentHistory.map((song) => (
-              <TrackItem
-                key={`${song.id}-${song.played_at}`}
-                song={song}
-                queue={recentHistory}
-                meta="From your history"
+          <SidebarSection title="Recently Played">
+            {recentHistory.map((entry) => (
+              <RecentlyPlayedSidebarItem
+                key={entry.recentlyPlayedId}
+                entry={entry}
+                songQueue={recentHistorySongs}
               />
             ))}
           </SidebarSection>

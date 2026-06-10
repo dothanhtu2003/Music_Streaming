@@ -8,10 +8,13 @@ import { HorizontalSongCarousel } from "@/components/song/HorizontalSongCarousel
 import { RecentlyPlayedList } from "@/components/song/RecentlyPlayedList";
 import {
   getGenresRequest,
-  getRecentlyPlayedRequest,
+  getRecentlyPlayed,
   getSongsRequest,
 } from "@/lib/api";
-import { getLocalRecentlyPlayed } from "@/lib/recently-played-storage";
+import {
+  RECENTLY_PLAYED_UPDATED_EVENT,
+  getLocalRecentlyPlayed,
+} from "@/lib/recently-played-storage";
 import {
   SONG_CATALOG_UPDATED_EVENT,
   consumePendingUploadedSongId,
@@ -20,7 +23,7 @@ import {
 import { usePlayerStore } from "@/stores/player-store";
 import type {
   GenreRecord,
-  RecentlyPlayedSong,
+  RecentlyPlayedEntry,
   Song,
   SongPagination,
 } from "@/types/music";
@@ -46,7 +49,7 @@ function HomeContent() {
   const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   
-  const [recentlyPlayed, setRecentlyPlayed] = useState<RecentlyPlayedSong[]>([]);
+  const [recentlyPlayed, setRecentlyPlayed] = useState<RecentlyPlayedEntry[]>([]);
   const [genreRows, setGenreRows] = useState<GenreSongRow[]>([]);
   const [genreRowsLoading, setGenreRowsLoading] = useState(true);
   const [recentlyLoading, setRecentlyLoading] = useState(true);
@@ -158,11 +161,11 @@ function HomeContent() {
 
       try {
         const items = accessToken
-          ? await getRecentlyPlayedRequest(accessToken)
+          ? await getRecentlyPlayed(20, accessToken)
           : getLocalRecentlyPlayed();
 
         if (isMounted) {
-          setRecentlyPlayed(items as RecentlyPlayedSong[]);
+          setRecentlyPlayed(items);
         }
       } catch (recentError) {
         if (!isMounted) {
@@ -183,9 +186,14 @@ function HomeContent() {
     };
 
     void loadRecentlyPlayed();
+    window.addEventListener(RECENTLY_PLAYED_UPDATED_EVENT, loadRecentlyPlayed);
 
     return () => {
       isMounted = false;
+      window.removeEventListener(
+        RECENTLY_PLAYED_UPDATED_EVENT,
+        loadRecentlyPlayed,
+      );
     };
   }, [accessToken, authLoading]);
 
@@ -251,12 +259,12 @@ function HomeContent() {
       )}
 
       {/* Recently Played Section */}
-      {!recentlyLoading && recentlyPlayed.length > 0 && (
+      {!authLoading && (
         <section className="bg-zinc-950/40 border border-zinc-900/60 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl backdrop-blur-sm">
           <div className="border-b border-zinc-900 pb-3 flex justify-between items-center">
             <div>
               <h2 className="text-lg font-black text-white tracking-tight uppercase italic">Recently Played</h2>
-              <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mt-0.5">Your latest audio frequencies</p>
+              <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mt-0.5">Songs and playlists you played recently</p>
             </div>
             {/* Spinning visual cue */}
             {isPlaying && (
@@ -264,7 +272,7 @@ function HomeContent() {
             )}
           </div>
           <RecentlyPlayedList
-            songs={recentlyPlayed.slice(0, RECENTLY_PLAYED_DISPLAY_LIMIT)}
+            items={recentlyPlayed.slice(0, RECENTLY_PLAYED_DISPLAY_LIMIT)}
             loading={recentlyLoading || authLoading}
             error={recentlyError}
           />

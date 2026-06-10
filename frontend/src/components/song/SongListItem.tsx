@@ -26,7 +26,7 @@ import {
   MusicIcon,
   VerifiedBadge,
 } from "@/components/ui/Icons";
-import { usePlayerStore } from "@/stores/player-store";
+import { usePlayerStore, type RecentlyPlayedContext } from "@/stores/player-store";
 import type { Song } from "@/types/music";
 
 type SongListItemProps = {
@@ -38,6 +38,7 @@ type SongListItemProps = {
   onMoveDown?: () => void;
   isPlaylistOwner?: boolean;
   canReorder?: boolean;
+  recentlyPlayedContext?: RecentlyPlayedContext;
 };
 
 export function SongListItem({
@@ -49,6 +50,7 @@ export function SongListItem({
   onMoveDown,
   isPlaylistOwner = false,
   canReorder = false,
+  recentlyPlayedContext = null,
 }: SongListItemProps) {
   const { user } = useAuth();
   const currentSong = usePlayerStore((state) => state.currentSong);
@@ -89,7 +91,7 @@ export function SongListItem({
       return;
     }
 
-    playSong(song, queue.length > 0 ? queue : [song]);
+    playSong(song, queue.length > 0 ? queue : [song], recentlyPlayedContext);
   };
 
   return (

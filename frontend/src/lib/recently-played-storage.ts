@@ -1,4 +1,4 @@
-import type { RecentlyPlayedSong, Song } from "@/types/music";
+import type { RecentlyPlayedEntry, RecentlyPlayedSong, Song } from "@/types/music";
 
 const RECENTLY_PLAYED_KEY = "music_recently_played";
 export const RECENTLY_PLAYED_UPDATED_EVENT = "music_recently_played_updated";
@@ -7,10 +7,41 @@ function canUseStorage() {
   return typeof window !== "undefined" && Boolean(window.localStorage);
 }
 
-function normalizeRecentlyPlayed(song: Song): RecentlyPlayedSong {
+function isRecentlyPlayedEntry(value: unknown): value is RecentlyPlayedEntry {
+  const entry = value as RecentlyPlayedEntry;
+
+  return Boolean(
+    entry?.recentlyPlayedId &&
+      entry?.itemType &&
+      entry?.playedAt &&
+      entry?.item &&
+      entry.item.id,
+  );
+}
+
+function normalizeRecentlyPlayed(song: Song): RecentlyPlayedEntry {
+  const playedAt = new Date().toISOString();
+
   return {
-    ...song,
-    played_at: new Date().toISOString(),
+    recentlyPlayedId: `local-song-${song.id}`,
+    itemType: "song",
+    playedAt,
+    item: {
+      ...song,
+      type: "song",
+    },
+  };
+}
+
+function normalizeLegacySong(song: RecentlyPlayedSong): RecentlyPlayedEntry {
+  return {
+    recentlyPlayedId: song.recently_played_id ?? `local-song-${song.id}`,
+    itemType: "song",
+    playedAt: song.played_at,
+    item: {
+      ...song,
+      type: "song",
+    },
   };
 }
 
@@ -26,14 +57,27 @@ export function getLocalRecentlyPlayed() {
   }
 
   try {
-    const parsedValue = JSON.parse(rawValue) as RecentlyPlayedSong[];
+    const parsedValue = JSON.parse(rawValue) as unknown[];
 
     if (!Array.isArray(parsedValue)) {
       return [];
     }
 
     return parsedValue
-      .filter((song) => song?.id && song?.title && song?.file_url)
+      .map((item) => {
+        if (isRecentlyPlayedEntry(item)) {
+          return item;
+        }
+
+        const song = item as RecentlyPlayedSong;
+
+        if (song?.id && song?.title && song?.file_url) {
+          return normalizeLegacySong(song);
+        }
+
+        return null;
+      })
+      .filter((item): item is RecentlyPlayedEntry => Boolean(item))
       .slice(0, 20);
   } catch {
     return [];
@@ -48,7 +92,9 @@ export function saveLocalRecentlyPlayed(song: Song) {
   const nextSong = normalizeRecentlyPlayed(song);
   const nextSongs = [
     nextSong,
-    ...getLocalRecentlyPlayed().filter((item) => item.id !== song.id),
+    ...getLocalRecentlyPlayed().filter(
+      (item) => item.itemType !== "song" || item.item.id !== song.id,
+    ),
   ].slice(0, 20);
 
   window.localStorage.setItem(RECENTLY_PLAYED_KEY, JSON.stringify(nextSongs));

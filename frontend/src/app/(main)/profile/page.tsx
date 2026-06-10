@@ -12,11 +12,12 @@ import {
   ArtistTrackRow,
   ArtistTrackRowSkeleton,
 } from "@/components/song/ArtistTrackRow";
+import { RecentlyPlayedList } from "@/components/song/RecentlyPlayedList";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PlaylistIcon, UserIcon, PlayIcon, PauseIcon } from "@/components/ui/Icons";
 import {
   getMySongsRequest,
-  getRecentlyPlayedRequest,
+  getRecentlyPlayed,
   resolveApiAssetUrl,
   uploadCurrentUserAvatarRequest,
   updateCurrentUserRequest,
@@ -41,7 +42,7 @@ import { getUserProfilePath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import type {
   FollowedArtist,
-  RecentlyPlayedSong,
+  RecentlyPlayedEntry,
   Song,
   UserPlaylist,
 } from "@/types/music";
@@ -817,7 +818,7 @@ export default function ProfilePage() {
   const [myTracks, setMyTracks] = useState<Song[]>([]);
   const [myTracksLoading, setMyTracksLoading] = useState(true);
   const [myTracksError, setMyTracksError] = useState<string | null>(null);
-  const [recentlyPlayed, setRecentlyPlayed] = useState<RecentlyPlayedSong[]>(
+  const [recentlyPlayed, setRecentlyPlayed] = useState<RecentlyPlayedEntry[]>(
     [],
   );
   const [recentlyPlayedLoading, setRecentlyPlayedLoading] = useState(true);
@@ -995,10 +996,10 @@ export default function ProfilePage() {
       };
     }
 
-    void getRecentlyPlayedRequest(accessToken)
+    void getRecentlyPlayed(20, accessToken)
       .then((items) => {
         if (isMounted) {
-          setRecentlyPlayed(items as RecentlyPlayedSong[]);
+          setRecentlyPlayed(items);
         }
       })
       .catch((historyError) => {
@@ -1170,15 +1171,19 @@ export default function ProfilePage() {
       <div className="space-y-6">
         <ContentBlock
           title="Recent activity"
-          description="Tracks you played recently."
+          description="Songs and playlists you played recently."
         >
-          <CompactRecentActivitySection
-            songs={recentlyPlayed.slice(0, 5)}
-            loading={recentlyPlayedLoading}
-            error={recentlyPlayedError}
-            emptyTitle="No recently played tracks"
-            emptyDescription="Tracks you play will appear here."
-          />
+          {recentlyPlayed.length === 0 || recentlyPlayedLoading || recentlyPlayedError ? (
+            <CompactRecentActivitySection
+              songs={[]}
+              loading={recentlyPlayedLoading}
+              error={recentlyPlayedError}
+              emptyTitle="No recently played items"
+              emptyDescription="Start listening to see your recently played songs and playlists."
+            />
+          ) : (
+            <RecentlyPlayedList items={recentlyPlayed.slice(0, 5)} />
+          )}
         </ContentBlock>
 
         <ContentBlock title="Playlists" description="Your latest playlists.">

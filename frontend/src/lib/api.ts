@@ -17,7 +17,7 @@ import type {
   LikedSong,
   Pagination,
   PlaylistDetail,
-  RecentlyPlayedSong,
+  RecentlyPlayedEntry,
   SearchHistoryItem,
   Song,
   SongPagination,
@@ -612,29 +612,93 @@ export async function saveRecentlyPlayedRequest(
   songId: string,
   accessToken: string,
 ) {
+  return saveRecentlyPlayedSong(songId, accessToken);
+}
+
+function normalizeRecentlyPlayedEntry(entry: RecentlyPlayedEntry) {
+  if (entry.itemType !== "song") {
+    return entry;
+  }
+
+  return {
+    ...entry,
+    item: normalizeSongArtist(entry.item as Song),
+  };
+}
+
+export async function getRecentlyPlayed(limit = 20, accessToken?: string | null) {
+  const token = accessToken ?? getStoredAccessToken();
+
+  if (!token) {
+    return [];
+  }
+
+  const response = await apiRequest<RecentlyPlayedEntry[]>(
+    `/recently-played${buildQuery({ limit })}`,
+    {
+      accessToken: token,
+    },
+  );
+
+  return (response.data ?? []).map(normalizeRecentlyPlayedEntry);
+}
+
+export async function getRecentlyPlayedRequest(accessToken: string, limit = 20) {
+  return getRecentlyPlayed(limit, accessToken);
+}
+
+export async function saveRecentlyPlayedSong(
+  songId: string,
+  accessToken?: string | null,
+) {
   if (!songId) {
     throw new Error("Song id is required.");
   }
 
-  const response = await apiRequest<RecentlyPlayedSong>("/recently-played", {
+  const token = accessToken ?? getStoredAccessToken();
+
+  if (!token) {
+    return null;
+  }
+
+  const response = await apiRequest<RecentlyPlayedEntry>("/recently-played", {
     method: "POST",
-    body: { songId },
-    accessToken,
+    body: { itemType: "song", songId },
+    accessToken: token,
   });
 
   if (!response.data) {
-    throw new Error("Recently played response is missing song data.");
+    throw new Error("Recently played response is missing item data.");
   }
 
-  return normalizeSongArtist(response.data);
+  return normalizeRecentlyPlayedEntry(response.data);
 }
 
-export async function getRecentlyPlayedRequest(accessToken: string) {
-  const response = await apiRequest<RecentlyPlayedSong[]>("/recently-played", {
-    accessToken,
+export async function saveRecentlyPlayedPlaylist(
+  playlistId: string,
+  accessToken?: string | null,
+) {
+  if (!playlistId) {
+    throw new Error("Playlist id is required.");
+  }
+
+  const token = accessToken ?? getStoredAccessToken();
+
+  if (!token) {
+    return null;
+  }
+
+  const response = await apiRequest<RecentlyPlayedEntry>("/recently-played", {
+    method: "POST",
+    body: { itemType: "playlist", playlistId },
+    accessToken: token,
   });
 
-  return normalizeSongs(response.data ?? []);
+  if (!response.data) {
+    throw new Error("Recently played response is missing item data.");
+  }
+
+  return response.data;
 }
 
 export async function getNotificationsRequest(

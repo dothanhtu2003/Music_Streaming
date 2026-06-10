@@ -3,18 +3,9 @@ const { successResponse } = require("../utils/apiResponse");
 
 const saveRecentlyPlayed = async (req, res, next) => {
   try {
-    if (!req.user) {
-      return successResponse(res, "Recently played skipped for guest user", {
-        saved: false,
-      });
-    }
+    const item = await recentlyPlayedService.saveRecentlyPlayed(req.user, req.body);
 
-    const song = await recentlyPlayedService.saveRecentlyPlayed(
-      req.user.id,
-      req.body
-    );
-
-    return successResponse(res, "Recently played song saved successfully", song);
+    return successResponse(res, "Recently played item saved successfully", item);
   } catch (error) {
     return next(error);
   }
@@ -22,12 +13,15 @@ const saveRecentlyPlayed = async (req, res, next) => {
 
 const getMyRecentlyPlayed = async (req, res, next) => {
   try {
-    const songs = await recentlyPlayedService.getMyRecentlyPlayed(req.user.id);
+    const items = await recentlyPlayedService.getMyRecentlyPlayed(
+      req.user,
+      req.query
+    );
 
     return successResponse(
       res,
-      "Recently played songs fetched successfully",
-      songs
+      "Recently played items fetched successfully",
+      items
     );
   } catch (error) {
     return next(error);

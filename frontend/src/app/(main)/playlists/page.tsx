@@ -16,7 +16,12 @@ import {
   type PlaylistFormPayload,
 } from "@/components/playlist/PlaylistProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getPlaylistRequest, resolveApiAssetUrl } from "@/lib/api";
+import {
+  getPlaylistRequest,
+  resolveApiAssetUrl,
+  saveRecentlyPlayedPlaylist,
+} from "@/lib/api";
+import { RECENTLY_PLAYED_UPDATED_EVENT } from "@/lib/recently-played-storage";
 import { usePlayerStore } from "@/stores/player-store";
 import type { UserPlaylist } from "@/types/music";
 
@@ -317,7 +322,17 @@ export default function PlaylistsPage() {
         return;
       }
 
-      playSong(detail.songs[0], detail.songs);
+      playSong(detail.songs[0], detail.songs, {
+        type: "playlist",
+        playlistId: playlist.id,
+      });
+      void saveRecentlyPlayedPlaylist(playlist.id, accessToken)
+        .catch((saveError) => {
+          console.warn("Failed to save recently played playlist", saveError);
+        })
+        .finally(() => {
+          window.dispatchEvent(new Event(RECENTLY_PLAYED_UPDATED_EVENT));
+        });
     } catch (playError) {
       showNotice({
         type: "error",

@@ -16,9 +16,11 @@ import {
   removeSongFromPlaylistRequest,
   reorderPlaylistSongsRequest,
   resolveApiAssetUrl,
+  saveRecentlyPlayedPlaylist,
   updatePlaylistVisibilityRequest,
   uploadTrackToPlaylistRequest,
 } from "@/lib/api";
+import { RECENTLY_PLAYED_UPDATED_EVENT } from "@/lib/recently-played-storage";
 import { notifySongUploaded } from "@/lib/song-events";
 import { SongListItem } from "@/components/song/SongListItem";
 import { WaveformPlayer } from "@/components/song/WaveformPlayer";
@@ -415,7 +417,17 @@ export function PlaylistDetailContent({
       return;
     }
 
-    playSong(playlist.songs[0], playlist.songs);
+    playSong(playlist.songs[0], playlist.songs, {
+      type: "playlist",
+      playlistId: playlist.id,
+    });
+    void saveRecentlyPlayedPlaylist(playlist.id, accessToken)
+      .catch((saveError) => {
+        console.warn("Failed to save recently played playlist", saveError);
+      })
+      .finally(() => {
+        window.dispatchEvent(new Event(RECENTLY_PLAYED_UPDATED_EVENT));
+      });
   };
 
   const getShareUrl = useCallback(() => {
@@ -877,6 +889,10 @@ export function PlaylistDetailContent({
                 song={playlistWaveformSong}
                 audioUrl={getSongAudioUrl(playlistWaveformSong) ?? ""}
                 queue={playlist.songs}
+                recentlyPlayedContext={{
+                  type: "playlist",
+                  playlistId: playlist.id,
+                }}
               />
             </div>
           )}
@@ -925,6 +941,10 @@ export function PlaylistDetailContent({
                 onRemove={handleRemoveSong}
                 onMoveUp={() => moveSong(song.id, "up")}
                 onMoveDown={() => moveSong(song.id, "down")}
+                recentlyPlayedContext={{
+                  type: "playlist",
+                  playlistId: playlist.id,
+                }}
               />
             ))}
           </div>

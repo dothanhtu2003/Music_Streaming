@@ -22,7 +22,7 @@ import {
   preparePeaks,
 } from "@/lib/waveform";
 import { cn } from "@/lib/utils";
-import { usePlayerStore } from "@/stores/player-store";
+import { usePlayerStore, type RecentlyPlayedContext } from "@/stores/player-store";
 import type { Song, SongWaveform } from "@/types/music";
 
 export type WaveformMarker = {
@@ -43,6 +43,7 @@ export type WaveformPlayerProps = {
   height?: number;
   markers?: WaveformMarker[];
   variant?: "player-only" | "soundcloud";
+  recentlyPlayedContext?: RecentlyPlayedContext;
 };
 
 type WaveformStatus = "empty" | "loading" | "ready" | "error";
@@ -111,6 +112,7 @@ export function WaveformPlayer({
   height,
   markers = [],
   variant = "player-only",
+  recentlyPlayedContext = null,
 }: WaveformPlayerProps) {
   const { user } = useAuth();
   const { openAddSongModal } = usePlaylists();
@@ -377,7 +379,7 @@ export function WaveformPlayer({
       return;
     }
 
-    playSong(song, queue?.length ? queue : [song]);
+    playSong(song, queue?.length ? queue : [song], recentlyPlayedContext);
   };
 
   if (variant === "soundcloud") {
