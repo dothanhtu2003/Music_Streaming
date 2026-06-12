@@ -302,6 +302,10 @@ export type AdminUser = {
   id: string;
   email: string;
   username: string;
+  display_name?: string | null;
+  displayName?: string | null;
+  avatar_url?: string | null;
+  avatarUrl?: string | null;
   role: "user" | "admin";
   is_verified: boolean;
   is_banned: boolean;
@@ -312,6 +316,10 @@ export type AdminUser = {
 export type AdminUserOption = {
   id: string;
   username: string;
+  display_name?: string | null;
+  displayName?: string | null;
+  avatar_url?: string | null;
+  avatarUrl?: string | null;
   email: string;
 };
 
@@ -363,6 +371,8 @@ export type AdminTopSong = {
   artist: {
     id: string;
     name: string;
+    display_name?: string | null;
+    displayName?: string | null;
   };
   album: {
     id: string;

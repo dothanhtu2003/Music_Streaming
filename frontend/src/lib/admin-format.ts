@@ -29,3 +29,25 @@ export function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+
+type AdminUserNameSource = {
+  displayName?: string | null;
+  display_name?: string | null;
+  username?: string | null;
+  email?: string | null;
+};
+
+export function getAdminUserDisplayName(user?: AdminUserNameSource | null) {
+  return (
+    user?.displayName?.trim() ||
+    user?.display_name?.trim() ||
+    user?.username?.trim() ||
+    user?.email?.trim() ||
+    "Unknown user"
+  );
+}
+
+export function getAdminUserInitials(user?: AdminUserNameSource | null) {
+  const name = getAdminUserDisplayName(user);
+  return name.slice(0, 2).toUpperCase();
+}

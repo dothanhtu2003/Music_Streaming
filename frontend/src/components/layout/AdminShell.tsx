@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { getAdminUserDisplayName, getAdminUserInitials } from "@/lib/admin-format";
 import { adminNav } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
@@ -117,6 +118,7 @@ function AdminNavLinks() {
 export function AdminShell({ children }: AdminShellProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const accountName = getAdminUserDisplayName(user);
 
   const handleLogout = async () => {
     await logout();
@@ -144,11 +146,11 @@ export function AdminShell({ children }: AdminShellProps) {
           <div className="flex flex-col gap-3 rounded-xl bg-zinc-900/35 border border-zinc-900/80 p-4">
             <div className="flex items-center gap-3">
               <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-zinc-800 text-sm font-bold text-emerald-450 border border-zinc-700/50 uppercase">
-                {user?.username?.[0] ?? "U"}
+                {getAdminUserInitials(user)}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-white">
-                  {user?.username}
+                  {accountName}
                 </p>
                 <p className="truncate text-[11px] text-zinc-500">{user?.email}</p>
               </div>

@@ -1,5 +1,6 @@
 const { pool } = require("../db/pool");
 const AppError = require("../utils/appError");
+const { artistLinkedUserJoin } = require("../utils/artist-user.utils");
 const {
   buildPagination,
   normalizeSearch,
@@ -9,7 +10,7 @@ const {
 } = require("../utils/query.utils");
 
 const userFields =
-  "id, email, username, role, is_verified, is_banned, created_at, updated_at";
+  "id, email, username, display_name, avatar_url, role, is_verified, is_banned, created_at, updated_at";
 
 const topSongSelect = `
   s.id,
@@ -23,6 +24,7 @@ const topSongSelect = `
   s.updated_at,
   ar.id AS artist_id,
   ar.name AS artist_name,
+  COALESCE(NULLIF(u.display_name, ''), ar.name) AS artist_display_name,
   al.id AS album_id,
   al.title AS album_title,
   g.id AS genre_id,
@@ -35,6 +37,10 @@ const formatUser = (user) => {
     id: user.id,
     email: user.email,
     username: user.username,
+    display_name: user.display_name || user.username,
+    displayName: user.display_name || user.username,
+    avatar_url: user.avatar_url,
+    avatarUrl: user.avatar_url,
     role: user.role,
     is_verified: user.is_verified,
     is_banned: user.is_banned,
@@ -57,6 +63,8 @@ const formatTopSong = (song) => {
     artist: {
       id: song.artist_id,
       name: song.artist_name,
+      display_name: song.artist_display_name || song.artist_name,
+      displayName: song.artist_display_name || song.artist_name,
     },
     album: song.album_id
       ? {
@@ -120,6 +128,7 @@ const getDashboard = async () => {
       `SELECT ${topSongSelect}
        FROM songs s
        JOIN artists ar ON ar.id = s.artist_id
+       ${artistLinkedUserJoin}
        LEFT JOIN albums al ON al.id = s.album_id
        LEFT JOIN genres g ON g.id = s.genre_id
        WHERE s.is_active = TRUE
@@ -155,7 +164,7 @@ const getPlaylists = async (query) => {
     `SELECT COUNT(*) AS total
      FROM playlists p
      JOIN users u ON u.id = p.user_id
-     WHERE ($1::text IS NULL OR p.name ILIKE $1 OR u.username ILIKE $1 OR u.email ILIKE $1)`,
+     WHERE ($1::text IS NULL OR p.name ILIKE $1 OR u.username ILIKE $1 OR u.display_name ILIKE $1 OR u.email ILIKE $1)`,
     [search]
   );
 
@@ -169,15 +178,15 @@ const getPlaylists = async (query) => {
        p.is_public,
        p.created_at,
        p.updated_at,
-       u.username AS owner_name,
+       COALESCE(NULLIF(u.display_name, ''), u.username) AS owner_name,
        u.email AS owner_email,
        COUNT(s.id)::int AS track_count
      FROM playlists p
      JOIN users u ON u.id = p.user_id
      LEFT JOIN playlist_songs ps ON ps.playlist_id = p.id
      LEFT JOIN songs s ON s.id = ps.song_id AND s.is_active = TRUE
-     WHERE ($1::text IS NULL OR p.name ILIKE $1 OR u.username ILIKE $1 OR u.email ILIKE $1)
-     GROUP BY p.id, u.username, u.email
+     WHERE ($1::text IS NULL OR p.name ILIKE $1 OR u.username ILIKE $1 OR u.display_name ILIKE $1 OR u.email ILIKE $1)
+     GROUP BY p.id, u.username, u.display_name, u.email
      ORDER BY p.created_at DESC
      LIMIT $2 OFFSET $3`,
     [search, limit, offset]
@@ -204,7 +213,7 @@ const deletePlaylist = async (playlistId) => {
        p.is_public,
        p.created_at,
        p.updated_at,
-       u.username AS owner_name,
+       COALESCE(NULLIF(u.display_name, ''), u.username) AS owner_name,
        u.email AS owner_email,
        COUNT(s.id)::int AS track_count
      FROM playlists p
@@ -212,7 +221,7 @@ const deletePlaylist = async (playlistId) => {
      LEFT JOIN playlist_songs ps ON ps.playlist_id = p.id
      LEFT JOIN songs s ON s.id = ps.song_id AND s.is_active = TRUE
      WHERE p.id = $1
-     GROUP BY p.id, u.username, u.email
+     GROUP BY p.id, u.username, u.display_name, u.email
      LIMIT 1`,
     [playlistId]
   );
@@ -236,7 +245,7 @@ const getUsers = async (query) => {
   const countResult = await pool.query(
     `SELECT COUNT(*) AS total
      FROM users
-     WHERE ($1::text IS NULL OR email ILIKE $1 OR username ILIKE $1)
+     WHERE ($1::text IS NULL OR email ILIKE $1 OR username ILIKE $1 OR display_name ILIKE $1)
        AND ($2::text IS NULL OR role = $2)`,
     [search, role]
   );
@@ -244,7 +253,7 @@ const getUsers = async (query) => {
   const result = await pool.query(
     `SELECT ${userFields}
      FROM users
-     WHERE ($1::text IS NULL OR email ILIKE $1 OR username ILIKE $1)
+     WHERE ($1::text IS NULL OR email ILIKE $1 OR username ILIKE $1 OR display_name ILIKE $1)
        AND ($2::text IS NULL OR role = $2)
      ORDER BY created_at DESC
      LIMIT $3 OFFSET $4`,
@@ -261,16 +270,20 @@ const getUsers = async (query) => {
 
 const getUserOptions = async () => {
   const result = await pool.query(
-    `SELECT id, username, email
+    `SELECT id, username, display_name, avatar_url, email
      FROM users
      WHERE is_banned = FALSE
-     ORDER BY username ASC
+     ORDER BY COALESCE(NULLIF(display_name, ''), username) ASC
      LIMIT 500`
   );
 
   return result.rows.map((user) => ({
     id: user.id,
     username: user.username,
+    display_name: user.display_name || user.username,
+    displayName: user.display_name || user.username,
+    avatar_url: user.avatar_url,
+    avatarUrl: user.avatar_url,
     email: user.email,
   }));
 };

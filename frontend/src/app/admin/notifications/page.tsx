@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { formatDate, getErrorMessage } from "@/lib/admin-format";
+import {
+  formatDate,
+  getAdminUserDisplayName,
+  getAdminUserInitials,
+  getErrorMessage,
+} from "@/lib/admin-format";
 import {
   getAdminNotificationHistoryRequest,
   getAdminUserOptionsRequest,
@@ -80,7 +85,10 @@ export default function AdminNotificationsPage() {
     const keyword = userSearch.trim().toLowerCase();
     const matchedUsers = keyword
       ? users.filter((user) => {
+          const displayName = getAdminUserDisplayName(user).toLowerCase();
+
           return (
+            displayName.includes(keyword) ||
             user.username.toLowerCase().includes(keyword) ||
             user.email.toLowerCase().includes(keyword)
           );
@@ -323,9 +331,11 @@ export default function AdminNotificationsPage() {
                         className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 border border-zinc-800/80 py-1 pl-1.5 pr-1.5 text-xs text-white"
                       >
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-bold text-emerald-400 uppercase">
-                          {user.username.slice(0, 2)}
+                          {getAdminUserInitials(user)}
                         </span>
-                        <span className="max-w-[120px] truncate">{user.username}</span>
+                        <span className="max-w-[120px] truncate">
+                          {getAdminUserDisplayName(user)}
+                        </span>
                         <button
                           type="button"
                           onClick={() => toggleSelectedUser(user.id)}
@@ -430,11 +440,11 @@ export default function AdminNotificationsPage() {
                                   <div className="flex items-center gap-3 min-w-0">
                                     {/* User Initials Avatar */}
                                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-xs font-bold text-emerald-400 uppercase">
-                                      {user.username.slice(0, 2)}
+                                      {getAdminUserInitials(user)}
                                     </span>
                                     <div className="min-w-0">
                                       <span className="block truncate text-sm font-semibold text-white">
-                                        {user.username}
+                                        {getAdminUserDisplayName(user)}
                                       </span>
                                       <span className="block truncate text-xs text-zinc-500">
                                         {user.email}

@@ -185,6 +185,10 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     if (!recentlyPlayedContext) {
       void saveRecentlyPlayedSong(currentSong.id, accessToken)
         .catch((recentlyPlayedError) => {
+          if (isUnauthorizedError(recentlyPlayedError)) {
+            return;
+          }
+
           console.warn("Failed to save recently played song", recentlyPlayedError);
         })
         .finally(() => {

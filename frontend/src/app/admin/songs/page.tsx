@@ -16,7 +16,7 @@ import {
   getSongsRequest,
   updateSongRequest,
 } from "@/lib/api";
-import { formatDuration } from "@/lib/song-format";
+import { formatDuration, getArtistDisplayName } from "@/lib/song-format";
 import type {
   AlbumRecord,
   ArtistRecord,
@@ -96,6 +96,10 @@ function buildSongPayload(form: SongFormState): SongWritePayload {
 
 function getUploaderLabel(song: Song) {
   const uploader = song.uploadedByUser;
+
+  if (uploader?.id && song.artist.user_id === uploader.id) {
+    return getArtistDisplayName(song.artist);
+  }
 
   return (
     uploader?.displayName?.trim() ||
@@ -265,7 +269,7 @@ export default function AdminSongsPage() {
   // Compute filters from current songs list client-side
   const uniqueArtists = Array.from(
     new Map(songs.map((song) => [song.artist.id, song.artist])).values()
-  ).sort((a, b) => a.name.localeCompare(b.name));
+  ).sort((a, b) => getArtistDisplayName(a).localeCompare(getArtistDisplayName(b)));
 
   const uniqueGenres = Array.from(
     new Map(
@@ -279,7 +283,7 @@ export default function AdminSongsPage() {
     .filter((song) => {
       const matchesSearch =
         song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        song.artist.name.toLowerCase().includes(searchQuery.toLowerCase());
+        getArtistDisplayName(song.artist).toLowerCase().includes(searchQuery.toLowerCase());
       const matchesArtist = !selectedArtistId || song.artist.id === selectedArtistId;
       const matchesGenre = !selectedGenreId || song.genre?.id === selectedGenreId;
       return matchesSearch && matchesArtist && matchesGenre;
@@ -355,7 +359,7 @@ export default function AdminSongsPage() {
             <option value="">All Artists</option>
             {uniqueArtists.map((artist) => (
               <option key={artist.id} value={artist.id}>
-                {artist.name}
+                {getArtistDisplayName(artist)}
               </option>
             ))}
           </select>
@@ -466,7 +470,9 @@ export default function AdminSongsPage() {
                       <td className="px-5 py-3 font-semibold text-white min-w-44 max-w-xs truncate" title={song.title}>
                         {song.title}
                       </td>
-                      <td className="px-5 py-3 text-zinc-350">{song.artist.name}</td>
+                      <td className="px-5 py-3 text-zinc-350">
+                        {getArtistDisplayName(song.artist)}
+                      </td>
                       <td className="px-5 py-3 text-zinc-400">{getUploaderLabel(song)}</td>
                       <td className="px-5 py-3 text-zinc-400">{song.album?.title ?? "Single"}</td>
                       <td className="px-5 py-3">
@@ -553,7 +559,7 @@ export default function AdminSongsPage() {
                     <option value="">Select artist</option>
                     {artists.map((artist) => (
                       <option key={artist.id} value={artist.id}>
-                        {artist.name}
+                        {getArtistDisplayName(artist)}
                       </option>
                     ))}
                   </select>

@@ -248,6 +248,8 @@ COMMENT ON TABLE follows IS 'Stores social connections where users follow other 
 
 -- Foreign key and filter indexes.
 CREATE INDEX IF NOT EXISTS idx_artists_user_id ON artists(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_artists_user_id_unique ON artists(user_id)
+WHERE user_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_follows_follower_id ON follows("followerId");
 CREATE INDEX IF NOT EXISTS idx_follows_following_id ON follows("followingId");
 CREATE INDEX IF NOT EXISTS idx_albums_artist_id ON albums(artist_id);

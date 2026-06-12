@@ -8,7 +8,11 @@ import {
 import { AdminTable } from "@/components/admin/AdminTable";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { formatDate, getErrorMessage } from "@/lib/admin-format";
+import {
+  formatDate,
+  getAdminUserDisplayName,
+  getErrorMessage,
+} from "@/lib/admin-format";
 import {
   banAdminUserRequest,
   getAdminUsersRequest,
@@ -129,7 +133,7 @@ export default function AdminUsersPage() {
 
     const actionLabel = targetUser.is_banned ? "unban" : "ban";
     const confirmed = window.confirm(
-      `Are you sure you want to ${actionLabel} "${targetUser.username}"?`,
+      `Are you sure you want to ${actionLabel} "${getAdminUserDisplayName(targetUser)}"?`,
     );
 
     if (!confirmed) {
@@ -179,7 +183,7 @@ export default function AdminUsersPage() {
         <input
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
-          placeholder="Search by email or username"
+          placeholder="Search by display name, email, or username"
           className="rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-green-500"
         />
         <select
@@ -201,7 +205,7 @@ export default function AdminUsersPage() {
       </form>
 
       <AdminTable
-        headers={["Username", "Email", "Role", "Status", "Joined", "Actions"]}
+        headers={["User", "Email", "Role", "Status", "Joined", "Actions"]}
         loading={loading}
         error={error}
         empty={!loading && users.length === 0}
@@ -215,7 +219,8 @@ export default function AdminUsersPage() {
           return (
             <tr key={user.id} className="text-zinc-300">
               <td className="px-4 py-3 font-medium text-white">
-                {user.username}
+                <p>{getAdminUserDisplayName(user)}</p>
+                <p className="text-xs font-normal text-zinc-500">@{user.username}</p>
               </td>
               <td className="px-4 py-3">{user.email}</td>
               <td className="px-4 py-3">

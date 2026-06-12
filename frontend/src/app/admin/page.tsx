@@ -2,8 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { formatDate, formatNumber, getErrorMessage } from "@/lib/admin-format";
+import {
+  formatDate,
+  formatNumber,
+  getAdminUserDisplayName,
+  getErrorMessage,
+} from "@/lib/admin-format";
 import { getAdminDashboardRequest } from "@/lib/api";
+import { getArtistDisplayName } from "@/lib/song-format";
 import type { AdminDashboard } from "@/types/music";
 
 function getMetricIcon(label: string) {
@@ -247,7 +253,7 @@ export default function AdminPage() {
                           </span>
                           <span className="truncate">{song.title}</span>
                         </td>
-                        <td className="px-5 py-4">{song.artist.name}</td>
+                        <td className="px-5 py-4">{getArtistDisplayName(song.artist)}</td>
                         <td className="px-5 py-4">
                           <span className="inline-flex rounded-full bg-zinc-900 px-2.5 py-1 text-xs text-zinc-400 border border-zinc-800">
                             {song.genre?.name ?? "Unknown"}
@@ -309,7 +315,9 @@ export default function AdminPage() {
                   ) : (
                     dashboard.newest_users.map((user) => (
                       <tr key={user.id} className="text-zinc-350 hover:bg-zinc-900/25 transition-colors">
-                        <td className="px-5 py-4 font-medium text-white">{user.username}</td>
+                        <td className="px-5 py-4 font-medium text-white">
+                          {getAdminUserDisplayName(user)}
+                        </td>
                         <td className="px-5 py-4 text-zinc-400 truncate max-w-48">{user.email}</td>
                         <td className="px-5 py-4">
                           <span className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${

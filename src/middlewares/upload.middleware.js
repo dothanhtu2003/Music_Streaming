@@ -191,17 +191,34 @@ const getCloudinaryResourceType = (file) => {
   return uploadType === "audio" ? "video" : "image";
 };
 
+const logCloudinaryCleanupFailure = (file, error, resourceType) => {
+  const publicId = file?.filename || "unknown";
+  const fieldName = file?.fieldname || "unknown";
+  const message = error?.message || "Unknown cleanup error";
+  const code = error?.code || error?.error?.code || "unknown";
+  const httpStatus =
+    error?.http_code || error?.httpStatus || error?.statusCode || "unknown";
+
+  console.warn(
+    `[CLOUDINARY_CLEANUP_FAILED] public_id=${publicId} field=${fieldName} resource_type=${resourceType} error=${message} code=${code} http_status=${httpStatus}`
+  );
+};
+
 const removeUploadedFile = async (file) => {
   if (!file?.filename) {
     return;
   }
 
+  const resourceType = getCloudinaryResourceType(file);
+
   await cloudinary.uploader
     .destroy(file.filename, {
-      resource_type: getCloudinaryResourceType(file),
+      resource_type: resourceType,
       invalidate: true,
     })
-    .catch(() => {});
+    .catch((error) => {
+      logCloudinaryCleanupFailure(file, error, resourceType);
+    });
 };
 
 const removeUploadedFiles = async (files = []) => {

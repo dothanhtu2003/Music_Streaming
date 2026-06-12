@@ -25,7 +25,7 @@ const playlistSummarySelect = `
   p.share_count,
   p.created_at,
   p.updated_at,
-  u.username AS owner_name,
+  COALESCE(NULLIF(u.display_name, ''), u.username) AS owner_name,
   COALESCE(
     p.cover_url,
     (
@@ -210,7 +210,7 @@ const getPlaylistById = async (playlistId, client = pool) => {
        p.share_count,
        p.created_at,
        p.updated_at,
-       u.username AS owner_name
+       COALESCE(NULLIF(u.display_name, ''), u.username) AS owner_name
      FROM playlists p
      JOIN users u ON u.id = p.user_id
      WHERE p.id = $1
@@ -376,7 +376,7 @@ const getMyPlaylists = async (userId, query) => {
      JOIN users u ON u.id = p.user_id
      LEFT JOIN playlist_songs ps ON ps.playlist_id = p.id
      WHERE p.user_id = $1
-     GROUP BY p.id, u.username
+     GROUP BY p.id, u.username, u.display_name
      ORDER BY p.created_at DESC
      LIMIT $2 OFFSET $3`,
     [userId, limit, offset]
@@ -405,7 +405,7 @@ const getPublicPlaylists = async (query) => {
      JOIN users u ON u.id = p.user_id
      LEFT JOIN playlist_songs ps ON ps.playlist_id = p.id
      WHERE p.is_public = TRUE
-     GROUP BY p.id, u.username
+     GROUP BY p.id, u.username, u.display_name
      ORDER BY p.created_at DESC
      LIMIT $1 OFFSET $2`,
     [limit, offset]
@@ -466,7 +466,7 @@ const getPublicPlaylistDetail = async (slugOrId) => {
        p.share_count,
        p.created_at,
        p.updated_at,
-       u.username AS owner_name,
+       COALESCE(NULLIF(u.display_name, ''), u.username) AS owner_name,
        u.username AS owner_username,
        u.display_name AS owner_display_name,
        u.avatar_url AS owner_avatar_url

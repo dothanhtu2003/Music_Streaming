@@ -15,6 +15,7 @@ import {
   getArtistsRequest,
   updateArtistRequest,
 } from "@/lib/api";
+import { getArtistDisplayName } from "@/lib/song-format";
 import type { ArtistRecord } from "@/types/music";
 
 type ArtistFormState = {
@@ -161,7 +162,7 @@ export default function AdminArtistsPage() {
       return;
     }
 
-    const confirmed = window.confirm(`Delete artist "${artist.name}"?`);
+    const confirmed = window.confirm(`Delete artist "${getArtistDisplayName(artist)}"?`);
 
     if (!confirmed) {
       return;
@@ -280,7 +281,9 @@ export default function AdminArtistsPage() {
         >
           {artists.map((artist) => (
             <tr key={artist.id} className="text-zinc-300">
-              <td className="px-4 py-3 font-medium text-white">{artist.name}</td>
+              <td className="px-4 py-3 font-medium text-white">
+                {getArtistDisplayName(artist)}
+              </td>
               <td className="max-w-xs px-4 py-3">
                 <span className="line-clamp-2">{artist.bio ?? "No bio"}</span>
               </td>

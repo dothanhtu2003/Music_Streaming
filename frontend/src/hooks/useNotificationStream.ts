@@ -2,7 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { API_URL, refreshAuthSession } from "@/lib/api";
-import { clearTokens, notifyAuthTokenCleared } from "@/lib/auth-storage";
+import {
+  clearTokens,
+  getStoredAccessToken,
+  notifyAuthTokenCleared,
+} from "@/lib/auth-storage";
 import type { UserNotification } from "@/types/music";
 
 type SseMessage = {
@@ -25,7 +29,10 @@ function isExpectedStreamDisconnect(error: unknown) {
     return true;
   }
 
-  return error instanceof TypeError && error.message === "network error";
+  return (
+    error instanceof TypeError &&
+    (error.message === "network error" || error.message === "Failed to fetch")
+  );
 }
 
 function parseSseChunk(chunk: string): SseMessage | null {
@@ -83,6 +90,7 @@ export function useNotificationStream({
     let retryDelay = 3000;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     const controller = new AbortController();
+    let activeAccessToken = accessToken;
 
     const waitForReconnect = () => {
       return new Promise<void>((resolve) => {
@@ -93,9 +101,17 @@ export function useNotificationStream({
     const connect = async () => {
       while (!stopped) {
         try {
+          const currentAccessToken =
+            getStoredAccessToken() ?? activeAccessToken;
+
+          if (!currentAccessToken) {
+            stopped = true;
+            return;
+          }
+
           const response = await fetch(`${API_URL}/notifications/stream`, {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
+              Authorization: `Bearer ${currentAccessToken}`,
               Accept: "text/event-stream",
             },
             signal: controller.signal,
@@ -103,7 +119,10 @@ export function useNotificationStream({
 
           if (response.status === 401) {
             try {
-              await refreshAuthSession();
+              const refreshedSession = await refreshAuthSession();
+              activeAccessToken = refreshedSession.accessToken;
+              retryDelay = 0;
+              continue;
             } catch {
               clearTokens();
               notifyAuthTokenCleared();

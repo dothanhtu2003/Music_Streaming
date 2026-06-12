@@ -21,6 +21,7 @@ import {
   uploadCoverRequest,
 } from "@/lib/api";
 import { notifySongUploaded } from "@/lib/song-events";
+import { getArtistDisplayName } from "@/lib/song-format";
 import type { AlbumRecord, ArtistRecord, GenreRecord, Song } from "@/types/music";
 
 type UploadFormState = {
@@ -697,7 +698,7 @@ export default function AdminUploadPage() {
               </option>
               {artists.map((artist) => (
                 <option key={artist.id} value={artist.id}>
-                  {artist.name}
+                  {getArtistDisplayName(artist)}
                 </option>
               ))}
             </select>

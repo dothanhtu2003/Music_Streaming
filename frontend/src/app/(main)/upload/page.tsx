@@ -804,7 +804,7 @@ export default function UploadPage() {
             <p className="text-xs text-zinc-400">
               Artist name will be saved as{" "}
               <span className="font-semibold text-zinc-200">
-                {user?.username ?? "your username"}
+                {user?.displayName || user?.username || "your profile name"}
               </span>
               .
             </p>

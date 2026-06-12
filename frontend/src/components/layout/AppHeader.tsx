@@ -625,6 +625,7 @@ export function AppHeader() {
   const { user, accessToken, isLoading, logout, isAdmin } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const isAboutPage = pathname === "/" || pathname === "/about";
+  const accountName = user?.displayName || user?.username || "User";
 
   const handleLogout = async () => {
     setDropdownOpen(false);
@@ -729,11 +730,11 @@ export function AppHeader() {
                     />
                   ) : (
                     <div className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-xs font-bold text-black">
-                      {user.username.slice(0, 1).toUpperCase()}
+                      {accountName.slice(0, 1).toUpperCase()}
                     </div>
                   )}
                   <span className="hidden max-w-28 truncate lg:inline">
-                    {user.username}
+                    {accountName}
                   </span>
                   <ChevronDownIcon size={14} className="text-zinc-500" />
                 </button>

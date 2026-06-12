@@ -214,15 +214,17 @@ erDiagram
     recently_played {
         uuid id PK
         uuid user_id FK
+        varchar item_type
         uuid song_id FK
+        uuid playlist_id FK
         timestamptz played_at
     }
 
     follows {
         uuid id PK
-        uuid follower_id FK
-        uuid following_id FK
-        timestamptz created_at
+        uuid followerId FK
+        uuid followingId FK
+        timestamptz createdAt
     }
 
     notifications {
@@ -303,6 +305,7 @@ erDiagram
     songs ||--o{ playlist_songs : references
     songs ||--o{ listening_history : tracks
     songs ||--o{ recently_played : logs
+    playlists ||--o{ recently_played : logs
 ```
 
 ---

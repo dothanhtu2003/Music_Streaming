@@ -117,13 +117,13 @@ const getPublicUserPlaylists = async (userId, query = {}) => {
        p.share_count,
        p.created_at,
        p.updated_at,
-       u.username AS owner_name,
+       COALESCE(NULLIF(u.display_name, ''), u.username) AS owner_name,
        COUNT(ps.song_id)::int AS song_count
      FROM playlists p
      JOIN users u ON u.id = p.user_id
      LEFT JOIN playlist_songs ps ON ps.playlist_id = p.id
      WHERE p.user_id = $1 AND p.is_public = TRUE
-     GROUP BY p.id, u.username
+     GROUP BY p.id, u.username, u.display_name
      ORDER BY p.created_at DESC
      LIMIT $2 OFFSET $3`,
     [userId, limit, offset]

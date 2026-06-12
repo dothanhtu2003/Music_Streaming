@@ -353,7 +353,7 @@ export function PlaylistDetailContent({
   playlistId,
 }: PlaylistDetailContentProps) {
   const router = useRouter();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const currentSong = usePlayerStore((state) => state.currentSong);
   const playSong = usePlayerStore((state) => state.playSong);
   const {
@@ -752,6 +752,9 @@ export function PlaylistDetailContent({
     playlist.songs.find((song) => song.id === currentSong?.id) ??
     playlist.songs[0] ??
     null;
+  const playlistOwnerName = playlist.is_owner
+    ? user?.displayName || user?.username || playlist.owner_name || "Unknown owner"
+    : playlist.owner?.displayName || playlist.owner_name || "Unknown owner";
 
   return (
     <div className="space-y-8">
@@ -782,7 +785,7 @@ export function PlaylistDetailContent({
               
               <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
                 <span className="font-semibold text-zinc-200">
-                  {playlist.owner_name || "Unknown owner"}
+                  {playlistOwnerName}
                 </span>
                 <span className="text-zinc-600">•</span>
                 <span>{playlist.track_count} tracks</span>

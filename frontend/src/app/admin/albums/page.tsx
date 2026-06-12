@@ -16,6 +16,7 @@ import {
   getArtistsRequest,
   updateAlbumRequest,
 } from "@/lib/api";
+import { getArtistDisplayName } from "@/lib/song-format";
 import type { AlbumRecord, ArtistRecord } from "@/types/music";
 
 type AlbumFormState = {
@@ -254,7 +255,7 @@ export default function AdminAlbumsPage() {
               <option value="">Select artist</option>
               {artists.map((artist) => (
                 <option key={artist.id} value={artist.id}>
-                  {artist.name}
+                  {getArtistDisplayName(artist)}
                 </option>
               ))}
             </select>
@@ -315,7 +316,7 @@ export default function AdminAlbumsPage() {
           {albums.map((album) => (
             <tr key={album.id} className="text-zinc-300">
               <td className="px-4 py-3 font-medium text-white">{album.title}</td>
-              <td className="px-4 py-3">{album.artist?.name ?? "Unknown"}</td>
+              <td className="px-4 py-3">{getArtistDisplayName(album.artist)}</td>
               <td className="px-4 py-3">{album.release_date ?? "N/A"}</td>
               <td className="px-4 py-3">{album.cover_url ? "Yes" : "No"}</td>
               <td className="px-4 py-3">

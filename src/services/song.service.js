@@ -282,73 +282,89 @@ const getUserArtistName = async (user = {}) => {
   return validateRequiredString(username, "artist_name", 150);
 };
 
-const findOrCreateArtistByName = async (name, userId = null) => {
-  if (userId) {
-    const ownedArtistResult = await pool.query(
-      `SELECT id, user_id
-       FROM artists
-       WHERE LOWER(name) = LOWER($1)
-         AND (user_id = $2 OR user_id IS NULL)
-       ORDER BY CASE WHEN user_id = $2 THEN 0 ELSE 1 END, created_at ASC
-       LIMIT 1`,
-      [name, userId]
-    );
-
-    if (ownedArtistResult.rows[0]) {
-      const artist = ownedArtistResult.rows[0];
-
-      if (!artist.user_id) {
-        await pool.query(
-          `UPDATE artists
-           SET user_id = $1, updated_at = NOW()
-           WHERE id = $2`,
-          [userId, artist.id]
-        );
-      }
-
-      return artist.id;
-    }
-
-    const insertResult = await pool.query(
-      `INSERT INTO artists (name, user_id)
-       VALUES ($1, $2)
-       RETURNING id`,
-      [name, userId]
-    );
-
-    return insertResult.rows[0].id;
-  }
-
+const getArtistIdByUserId = async (userId) => {
   const result = await pool.query(
-    `SELECT id, user_id
+    `SELECT id
      FROM artists
-     WHERE LOWER(name) = LOWER($1)
+     WHERE user_id = $1
      ORDER BY created_at ASC
      LIMIT 1`,
-    [name]
+    [userId]
   );
 
-  if (result.rows[0]) {
-    const artist = result.rows[0];
-    if (userId && !artist.user_id) {
+  return result.rows[0]?.id || null;
+};
+
+const findOrCreateArtistForUser = async (user = {}) => {
+  validateUuid(user.id, "uploadedBy");
+
+  const existingArtistId = await getArtistIdByUserId(user.id);
+
+  if (existingArtistId) {
+    return existingArtistId;
+  }
+
+  const artistName = await getUserArtistName(user);
+  const username = validateOptionalString(user.username, "username", 50);
+
+  const legacyArtistResult = await pool.query(
+    `SELECT id
+     FROM artists
+     WHERE user_id IS NULL
+       AND (
+         LOWER(name) = LOWER($1)
+         OR ($2::text IS NOT NULL AND LOWER(name) = LOWER($2))
+       )
+     ORDER BY CASE WHEN LOWER(name) = LOWER($1) THEN 0 ELSE 1 END, created_at ASC
+     LIMIT 1`,
+    [artistName, username]
+  );
+
+  const legacyArtist = legacyArtistResult.rows[0];
+
+  if (legacyArtist) {
+    try {
       await pool.query(
         `UPDATE artists
          SET user_id = $1, updated_at = NOW()
          WHERE id = $2`,
-        [userId, artist.id]
+        [user.id, legacyArtist.id]
       );
+
+      return legacyArtist.id;
+    } catch (error) {
+      if (error.code === "23505") {
+        const artistId = await getArtistIdByUserId(user.id);
+
+        if (artistId) {
+          return artistId;
+        }
+      }
+
+      throw error;
     }
-    return artist.id;
   }
 
-  const insertResult = await pool.query(
-    `INSERT INTO artists (name, user_id)
-     VALUES ($1, $2)
-     RETURNING id`,
-    [name, userId]
-  );
+  try {
+    const insertResult = await pool.query(
+      `INSERT INTO artists (name, user_id)
+       VALUES ($1, $2)
+       RETURNING id`,
+      [artistName, user.id]
+    );
 
-  return insertResult.rows[0].id;
+    return insertResult.rows[0].id;
+  } catch (error) {
+    if (error.code === "23505") {
+      const artistId = await getArtistIdByUserId(user.id);
+
+      if (artistId) {
+        return artistId;
+      }
+    }
+
+    throw error;
+  }
 };
 
 const findOrCreateGenreByName = async (genreName) => {
@@ -655,9 +671,7 @@ const createUploadedSong = async (data, user) => {
   );
   const fileUrl = validateRequiredString(data.file_url, "file_url", 1000);
   const coverUrl = validateOptionalString(data.cover_url, "cover_url", 1000);
-  const artistName = await getUserArtistName(user);
-  validateUuid(user.id, "uploadedBy");
-  const artistId = await findOrCreateArtistByName(artistName, user.id);
+  const artistId = await findOrCreateArtistForUser(user);
   const genreId = validateRequiredString(data.genre_id, "genre_id", 100);
   validateUuid(genreId, "genre_id");
   await ensureRecordExists("genres", genreId, "Genre not found");

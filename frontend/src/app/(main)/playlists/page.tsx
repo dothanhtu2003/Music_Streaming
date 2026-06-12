@@ -130,6 +130,7 @@ function PlaylistModal({
 
 type PlaylistCardProps = {
   playlist: UserPlaylist;
+  ownerName: string;
   onPlay: (playlist: UserPlaylist) => void;
   onEdit: (playlist: UserPlaylist) => void;
   onDelete: (playlist: UserPlaylist) => void;
@@ -138,6 +139,7 @@ type PlaylistCardProps = {
 
 function PlaylistCard({
   playlist,
+  ownerName,
   onPlay,
   onEdit,
   onDelete,
@@ -193,7 +195,7 @@ function PlaylistCard({
             <Link href={`/playlists/${playlist.id}`}>{playlist.title}</Link>
           </h3>
           <p className="mt-1 truncate text-xs text-zinc-400">
-            By {playlist.owner_name || "You"}
+            By {ownerName}
           </p>
         </div>
       </div>
@@ -260,7 +262,8 @@ function PlaylistCard({
 }
 
 export default function PlaylistsPage() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
+  const currentUserName = user?.displayName || user?.username || "You";
   const playSong = usePlayerStore((state) => state.playSong);
   const {
     playlists,
@@ -406,6 +409,11 @@ export default function PlaylistsPage() {
               <PlaylistCard
                 key={playlist.id}
                 playlist={playlist}
+                ownerName={
+                  playlist.user_id === user?.id
+                    ? currentUserName
+                    : playlist.owner_name || "You"
+                }
                 onPlay={handlePlay}
                 onEdit={(p) => setEditingPlaylist({
                   ...p,

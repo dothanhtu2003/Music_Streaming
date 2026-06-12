@@ -19,6 +19,7 @@ export function TopBar() {
   const router = useRouter();
   const { user, isLoading, logout } = useAuth();
   const navItems = user ? [...mainNav, ...authNav] : mainNav;
+  const accountName = user?.displayName || user?.username || "User";
 
   const handleLogout = async () => {
     await logout();
@@ -93,7 +94,7 @@ export function TopBar() {
               href="/profile"
               className="max-w-36 truncate rounded-lg px-3 py-2 text-sm font-medium text-zinc-300 transition hover:bg-zinc-900 hover:text-white"
             >
-              {user.username}
+              {accountName}
             </Link>
             <button
               type="button"

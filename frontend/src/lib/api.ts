@@ -221,9 +221,7 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}) {
   const headers = new Headers();
   const isFormData = isFormDataBody(options.body);
   let requestBody: BodyInit | undefined;
-  const accessToken = options.accessToken
-    ? getStoredAccessToken() ?? options.accessToken
-    : null;
+  const accessToken = options.accessToken ?? null;
 
   if (options.body !== undefined) {
     requestBody = isFormDataBody(options.body)
