@@ -34,7 +34,10 @@ function LatestSongCover({
   const hasCover = safeCoverUrl !== null && failedCoverUrl !== safeCoverUrl;
 
   return (
-    <div className="group/cover relative h-[160px] w-[160px] overflow-hidden rounded-xl bg-zinc-900">
+    <div className={cn(
+      "group/cover relative h-[160px] w-[160px] overflow-hidden rounded-xl bg-zinc-900 transition-all duration-300",
+      isCurrentSong && "border-2 border-orange-500 shadow-lg shadow-orange-500/25 ring-2 ring-orange-500/20"
+    )}>
       {hasCover ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -52,7 +55,23 @@ function LatestSongCover({
         </div>
       )}
 
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20 opacity-100 transition-opacity duration-300 md:bg-black/35 md:opacity-0 md:group-hover/cover:opacity-100 md:group-focus-within/cover:opacity-100">
+      {/* Active Playing Equalizer Badge */}
+      {isCurrentSong && (
+        <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-full bg-orange-500/90 px-2 py-0.5 text-[9px] font-black text-orange-950 shadow-md backdrop-blur-sm">
+          {isPlaying ? (
+            <span className="flex items-end gap-[1.5px] h-2.5">
+              <span className="w-[2px] bg-orange-950 h-full animate-[bounce_0.6s_infinite_100ms]" />
+              <span className="w-[2px] bg-orange-950 h-2/3 animate-[bounce_0.6s_infinite_300ms]" />
+              <span className="w-[2px] bg-orange-950 h-full animate-[bounce_0.6s_infinite_200ms]" />
+            </span>
+          ) : (
+            <span>PLAYING</span>
+          )}
+        </div>
+      )}
+
+      {/* Center Play Overlay - Hidden on Mobile, shows on Desktop on hover */}
+      <div className="pointer-events-none absolute inset-0 hidden md:flex items-center justify-center bg-black/35 opacity-0 md:group-hover/cover:opacity-100 md:group-focus-within/cover:opacity-100 transition-opacity duration-300">
         <button
           type="button"
           onClick={onPlay}
@@ -63,6 +82,25 @@ function LatestSongCover({
             <PauseIcon size={16} />
           ) : (
             <PlayIcon size={16} className="ml-0.5" />
+          )}
+        </button>
+      </div>
+
+      {/* Corner Play Button - Visible only on Mobile */}
+      <div className="absolute bottom-2 right-2 z-10 flex md:hidden">
+        <button
+          type="button"
+          onClick={onPlay}
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded-full shadow-md transition-all duration-200 active:scale-95 focus:outline-none",
+            isCurrentSong ? "bg-white text-black" : "bg-orange-500 text-orange-950"
+          )}
+          aria-label={isCurrentSong && isPlaying ? "Pause song" : "Play song"}
+        >
+          {isCurrentSong && isPlaying ? (
+            <PauseIcon size={12} className="text-black" />
+          ) : (
+            <PlayIcon size={12} className="ml-0.5 text-orange-950" />
           )}
         </button>
       </div>

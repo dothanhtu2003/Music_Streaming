@@ -205,27 +205,42 @@ function HomeContent() {
         style={{ background: "radial-gradient(circle at top right, rgba(249,115,22,0.08), transparent 50%)" }}
       />
 
+      {/* Quick Vibe Filter Chips (Spotify Style) */}
+      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pt-1 pb-1">
+        <span className="rounded-full bg-orange-500 px-4 py-1.5 text-xs font-black text-orange-950 shadow-md shadow-orange-500/20 shrink-0 cursor-pointer">
+          🎵 All
+        </span>
+        {["🔥 Remix", "🎹 Chill", "⚡ Pop", "🎸 Rock", "🌙 Lofi", "🎤 R&B"].map((chip) => (
+          <span
+            key={chip}
+            className="rounded-full border border-zinc-800 bg-zinc-900/60 px-4 py-1.5 text-xs font-bold text-zinc-300 transition hover:border-zinc-700 hover:text-white shrink-0 cursor-pointer active:scale-95"
+          >
+            {chip}
+          </span>
+        ))}
+      </div>
+
       {/* Main Hero Section */}
       {currentSong ? (
-        <div className="relative group rounded-2xl overflow-hidden transition-all duration-300">
+        <div className="relative group rounded-2xl overflow-hidden transition-all duration-300 block">
           <NowPlayingHero song={currentSong} />
             {isPlaying && (
               <div className="absolute inset-0 border-[2px] rounded-2xl pointer-events-none opacity-40 border-orange-500 glow-cyber-orange" />
             )}
         </div>
       ) : (
-        <section className="hero-fade-in relative overflow-hidden rounded-[2rem] border border-zinc-900 bg-[#09090b]/80 p-8 sm:p-10 shadow-2xl backdrop-blur-sm">
+        <section className="hero-fade-in relative overflow-hidden rounded-2xl md:rounded-[2rem] border border-zinc-900 bg-[#09090b]/80 p-5 sm:p-10 shadow-2xl backdrop-blur-sm">
           <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(circle at top right, rgba(249,115,22,0.08), transparent 50%)" }} />
           {/* Cyber scanline backplate overlay */}
           <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.002)_50%,rgba(0,0,0,0.1)_50%)] bg-[size:100%_4px] pointer-events-none" />
 
-          <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-2xl space-y-4">
-              <span className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-[9px] font-black uppercase tracking-[0.2em] shadow-sm text-orange-500 border-orange-500/20 bg-orange-500/10">
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl space-y-3 sm:space-y-4">
+              <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-0.5 sm:px-3.5 sm:py-1 text-[9px] font-black uppercase tracking-[0.2em] shadow-sm text-orange-500 border-orange-500/20 bg-orange-500/10">
                 <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
                 VIBE CHANNEL: ACTIVE
               </span>
-              <h1 className="text-3xl font-black tracking-tight text-white sm:text-5xl uppercase italic text-stroke-cyber hover:text-white transition-all duration-300">
+              <h1 className="text-2xl font-black tracking-tight text-white sm:text-5xl uppercase italic text-stroke-cyber hover:text-white transition-all duration-300">
                 Listen to your favorite tracks
               </h1>
               <p className="max-w-xl text-xs sm:text-sm leading-relaxed text-zinc-400 font-medium">
@@ -233,8 +248,8 @@ function HomeContent() {
               </p>
             </div>
 
-            {/* Dynamic visual monitor block inside Hero */}
-            <div className="flex items-center gap-4 bg-black/40 border border-zinc-900 p-4 rounded-2xl shrink-0 font-mono text-[9px] text-zinc-500 max-w-xs">
+            {/* Dynamic visual monitor block inside Hero - Visible on Desktop only */}
+            <div className="hidden md:flex items-center gap-4 bg-black/40 border border-zinc-900 p-4 rounded-2xl shrink-0 font-mono text-[9px] text-zinc-500 max-w-xs">
               <div className="flex gap-1 items-end h-8">
                 {EQ_BAR_HEIGHTS.map((height, i) => (
                   <span
@@ -260,19 +275,22 @@ function HomeContent() {
 
       {/* Recently Played Section */}
       {!authLoading && (
-        <section className="bg-zinc-950/40 border border-zinc-900/60 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl backdrop-blur-sm">
-          <div className="border-b border-zinc-900 pb-3 flex justify-between items-center">
+        <section className="space-y-3">
+          <div className="flex items-center justify-between border-b border-zinc-900/80 pb-2.5">
             <div>
-              <h2 className="text-lg font-black text-white tracking-tight uppercase italic">Recently Played</h2>
+              <h2 className="text-base sm:text-xl font-extrabold tracking-tight text-white uppercase italic">Recently Played</h2>
               <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mt-0.5">Songs and playlists you played recently</p>
             </div>
-            {/* Spinning visual cue */}
             {isPlaying && (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-emerald-400"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
             )}
           </div>
           <RecentlyPlayedList
-            items={recentlyPlayed.slice(0, RECENTLY_PLAYED_DISPLAY_LIMIT)}
+            items={recentlyPlayed}
+            limit={RECENTLY_PLAYED_DISPLAY_LIMIT}
             loading={recentlyLoading || authLoading}
             error={recentlyError}
           />
@@ -280,23 +298,15 @@ function HomeContent() {
       )}
 
       {/* Main Music Stream Section */}
-      <section className="bg-zinc-950/40 border border-zinc-900/60 rounded-3xl p-6 sm:p-8 space-y-8 shadow-xl backdrop-blur-sm">
-        <div className="flex flex-col gap-2 border-b border-zinc-900 pb-4">
-          <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-orange-400"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
-            </span>
-            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500">
-              Community Hotspot
-            </span>
+      <section className="space-y-6 pt-2">
+        <div className="flex flex-col gap-1 border-b border-zinc-900/80 pb-3">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-orange-500 uppercase tracking-widest">
+            <span className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+            Trending Catalog
           </div>
-          <h2 className="text-xl font-black tracking-tight text-white sm:text-2xl uppercase italic">
+          <h2 className="text-xl font-extrabold tracking-tight text-white sm:text-3xl">
             Hear what’s trending in the community
           </h2>
-          <p className="text-xs text-zinc-400 font-medium">
-            Fresh tracks and new vibes picked straight from the latest uploads.
-          </p>
         </div>
 
         {genreRowsError && (
@@ -329,10 +339,10 @@ function HomeContent() {
         )}
 
         {!genreRowsError && !genreRowsLoading && genreRows.length > 0 && (
-          <div className="space-y-10">
+          <div className="space-y-8">
             {genreRows.map((row) => {
               return (
-                <div key={row.genre.id} className="space-y-4 group">
+                <div key={row.genre.id} className="space-y-3 group">
                   <HorizontalSongCarousel
                     title={row.genre.name}
                     subtitle={`${row.pagination.totalItems} tracks`}

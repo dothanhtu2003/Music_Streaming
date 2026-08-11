@@ -5,6 +5,7 @@ import { WaveformPlayer } from "@/components/song/WaveformPlayer";
 import { SongComments } from "@/components/song/SongComments";
 import { getSongRequest } from "@/lib/api";
 import { getSongAudioUrl } from "@/lib/song-format";
+import { usePlayerStore } from "@/stores/player-store";
 import type { Song } from "@/types/music";
 
 type SongDetailContentProps = {
@@ -33,6 +34,8 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const playSong = usePlayerStore((state) => state.playSong);
+  const currentSongId = usePlayerStore((state) => state.currentSong?.id ?? null);
 
   useEffect(() => {
     let isMounted = true;
@@ -70,6 +73,16 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
     };
   }, [songId]);
 
+  useEffect(() => {
+    if (song && typeof window !== "undefined" && window.innerWidth < 768) {
+      if (currentSongId !== song.id) {
+        playSong(song, [song]);
+      }
+
+      window.dispatchEvent(new Event("OPEN_MOBILE_PLAYER"));
+    }
+  }, [currentSongId, song, playSong]);
+
   if (loading) {
     return <DetailSkeleton />;
   }
@@ -91,20 +104,23 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
   }
 
   return (
-    <div className="space-y-8">
-      <WaveformPlayer
-        song={song}
-        audioUrl={getSongAudioUrl(song) ?? ""}
-        queue={[song]}
-        variant="soundcloud"
-      />
+    <div>
+      {/* Desktop View Content Only (Completely Hidden on Mobile) */}
+      <div className="hidden md:block space-y-8">
+        <WaveformPlayer
+          song={song}
+          audioUrl={getSongAudioUrl(song) ?? ""}
+          queue={[song]}
+          variant="soundcloud"
+        />
 
-      <SongComments
-        songId={song.id}
-        songOwnerId={song.artist?.user_id}
-        artist={song.artist}
-        song={song}
-      />
+        <SongComments
+          songId={song.id}
+          songOwnerId={song.artist?.user_id}
+          artist={song.artist}
+          song={song}
+        />
+      </div>
     </div>
   );
 }

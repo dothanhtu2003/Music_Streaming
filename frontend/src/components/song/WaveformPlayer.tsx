@@ -443,7 +443,7 @@ export function WaveformPlayer({
             </div>
 
             {/* Bottom Row: Waveform container */}
-            <div className="relative mt-8">
+            <div className="relative mt-4 md:mt-8">
               {/* Loading/Error overlays */}
               {status !== "ready" && (
                 <div className="absolute inset-0 z-20 flex items-center justify-center bg-zinc-950/60 rounded-xl backdrop-blur-sm">
@@ -465,7 +465,7 @@ export function WaveformPlayer({
                 </div>
               )}
 
-              {/* Waveform visualizer container */}
+              {/* Waveform visualizer container (Visible on all screens) */}
               <div
                 className={cn(
                   "relative overflow-hidden rounded-xl py-1",
@@ -475,7 +475,7 @@ export function WaveformPlayer({
               >
                 <div
                   ref={containerRef}
-                  className="h-14 w-full md:h-20"
+                  className="h-16 w-full md:h-20"
                   style={height ? { height } : undefined}
                 />
 
@@ -519,14 +519,14 @@ export function WaveformPlayer({
                     })}
                   </div>
                 )}
-              </div>
 
-              {/* Timestamps absolute overlay */}
-              <div className="absolute left-0 bottom-[30%] z-10 rounded-sm bg-black px-1.5 py-0.5 text-[9px] font-bold text-orange-500 font-mono select-none">
-                {formatDuration(displayCurrentTime)}
-              </div>
-              <div className="absolute right-0 bottom-[30%] z-10 rounded-sm bg-black px-1.5 py-0.5 text-[9px] font-bold text-zinc-400 font-mono select-none">
-                {formatDuration(displayDuration)}
+                {/* Timestamps absolute overlay */}
+                <div className="absolute left-0 bottom-[25%] z-10 rounded-sm bg-black/80 backdrop-blur-sm px-1.5 py-0.5 text-[9px] font-bold text-orange-500 font-mono select-none">
+                  {formatDuration(displayCurrentTime)}
+                </div>
+                <div className="absolute right-0 bottom-[25%] z-10 rounded-sm bg-black/80 backdrop-blur-sm px-1.5 py-0.5 text-[9px] font-bold text-zinc-400 font-mono select-none">
+                  {formatDuration(displayDuration)}
+                </div>
               </div>
             </div>
           </div>
@@ -534,7 +534,7 @@ export function WaveformPlayer({
           {/* RIGHT COLUMN: Cover Image & Action Buttons */}
           <div className="flex flex-col items-center md:items-end justify-between shrink-0 gap-4">
             {/* Cover image wrapper */}
-            <div className="relative h-40 w-40 md:h-44 md:w-44 rounded-2xl overflow-hidden shadow-2xl border border-zinc-800 transition-transform duration-300 hover:scale-[1.02]">
+            <div className="relative h-48 w-48 sm:h-44 sm:w-44 rounded-2xl overflow-hidden shadow-2xl shadow-orange-500/10 border border-zinc-800 transition-transform duration-300 hover:scale-[1.02]">
               {getSongCoverUrl(song) ? (
                 <div
                   className="h-full w-full bg-cover bg-center"
@@ -548,11 +548,11 @@ export function WaveformPlayer({
               )}
             </div>
 
-            {/* Add to playlist action button */}
+            {/* Add to playlist action button (Desktop only, mobile uses bottom action bar) */}
             <button
               type="button"
               onClick={() => openAddSongModal(song)}
-              className="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold text-zinc-200 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-900 hover:text-white active:scale-95 shadow-md"
+              className="hidden md:flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold text-zinc-200 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-900 hover:text-white active:scale-95 shadow-md"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
               Add to playlist

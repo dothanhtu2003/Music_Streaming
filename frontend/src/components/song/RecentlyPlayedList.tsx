@@ -19,6 +19,7 @@ import type { RecentlyPlayedEntry, RecentlyPlayedPlaylistItem, Song } from "@/ty
 
 type RecentlyPlayedListProps = {
   items: RecentlyPlayedEntry[];
+  limit?: number;
   loading?: boolean;
   error?: string | null;
 };
@@ -215,6 +216,7 @@ function uniqueEntries(entries: RecentlyPlayedEntry[]) {
 
 export function RecentlyPlayedList({
   items,
+  limit,
   loading = false,
   error = null,
 }: RecentlyPlayedListProps) {
@@ -237,6 +239,8 @@ export function RecentlyPlayedList({
   }
 
   const safeItems = uniqueEntries(items);
+  console.log("RecentlyPlayedList raw items:", items);
+  console.log("RecentlyPlayedList safeItems:", safeItems);
 
   if (safeItems.length === 0) {
     return (
@@ -249,20 +253,25 @@ export function RecentlyPlayedList({
   }
 
   const songQueue = safeItems.filter(isSongItem).map((entry) => entry.item);
+  const displayedItems = limit !== undefined ? safeItems.slice(0, limit) : safeItems;
 
   return (
-    <div className="flex flex-col gap-2">
-      {safeItems.map((entry) =>
-        isSongItem(entry) ? (
-          <RecentlyPlayedSongRow
-            key={entry.recentlyPlayedId}
-            entry={entry}
-            queue={songQueue}
-          />
-        ) : (
-          <RecentlyPlayedPlaylistRow key={entry.recentlyPlayedId} entry={entry} />
-        ),
-      )}
+    <div className="no-scrollbar flex overflow-x-auto gap-3 snap-x snap-mandatory py-1 md:flex-col md:overflow-x-visible md:gap-2">
+      {displayedItems.map((entry) => (
+        <div
+          key={entry.recentlyPlayedId}
+          className="w-[280px] shrink-0 snap-start md:w-auto md:shrink-1 md:snap-align-none"
+        >
+          {isSongItem(entry) ? (
+            <RecentlyPlayedSongRow
+              entry={entry}
+              queue={songQueue}
+            />
+          ) : (
+            <RecentlyPlayedPlaylistRow entry={entry} />
+          )}
+        </div>
+      ))}
     </div>
   );
 }

@@ -16,6 +16,7 @@ type PlayerState = {
   recentlyPlayedContext: RecentlyPlayedContext;
   isPlaying: boolean;
   queue: Song[];
+  allCatalogSongs: Song[];
   volume: number;
   repeatMode: RepeatMode;
   shuffle: boolean;
@@ -37,6 +38,7 @@ type PlayerActions = {
   nextSong: () => void;
   previousSong: () => void;
   setQueue: (queue: Song[]) => void;
+  setAllCatalogSongs: (songs: Song[]) => void;
   setVolume: (volume: number) => void;
   setRepeatMode: (repeatMode: RepeatMode) => void;
   toggleRepeatMode: () => void;
@@ -96,31 +98,49 @@ function selectSong(song: Song, shouldPlay = true) {
 }
 
 function getNextSong(state: PlayerStore) {
-  const { currentSong, queue, shuffle } = state;
+  const {
+    currentSong,
+    queue,
+    shuffle,
+    allCatalogSongs,
+    recentlyPlayedContext,
+  } = state;
 
   if (!currentSong) {
-    return queue[0] ?? null;
+    return queue[0] ?? allCatalogSongs[0] ?? null;
   }
 
-  if (queue.length <= 1) {
-    return currentSong;
-  }
+  const isPlayingPlaylist = recentlyPlayedContext?.type === "playlist";
 
-  if (shuffle) {
-    const currentIndex = queue.findIndex((song) => song.id === currentSong.id);
-    let nextIndex = currentIndex;
+  // Keep the playlist order only when playback actually started from a playlist.
+  if (isPlayingPlaylist && queue.length > 1) {
+    if (shuffle) {
+      const currentIndex = queue.findIndex((song) => song.id === currentSong.id);
+      let nextIndex = currentIndex;
 
-    while (nextIndex === currentIndex) {
-      nextIndex = Math.floor(Math.random() * queue.length);
+      while (nextIndex === currentIndex && queue.length > 1) {
+        nextIndex = Math.floor(Math.random() * queue.length);
+      }
+
+      return queue[nextIndex] ?? currentSong;
     }
+
+    const currentIndex = queue.findIndex((song) => song.id === currentSong.id);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % queue.length;
 
     return queue[nextIndex] ?? currentSong;
   }
 
-  const currentIndex = queue.findIndex((song) => song.id === currentSong.id);
-  const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % queue.length;
+  // Outside a playlist, swiping left/pressing Next picks another random catalog song.
+  const pool = allCatalogSongs.length > 0 ? allCatalogSongs : queue;
+  const availableSongs = pool.filter((song) => song.id !== currentSong.id);
 
-  return queue[nextIndex] ?? currentSong;
+  if (availableSongs.length === 0) {
+    return currentSong;
+  }
+
+  const randomIndex = Math.floor(Math.random() * availableSongs.length);
+  return availableSongs[randomIndex] ?? currentSong;
 }
 
 function getPreviousSong(state: PlayerStore) {
@@ -145,6 +165,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   recentlyPlayedContext: null,
   isPlaying: false,
   queue: [],
+  allCatalogSongs: [],
   volume: 0.8,
   repeatMode: "off",
   shuffle: false,
@@ -201,6 +222,10 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 
   setQueue: (queue) => {
     set({ queue: uniqueSongs(queue) });
+  },
+
+  setAllCatalogSongs: (songs) => {
+    set({ allCatalogSongs: uniqueSongs(songs) });
   },
 
   setVolume: (volume) => {

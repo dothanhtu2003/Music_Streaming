@@ -26,7 +26,7 @@ export function AppShell({ children }: AppShellProps) {
     <div className="min-h-screen overflow-x-hidden bg-black text-zinc-100">
       <div className={cn(
         "min-h-screen transition-all duration-300",
-        currentSong ? "pb-56 md:pb-28" : "pb-20 md:pb-8"
+        currentSong ? "pb-36 md:pb-28" : "pb-24 md:pb-8"
       )}>
         <AppHeader />
         {pathname === "/" || pathname === "/about" ? (

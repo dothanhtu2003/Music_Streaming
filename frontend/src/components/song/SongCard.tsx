@@ -44,8 +44,8 @@ function SongCover({ song, isCurrentSong, isPlaying, onPlay }: { song: Song; isC
         </div>
       )}
 
-      {/* Center Play Overlay - Hidden on Desktop (shows on hover), always visible on Mobile/Touch */}
-      <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
+      {/* Center Play Overlay - Hidden on Mobile, shows on Desktop on hover */}
+      <div className="absolute inset-0 hidden md:flex items-center justify-center bg-black/40 backdrop-blur-[2px] opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
         <button
           type="button"
           onClick={onPlay}
@@ -56,6 +56,22 @@ function SongCover({ song, isCurrentSong, isPlaying, onPlay }: { song: Song; isC
             <PauseIcon size={18} className="text-orange-950" />
           ) : (
             <PlayIcon size={18} className="ml-0.5 text-orange-950" />
+          )}
+        </button>
+      </div>
+
+      {/* Corner Play Button - Visible only on Mobile */}
+      <div className="absolute bottom-2.5 right-2.5 z-10 flex md:hidden">
+        <button
+          type="button"
+          onClick={onPlay}
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-orange-950 shadow-md transition-all duration-200 active:scale-95 focus:outline-none"
+          aria-label={isCurrentSong && isPlaying ? "Pause song" : "Play song"}
+        >
+          {isCurrentSong && isPlaying ? (
+            <PauseIcon size={12} className="text-orange-950" />
+          ) : (
+            <PlayIcon size={12} className="ml-0.5 text-orange-950" />
           )}
         </button>
       </div>

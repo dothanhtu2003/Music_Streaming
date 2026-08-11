@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
+  getSongsRequest,
   isUnauthorizedError,
   listenSongRequest,
   saveRecentlyPlayedSong,
@@ -78,7 +79,18 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const seek = usePlayerStore((state) => state.seek);
   const nextSong = usePlayerStore((state) => state.nextSong);
   const clearSeekRequest = usePlayerStore((state) => state.clearSeekRequest);
+  const setAllCatalogSongs = usePlayerStore((state) => state.setAllCatalogSongs);
   const audioSrc = currentSong ? getSongAudioUrl(currentSong) : null;
+
+  useEffect(() => {
+    void getSongsRequest(1, 50).then((res) => {
+      if (res?.items?.length) {
+        setAllCatalogSongs(res.items);
+      }
+    }).catch(() => {
+      // Ignore fallback errors
+    });
+  }, [setAllCatalogSongs]);
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -260,20 +272,26 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       return;
     }
 
-    if (!currentSong || queue.length <= 1) {
+    if (!currentSong) {
       setIsPlaying(false);
       return;
     }
 
-    const currentIndex = queue.findIndex((song) => song.id === currentSong.id);
-    const isLastTrack = currentIndex >= queue.length - 1;
+    if (queue.length > 1) {
+      const currentIndex = queue.findIndex((song) => song.id === currentSong.id);
+      const isLastTrack = currentIndex >= queue.length - 1;
 
-    if (shuffle || repeatMode === "all" || !isLastTrack) {
-      nextSong();
+      if (shuffle || repeatMode === "all" || !isLastTrack) {
+        nextSong();
+        return;
+      }
+
+      setIsPlaying(false);
       return;
     }
 
-    setIsPlaying(false);
+    // Standalone track outside playlist -> Auto-play next random catalog song!
+    nextSong();
   }, [
     currentSong,
     nextSong,

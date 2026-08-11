@@ -116,21 +116,22 @@ function StatCard({
   icon: typeof MusicIcon;
 }) {
   return (
-    <div className="group rounded-xl border border-zinc-900 bg-zinc-950 p-5 shadow-sm transition-all duration-300 hover:border-zinc-800 hover:bg-zinc-900/30 hover:shadow-md hover:shadow-orange-500/[0.02] hover:-translate-y-0.5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+    <div className="group rounded-2xl border border-zinc-900 bg-zinc-950/80 p-3.5 sm:p-5 shadow-sm transition-all duration-300 hover:border-zinc-800 hover:bg-zinc-900/40">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 truncate">
             {label}
           </p>
-          <p className="mt-2 text-3xl font-black tracking-tight text-white transition-all duration-300 group-hover:text-orange-500">
+          <p className="mt-1 text-xl sm:text-3xl font-black tracking-tight text-white transition-all group-hover:text-orange-400">
             {formatPlayCount(value)}
           </p>
         </div>
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-orange-500/10 text-orange-400 transition-all duration-300 group-hover:scale-110 group-hover:bg-orange-500 group-hover:text-orange-950">
-          <Icon size={22} />
+        <span className="grid h-9 w-9 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-xl bg-orange-500/10 text-orange-400 transition-all group-hover:scale-105 group-hover:bg-orange-500 group-hover:text-orange-950">
+          <Icon size={18} className="sm:hidden" />
+          <Icon size={22} className="hidden sm:block" />
         </span>
       </div>
-      <p className="mt-4 text-xs leading-relaxed text-zinc-500 transition-all duration-300 group-hover:text-zinc-400">{description}</p>
+      <p className="mt-2 text-xs leading-relaxed text-zinc-500 hidden sm:block">{description}</p>
     </div>
   );
 }
@@ -138,15 +139,15 @@ function StatCard({
 function StudioSkeleton() {
   return (
     <div className="space-y-6 pb-28">
-      <div className="h-28 animate-pulse rounded-xl bg-zinc-950" />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="h-24 animate-pulse rounded-2xl bg-zinc-950" />
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
         {Array.from({ length: 6 }).map((_, index) => (
-          <div key={index} className="h-32 animate-pulse rounded-xl bg-zinc-950" />
+          <div key={index} className="h-20 animate-pulse rounded-2xl bg-zinc-950" />
         ))}
       </div>
       <div className="grid gap-6 xl:grid-cols-[1.45fr_0.85fr]">
-        <div className="h-96 animate-pulse rounded-xl bg-zinc-950" />
-        <div className="h-96 animate-pulse rounded-xl bg-zinc-950" />
+        <div className="h-80 animate-pulse rounded-2xl bg-zinc-950" />
+        <div className="h-80 animate-pulse rounded-2xl bg-zinc-950" />
       </div>
     </div>
   );
@@ -157,17 +158,18 @@ function TrackArtwork({ track }: { track: StudioTrack }) {
 
   if (coverUrl) {
     return (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={coverUrl}
         alt={`${track.title} cover`}
-        className="h-12 w-12 rounded-lg border border-zinc-800 object-cover"
+        className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 rounded-lg border border-zinc-800 object-cover"
       />
     );
   }
 
   return (
-    <div className="grid h-12 w-12 place-items-center rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-600">
-      <MusicIcon size={18} />
+    <div className="grid h-10 w-10 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-600">
+      <MusicIcon size={16} />
     </div>
   );
 }
@@ -188,7 +190,7 @@ function PlayButton({
       disabled={!canPlay}
       onClick={() => playSong(trackToSong(track), queue.map(trackToSong))}
       title={canPlay ? "Play track" : "Track has no playable file"}
-      className="grid h-9 w-9 place-items-center rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-orange-500/60 hover:text-orange-400 disabled:cursor-not-allowed disabled:opacity-40"
+      className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-orange-500/60 hover:text-orange-400 disabled:cursor-not-allowed disabled:opacity-40"
     >
       <PlayIcon size={14} />
     </button>
@@ -201,28 +203,23 @@ function TopTracksSection({
   tracks: StudioTrack[];
 }) {
   return (
-    <section className="rounded-xl border border-zinc-900 bg-zinc-950 overflow-hidden shadow-sm">
-      <div className="border-b border-zinc-900 px-5 py-4">
-        <h2 className="text-base font-bold text-white">Top Tracks</h2>
+    <section className="rounded-2xl border border-zinc-900 bg-zinc-950 overflow-hidden shadow-sm">
+      <div className="border-b border-zinc-900 px-4 py-3.5">
+        <h2 className="text-sm font-bold text-white">Top Tracks</h2>
       </div>
       <div className="divide-y divide-zinc-900/60">
         {tracks.length === 0 ? (
-          <p className="px-5 py-10 text-sm text-zinc-500">No top tracks yet.</p>
+          <p className="px-4 py-8 text-xs text-zinc-500">No top tracks yet.</p>
         ) : (
           tracks.map((track, index) => (
-            <div key={track.id} className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-zinc-900/20">
-              <span className="w-5 text-xs font-bold text-zinc-600">{index + 1}</span>
+            <div key={track.id} className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-900/40">
+              <span className="w-4 text-xs font-bold text-zinc-600">{index + 1}</span>
               <TrackArtwork track={track} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-white transition-colors hover:text-orange-400 cursor-default">{track.title}</p>
                 <p className="truncate text-xs text-zinc-500">
-                  {track.artistName ?? "Unknown artist"}
+                  {track.artistName ?? "Unknown artist"} • {formatPlayCount(track.playCount)} plays
                 </p>
-              </div>
-              <div className="hidden min-w-36 grid-cols-3 gap-3 text-right text-xs text-zinc-500 sm:grid">
-                <span>{formatPlayCount(track.playCount)} plays</span>
-                <span>{formatPlayCount(track.likeCount)} likes</span>
-                <span>{formatPlayCount(track.commentCount)} comments</span>
               </div>
               <span className="hidden w-12 text-right text-xs font-mono text-zinc-500 md:block">
                 {formatDuration(track.duration ?? 0)}
@@ -239,43 +236,43 @@ function TopTracksSection({
 function ActivityIcon({ type }: { type: string }) {
   const iconClass = "text-orange-400";
 
-  if (type === "LIKE_SONG") return <HeartIcon size={16} className={iconClass} />;
+  if (type === "LIKE_SONG") return <HeartIcon size={14} className={iconClass} />;
   if (type === "COMMENT_SONG" || type === "REPLY_COMMENT") {
-    return <CommentIcon size={16} className={iconClass} />;
+    return <CommentIcon size={14} className={iconClass} />;
   }
-  if (type === "FOLLOW_USER") return <UsersIcon size={16} className={iconClass} />;
+  if (type === "FOLLOW_USER") return <UsersIcon size={14} className={iconClass} />;
 
-  return <BellIcon size={16} className={iconClass} />;
+  return <BellIcon size={14} className={iconClass} />;
 }
 
 function RecentActivitySection({ items }: { items: StudioActivity[] }) {
   return (
-    <section className="rounded-xl border border-zinc-900 bg-zinc-950 overflow-hidden shadow-sm">
-      <div className="border-b border-zinc-900 px-5 py-4">
-        <h2 className="text-base font-bold text-white">Recent Activity</h2>
+    <section className="rounded-2xl border border-zinc-900 bg-zinc-950 overflow-hidden shadow-sm">
+      <div className="border-b border-zinc-900 px-4 py-3.5">
+        <h2 className="text-sm font-bold text-white">Recent Activity</h2>
       </div>
       <div className="divide-y divide-zinc-900/60">
         {items.length === 0 ? (
-          <p className="px-5 py-10 text-sm text-zinc-500">No recent activity yet.</p>
+          <p className="px-4 py-8 text-xs text-zinc-500">No recent activity yet.</p>
         ) : (
           items.map((item) => (
-            <div key={item.id} className="flex gap-3 px-5 py-3.5 transition-colors hover:bg-zinc-900/20">
-              <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-orange-500/10">
+            <div key={item.id} className="flex gap-3 px-4 py-3 transition-colors hover:bg-zinc-900/40">
+              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-orange-500/10">
                 <ActivityIcon type={item.type} />
               </span>
               <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-bold text-white">{item.title}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xs font-bold text-white">{item.title}</p>
                   {!item.isRead && (
-                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-orange-400" />
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-orange-400" />
                   )}
                 </div>
                 {item.message && (
-                  <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-zinc-500">
+                  <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-zinc-400">
                     {item.message}
                   </p>
                 )}
-                <p className="mt-2 text-[11px] font-medium text-zinc-600">
+                <p className="mt-1 text-[10px] font-medium text-zinc-500">
                   {formatRelativeDate(item.createdAt)}
                 </p>
               </div>
@@ -314,28 +311,28 @@ function MyTracksSection({
   const hasNext = Boolean(pagination && pagination.page < pagination.totalPages);
 
   return (
-    <section className="rounded-xl border border-zinc-900 bg-zinc-950 shadow-sm overflow-hidden">
-      <div className="flex flex-col gap-4 border-b border-zinc-900 px-5 py-5 lg:flex-row lg:items-center lg:justify-between">
+    <section className="rounded-2xl border border-zinc-900 bg-zinc-950 shadow-sm overflow-hidden">
+      <div className="flex flex-col gap-3 border-b border-zinc-900 px-4 py-4 sm:px-5 sm:py-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-base font-bold text-white">My Tracks</h2>
-          <p className="mt-1 text-xs text-zinc-500 font-medium">Uploaded tracks owned by your account.</p>
+          <p className="mt-0.5 text-xs text-zinc-500">Uploaded tracks in your studio catalog.</p>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex items-center">
+        <div className="flex flex-row items-center gap-2">
+          <div className="relative flex-1 sm:w-60 items-center">
             <span className="absolute left-3 text-zinc-500">
-              <SearchIcon size={16} />
+              <SearchIcon size={14} />
             </span>
             <input
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
               placeholder="Search tracks..."
-              className="h-10 w-full sm:w-60 rounded-lg border border-zinc-800 bg-zinc-900 pl-9 pr-3 text-sm text-white outline-none transition placeholder:text-zinc-650 focus:border-orange-500/70 focus:bg-zinc-900/80"
+              className="h-9 w-full rounded-xl border border-zinc-800 bg-zinc-900/80 pl-8 pr-3 text-xs text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-500/70"
             />
           </div>
           <select
             value={sort}
             onChange={(event) => onSortChange(event.target.value as StudioTrackSort)}
-            className="h-10 rounded-lg border border-zinc-800 bg-zinc-900 px-3 text-sm font-semibold text-zinc-300 outline-none transition focus:border-orange-500/70 cursor-pointer"
+            className="h-9 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 text-xs font-semibold text-zinc-300 outline-none transition focus:border-orange-500/70 cursor-pointer"
           >
             {sortOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -346,17 +343,88 @@ function MyTracksSection({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* MOBILE COMPACT LIST VIEW */}
+      <div className="p-2 sm:p-3 md:hidden">
+        {loading ? (
+          Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="animate-pulse rounded-xl border border-zinc-900 bg-zinc-950 p-3 space-y-2 mb-2">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-zinc-900" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3.5 w-32 rounded bg-zinc-900" />
+                  <div className="h-2.5 w-20 rounded bg-zinc-900" />
+                </div>
+              </div>
+            </div>
+          ))
+        ) : tracks.length === 0 ? (
+          <div className="rounded-xl border border-zinc-900 bg-zinc-950/60 p-6 text-center">
+            <p className="text-sm font-bold text-white">No tracks found</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              {query ? "Try adjusting your search query." : "Upload your first track to start building your audience."}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-950/80 divide-y divide-zinc-900/80">
+            {tracks.map((track) => (
+              <div key={track.id} className="flex items-center gap-3 p-3 transition hover:bg-zinc-900/50">
+                <TrackArtwork track={track} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate font-bold text-xs text-white">{track.title}</p>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-1.5 py-0.2 text-[8px] font-bold border",
+                        track.isActive
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                          : "bg-zinc-800/50 text-zinc-400 border-zinc-800",
+                      )}
+                    >
+                      {track.isActive ? "Active" : "Hidden"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 mt-0.5">
+                    <span>{formatPlayCount(track.playCount)} plays</span>
+                    <span>•</span>
+                    <span>{formatPlayCount(track.likeCount)} likes</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <PlayButton track={track} queue={tracks} />
+                  <button
+                    type="button"
+                    onClick={() => onCopy(track)}
+                    className="grid h-8 w-8 place-items-center rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:text-white"
+                    title="Share / Copy Link"
+                  >
+                    {copiedTrackId === track.id ? "✓" : "🔗"}
+                  </button>
+                  <Link
+                    href={`/songs/${track.id}`}
+                    className="grid h-8 w-8 place-items-center rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:text-white"
+                    title="View Detail"
+                  >
+                    ➔
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* DESKTOP TABLE VIEW */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-zinc-900/60 text-[10px] uppercase tracking-[0.18em] text-zinc-500">
             <tr>
-              <th className="px-5 py-4.5 font-bold">Track</th>
-              <th className="px-5 py-4.5 font-bold">Plays</th>
-              <th className="px-5 py-4.5 font-bold">Likes</th>
-              <th className="px-5 py-4.5 font-bold">Comments</th>
-              <th className="px-5 py-4.5 font-bold">Uploaded</th>
-              <th className="px-5 py-4.5 font-bold">Status</th>
-              <th className="px-5 py-4.5 text-right font-bold">Actions</th>
+              <th className="px-5 py-4 font-bold">Track</th>
+              <th className="px-5 py-4 font-bold">Plays</th>
+              <th className="px-5 py-4 font-bold">Likes</th>
+              <th className="px-5 py-4 font-bold">Comments</th>
+              <th className="px-5 py-4 font-bold">Uploaded</th>
+              <th className="px-5 py-4 font-bold">Status</th>
+              <th className="px-5 py-4 text-right font-bold">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-900/40">
@@ -446,7 +514,7 @@ function MyTracksSection({
       </div>
 
       {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-zinc-900/60 px-5 py-4.5 text-sm text-zinc-500">
+        <div className="flex items-center justify-between border-t border-zinc-900/60 px-4 py-3.5 text-xs text-zinc-500">
           <span className="font-medium">
             Page {pagination.page} of {pagination.totalPages}
           </span>
@@ -455,7 +523,7 @@ function MyTracksSection({
               type="button"
               disabled={!hasPrevious}
               onClick={() => onPageChange((pagination.page ?? 1) - 1)}
-              className="rounded-lg border border-zinc-800 px-4 py-2 text-xs font-bold text-zinc-300 transition hover:bg-zinc-900 hover:text-white hover:border-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-zinc-350 disabled:hover:border-zinc-800"
+              className="rounded-lg border border-zinc-800 px-3 py-1.5 text-xs font-bold text-zinc-300 transition hover:bg-zinc-900 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
               Previous
             </button>
@@ -463,7 +531,7 @@ function MyTracksSection({
               type="button"
               disabled={!hasNext}
               onClick={() => onPageChange((pagination.page ?? 1) + 1)}
-              className="rounded-lg border border-zinc-800 px-4 py-2 text-xs font-bold text-zinc-300 transition hover:bg-zinc-900 hover:text-white hover:border-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-zinc-350 disabled:hover:border-zinc-800"
+              className="rounded-lg border border-zinc-800 px-3 py-1.5 text-xs font-bold text-zinc-300 transition hover:bg-zinc-900 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next
             </button>
@@ -616,7 +684,7 @@ function StudioContent() {
   if (error) {
     return (
       <div className="grid min-h-[55vh] place-items-center pb-28">
-        <div className="max-w-md rounded-lg border border-rose-500/20 bg-rose-500/5 px-6 py-5 text-center">
+        <div className="max-w-md rounded-xl border border-rose-500/20 bg-rose-500/5 px-6 py-5 text-center">
           <p className="text-sm font-bold text-rose-300">{error}</p>
           <button
             type="button"
@@ -634,47 +702,47 @@ function StudioContent() {
   }
 
   return (
-    <div className="space-y-6 pb-28 page-fade-in">
-      <header className="rounded-xl border border-zinc-900 bg-zinc-950 px-5 py-6 shadow-sm">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-5 pb-28 page-fade-in">
+      <header className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4 sm:p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-500">
-              Artist Studio
-            </p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-white">
+            <span className="text-xs font-bold uppercase tracking-[0.18em] text-orange-500">
+              Studio
+            </span>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-white">
               Artist Studio
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
+            <p className="mt-1 text-xs sm:text-sm text-zinc-400 hidden sm:block">
               Track your music performance, audience activity, and latest engagement.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2">
             <Link
               href="/upload"
-              className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-bold text-orange-950 transition hover:bg-orange-400 shadow-md shadow-orange-500/10"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-xs sm:text-sm font-bold text-orange-950 transition hover:bg-orange-400 shadow-md shadow-orange-500/10"
             >
               <UploadIcon size={16} />
               Upload Track
             </Link>
             <Link
               href="/profile"
-              className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-zinc-700 hover:text-white"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-zinc-200 transition hover:border-zinc-700 hover:text-white"
             >
               <UserIcon size={16} />
-              View Profile
+              <span className="hidden sm:inline">Profile</span>
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Modern Pill Tab Selector */}
-      <div className="flex items-center justify-between border-b border-zinc-900/60 pb-4">
+      {/* Modern Tab Selector */}
+      <div className="flex items-center justify-between border-b border-zinc-900/60 pb-3">
         <div className="flex gap-1.5 rounded-xl bg-zinc-950 p-1 border border-zinc-900">
           <button
             type="button"
             onClick={() => setActiveTab("overview")}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-300",
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all duration-300",
               activeTab === "overview"
                 ? "bg-orange-500 text-orange-950 font-bold shadow-md shadow-orange-500/15"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50"
@@ -686,7 +754,7 @@ function StudioContent() {
             type="button"
             onClick={() => setActiveTab("tracks")}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-300",
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all duration-300",
               activeTab === "tracks"
                 ? "bg-orange-500 text-orange-950 font-bold shadow-md shadow-orange-500/15"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50"
@@ -694,7 +762,7 @@ function StudioContent() {
           >
             My Tracks
             <span className={cn(
-              "inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-md",
+              "inline-flex items-center justify-center px-1.5 py-0.2 text-[9px] font-bold rounded",
               activeTab === "tracks" ? "bg-orange-950/20 text-orange-950" : "bg-zinc-900 text-zinc-400"
             )}>
               {overview.totalTracks}
@@ -705,13 +773,13 @@ function StudioContent() {
 
       {activeTab === "overview" ? (
         <>
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <section className="grid gap-3 grid-cols-2 sm:grid-cols-3">
             {statCards.map((stat) => (
               <StatCard key={stat.label} {...stat} />
             ))}
           </section>
 
-          <div className="grid gap-6 xl:grid-cols-[1.45fr_0.85fr]">
+          <div className="grid gap-5 xl:grid-cols-[1.45fr_0.85fr]">
             <TopTracksSection tracks={topTracks} />
             <RecentActivitySection items={activity} />
           </div>

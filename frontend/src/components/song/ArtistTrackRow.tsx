@@ -159,30 +159,51 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
   return (
     <article
       className={cn(
-        "group rounded-xl border border-zinc-900/80 bg-zinc-950/40 p-3 transition hover:border-zinc-700 hover:bg-zinc-900/50 sm:p-4",
+        "group rounded-xl border border-zinc-900/80 bg-zinc-950/40 p-2.5 sm:p-4 transition hover:border-zinc-700 hover:bg-zinc-900/50",
         isCurrentSong && "border-orange-500/30 bg-orange-500/[0.04]",
       )}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <Link
-          href={`/songs/${song.id}`}
-          className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 bg-cover bg-center sm:h-16 sm:w-16"
-          style={coverUrl ? { backgroundImage: `url(${coverUrl})` } : undefined}
-          aria-label={`Open ${songTitle}`}
-          onClick={(event) => event.stopPropagation()}
-        >
-          {!coverUrl && (
-            <span className="grid h-full w-full place-items-center bg-gradient-to-br from-orange-500/25 to-zinc-950 text-lg font-black text-orange-300">
-              {getFallbackLetter(songTitle)}
-            </span>
-          )}
-        </Link>
+        {/* Cover image & Play overlay */}
+        <div className="relative h-12 w-12 shrink-0 select-none sm:h-14 sm:w-14">
+          <Link
+            href={`/songs/${song.id}`}
+            className="h-full w-full block overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 bg-cover bg-center"
+            style={coverUrl ? { backgroundImage: `url(${coverUrl})` } : undefined}
+            aria-label={`Open ${songTitle}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {!coverUrl && (
+              <span className="grid h-full w-full place-items-center bg-gradient-to-br from-orange-500/25 to-zinc-950 text-base font-black text-orange-300">
+                {getFallbackLetter(songTitle)}
+              </span>
+            )}
+          </Link>
 
+          {/* Overlay play button on mobile cover */}
+          <button
+            type="button"
+            onClick={handlePlay}
+            className={cn(
+              "absolute inset-0 flex items-center justify-center rounded-lg bg-black/40 text-white transition active:scale-95 sm:hidden",
+              isCurrentSong && "bg-black/50 text-orange-400 opacity-100",
+            )}
+            aria-label={isCurrentSong && isPlaying ? "Pause track" : "Play track"}
+          >
+            {isCurrentSong && isPlaying ? (
+              <PauseIcon size={16} />
+            ) : (
+              <PlayIcon size={16} className="ml-0.5" />
+            )}
+          </button>
+        </div>
+
+        {/* Desktop Play button */}
         <button
           type="button"
           onClick={handlePlay}
           className={cn(
-            "grid h-11 w-11 shrink-0 place-items-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-black",
+            "hidden sm:grid h-10 w-10 shrink-0 place-items-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-black",
             isCurrentSong
               ? "bg-orange-500 text-orange-950 hover:bg-orange-400"
               : "bg-zinc-100 text-black hover:bg-orange-500 hover:text-orange-950",
@@ -196,47 +217,49 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
           )}
         </button>
 
+        {/* Song metadata */}
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 flex-col sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              {artistId ? (
-                <Link
-                  href={`/artists/${artistId}`}
-                  className="inline-flex items-center gap-1.5 max-w-full text-xs font-medium text-zinc-500 transition hover:text-orange-400"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <span className="truncate">{artistName}</span>
-                  {isVerified && <VerifiedBadge size={12} />}
-                  {isSelf && (
-                    <span className="inline-flex items-center rounded bg-orange-500/10 px-1.5 py-0.5 text-[9px] font-bold text-orange-400 border border-orange-500/20" title="This is you">
-                      Bạn
-                    </span>
-                  )}
-                </Link>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 max-w-full text-xs font-medium text-zinc-500">
-                  <span className="truncate">{artistName}</span>
-                  {isVerified && <VerifiedBadge size={12} />}
-                  {isSelf && (
-                    <span className="inline-flex items-center rounded bg-orange-500/10 px-1.5 py-0.5 text-[9px] font-bold text-orange-400 border border-orange-500/20" title="This is you">
-                      Bạn
-                    </span>
-                  )}
-                </span>
-              )}
               <Link
                 href={`/songs/${song.id}`}
                 className={cn(
-                  "mt-0.5 block truncate text-base font-bold transition hover:text-orange-400",
+                  "block truncate text-xs sm:text-base font-bold leading-tight transition hover:text-orange-400",
                   isCurrentSong ? "text-orange-400" : "text-white",
                 )}
                 onClick={(event) => event.stopPropagation()}
               >
                 {songTitle}
               </Link>
+
+              {artistId ? (
+                <Link
+                  href={`/artists/${artistId}`}
+                  className="mt-0.5 inline-flex items-center gap-1 max-w-full text-[11px] sm:text-xs font-medium text-zinc-400 transition hover:text-orange-400"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <span className="truncate">{artistName}</span>
+                  {isVerified && <VerifiedBadge size={11} />}
+                  {isSelf && (
+                    <span className="inline-flex items-center rounded bg-orange-500/10 px-1 py-0.2 text-[8px] font-bold text-orange-400 border border-orange-500/20">
+                      Bạn
+                    </span>
+                  )}
+                </Link>
+              ) : (
+                <span className="mt-0.5 inline-flex items-center gap-1 max-w-full text-[11px] sm:text-xs font-medium text-zinc-400">
+                  <span className="truncate">{artistName}</span>
+                  {isVerified && <VerifiedBadge size={11} />}
+                  {isSelf && (
+                    <span className="inline-flex items-center rounded bg-orange-500/10 px-1 py-0.2 text-[8px] font-bold text-orange-400 border border-orange-500/20">
+                      Bạn
+                    </span>
+                  )}
+                </span>
+              )}
             </div>
 
-            <div className="flex shrink-0 items-center gap-2 text-[11px] font-medium text-zinc-500 sm:justify-end">
+            <div className="hidden sm:flex shrink-0 items-center gap-2 text-[11px] font-medium text-zinc-500">
               <span className="hidden lg:inline">
                 {formatPostedAt(song.created_at)}
               </span>
@@ -248,18 +271,27 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
             </div>
           </div>
 
-          <div className="mt-3 flex min-w-0 items-center gap-3">
+          {/* Desktop Waveform preview */}
+          <div className="mt-2 hidden sm:flex min-w-0 items-center gap-3">
             <WaveformPreview
               seed={`${song.id}-${songTitle}`}
               isActive={isCurrentSong}
             />
-            <span className="shrink-0 text-xs font-medium text-zinc-500">
+            <span className="shrink-0 text-xs font-medium text-zinc-500 font-mono">
               {formatDuration(song.duration_sec ?? 0)}
             </span>
           </div>
+
+          {/* Mobile sub-info duration & play count */}
+          <div className="mt-1 flex items-center gap-2 text-[10px] text-zinc-500 font-mono sm:hidden">
+            <span>{formatDuration(song.duration_sec ?? 0)}</span>
+            <span>•</span>
+            <span>{formatPlayCount(song.play_count ?? 0)} plays</span>
+          </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
+        {/* Action icons */}
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           <button
             type="button"
             aria-pressed={isLiked}
@@ -269,14 +301,14 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
               void toggleLike(song);
             }}
             className={cn(
-              "grid h-9 w-9 place-items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-60",
+              "grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60",
               isLiked
                 ? "bg-orange-500/10 text-orange-400"
                 : "text-zinc-500 hover:bg-zinc-800 hover:text-white",
             )}
             title={isLiked ? "Unlike track" : "Like track"}
           >
-            <HeartIcon size={16} filled={isLiked} />
+            <HeartIcon size={15} filled={isLiked} />
           </button>
 
           <button
@@ -285,31 +317,19 @@ export function ArtistTrackRow({ song, queue }: ArtistTrackRowProps) {
               stopAction(event);
               openAddSongModal(song);
             }}
-            className="grid h-9 w-9 place-items-center rounded-full text-zinc-500 transition hover:bg-zinc-800 hover:text-white"
+            className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full text-zinc-500 transition hover:bg-zinc-800 hover:text-white active:scale-95"
             title="Add to playlist"
           >
-            <PlusIcon size={16} />
-          </button>
-
-          <button
-            type="button"
-            onClick={(event) => {
-              stopAction(event);
-              void sharePath(`/songs/${song.id}`, songTitle);
-            }}
-            className="hidden h-9 items-center rounded-full px-3 text-xs font-bold text-zinc-500 transition hover:bg-zinc-800 hover:text-white md:inline-flex"
-            title="Share track"
-          >
-            Share
+            <PlusIcon size={15} />
           </button>
 
           <Link
             href={`/songs/${song.id}`}
             onClick={(event) => event.stopPropagation()}
-            className="grid h-9 w-9 place-items-center rounded-full text-zinc-500 transition hover:bg-zinc-800 hover:text-white"
+            className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full text-zinc-500 transition hover:bg-zinc-800 hover:text-white"
             title="More track details"
           >
-            <MoreIcon size={17} />
+            <MoreIcon size={16} />
           </Link>
         </div>
       </div>

@@ -770,8 +770,8 @@ export function PlaylistDetailContent({
             ← Back to playlists
           </Link>
           
-          <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-end">
-            <div className="transition-transform duration-300 hover:scale-[1.02]">
+          <div className="mt-6 flex flex-col items-center text-center sm:flex-row sm:items-end sm:text-left gap-6">
+            <div className="transition-transform duration-300 hover:scale-[1.02] shrink-0">
               <PlaylistCover playlist={playlist} />
             </div>
             
@@ -779,11 +779,11 @@ export function PlaylistDetailContent({
               <span className="text-xs font-bold uppercase tracking-[0.2em] text-orange-500">
                 Playlist
               </span>
-              <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl truncate">
+              <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl truncate max-w-full">
                 {playlist.title}
               </h1>
               
-              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+              <div className="mt-2.5 flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-1 text-xs text-zinc-400">
                 <span className="font-semibold text-zinc-200">
                   {playlistOwnerName}
                 </span>
@@ -793,22 +793,23 @@ export function PlaylistDetailContent({
                 <span className="rounded-full bg-zinc-900 border border-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
                   {playlist.is_public ? "Public" : "Private"}
                 </span>
-                <span className="text-zinc-600">â€¢</span>
+                <span className="text-zinc-600">•</span>
                 <span>{playlist.share_count ?? 0} shares</span>
               </div>
               
               {playlist.description && (
-                <p className="mt-4 max-w-2xl text-xs leading-relaxed text-zinc-400 sm:text-sm">
+                <p className="mt-3 max-w-2xl text-xs leading-relaxed text-zinc-400 sm:text-sm mx-auto sm:mx-0">
                   {playlist.description}
                 </p>
               )}
               
-              <div className="mt-6 flex flex-wrap items-center gap-3">
+              {/* Sleek Action Bar: Primary Play All + Compact Action Pills */}
+              <div className="mt-5 flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
                 <button
                   type="button"
                   disabled={playlist.songs.length === 0}
                   onClick={handlePlayAll}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-xs font-bold text-orange-950 transition hover:bg-orange-400 hover:scale-105 shadow-lg shadow-orange-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-pink-600 px-6 py-2.5 text-xs font-black text-zinc-950 transition hover:opacity-90 active:scale-95 shadow-md shadow-orange-500/15 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                   Play All
@@ -819,9 +820,11 @@ export function PlaylistDetailContent({
                   onClick={() => {
                     void copyShareLink();
                   }}
-                  className="inline-flex items-center justify-center rounded-full border border-zinc-800 px-5 py-3 text-xs font-bold text-zinc-300 transition hover:border-zinc-700 hover:text-white"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/60 px-3.5 py-2 text-xs font-bold text-zinc-300 transition hover:border-zinc-700 hover:text-white active:scale-95"
+                  title="Copy share link"
                 >
-                  Copy Link
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  <span>Copy</span>
                 </button>
 
                 <button
@@ -830,9 +833,11 @@ export function PlaylistDetailContent({
                   onClick={() => {
                     void handleShare();
                   }}
-                  className="inline-flex items-center justify-center rounded-full border border-zinc-800 px-5 py-3 text-xs font-bold text-zinc-300 transition hover:border-zinc-700 hover:text-white disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/60 px-3.5 py-2 text-xs font-bold text-zinc-300 transition hover:border-zinc-700 hover:text-white disabled:opacity-50 active:scale-95"
+                  title="Share playlist"
                 >
-                  {sharing ? "Sharing..." : "Share"}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+                  <span>{sharing ? "..." : "Share"}</span>
                 </button>
                 
                 {playlist.is_owner && (
@@ -843,35 +848,40 @@ export function PlaylistDetailContent({
                       onClick={() => {
                         void handleVisibilityToggle();
                       }}
-                      className="inline-flex items-center justify-center rounded-full border border-zinc-800 px-5 py-3 text-xs font-bold text-zinc-300 transition hover:border-zinc-700 hover:text-white disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/60 px-3.5 py-2 text-xs font-bold text-zinc-300 transition hover:border-zinc-700 hover:text-white disabled:opacity-50 active:scale-95"
+                      title={playlist.is_public ? "Make Private" : "Make Public"}
                     >
-                      {visibilityUpdating
-                        ? "Updating..."
-                        : playlist.is_public
-                          ? "Make Private"
-                          : "Make Public"}
+                      {playlist.is_public ? "Make Private" : "Make Public"}
                     </button>
+
                     <button
                       type="button"
                       onClick={() => setUploadOpen(true)}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-orange-500/30 px-5 py-3 text-xs font-bold text-orange-400 transition hover:bg-orange-500/10 hover:border-orange-500/50"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3.5 py-2 text-xs font-bold text-orange-400 transition hover:bg-orange-500/20 active:scale-95"
+                      title="Upload new track to playlist"
                     >
-                      Upload new track
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                      <span>Upload</span>
                     </button>
+
                     <button
                       type="button"
                       onClick={() => setEditOpen(true)}
-                      className="inline-flex items-center justify-center rounded-full border border-zinc-800 px-5 py-3 text-xs font-bold text-zinc-300 transition hover:border-zinc-700 hover:text-white"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/60 px-3.5 py-2 text-xs font-bold text-zinc-300 transition hover:border-zinc-700 hover:text-white active:scale-95"
+                      title="Edit playlist details"
                     >
-                      Edit
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500 shrink-0"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                      <span>Edit</span>
                     </button>
+
                     <button
                       type="button"
                       disabled={actionId === playlist.id}
                       onClick={() => {
                         void handleDeletePlaylist();
                       }}
-                      className="inline-flex items-center justify-center rounded-full border border-red-500/20 px-5 py-3 text-xs font-bold text-red-400 transition hover:bg-red-500/10 hover:border-red-500/40 disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-3.5 py-2 text-xs font-bold text-red-400 transition hover:bg-red-500/20 disabled:opacity-50 active:scale-95"
+                      title="Delete playlist"
                     >
                       {actionId === playlist.id ? "Deleting..." : "Delete"}
                     </button>

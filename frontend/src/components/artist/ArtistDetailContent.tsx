@@ -231,7 +231,7 @@ function ProfileTabs({
   playlistCount: number;
 }) {
   return (
-    <nav className="overflow-x-auto no-scrollbar p-2 bg-[#09090b]/80 border-b border-zinc-900/80 select-none">
+    <nav className="overflow-x-auto no-scrollbar p-2 bg-[#09090b] border-b border-zinc-900/80 select-none">
       <div className="flex min-w-max items-center gap-2 px-2">
         {tabs.map((tab) => {
           const isActive = tab.id === activeTab;
@@ -662,10 +662,11 @@ export function ArtistDetailContent() {
         {/* Profile info area */}
         <div className="px-4 pb-6 sm:px-6 lg:px-8 relative z-10">
           {/* Avatar floating and buttons */}
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between -mt-14 sm:-mt-16 md:-mt-20 gap-4 mb-5">
+          <div className="flex flex-col items-center text-center sm:flex-row sm:items-end sm:justify-between sm:text-left -mt-12 sm:-mt-16 md:-mt-20 gap-4 mb-4">
             <ArtistAvatar name={artistName} avatarUrl={headerData.avatarUrl} />
 
-            <div className="flex flex-wrap items-center gap-2 select-none">
+            {/* Desktop Actions */}
+            <div className="hidden sm:flex flex-wrap items-center gap-2 select-none">
               {!isSelf && (
                 <button
                   type="button"
@@ -700,25 +701,76 @@ export function ArtistDetailContent() {
 
           {/* Details list */}
           <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
               <span className="inline-flex rounded-full border border-orange-400/30 bg-orange-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-orange-300">
                 Artist
               </span>
             </div>
 
-            <div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white">
+            <div className="text-center sm:text-left">
+              <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white">
                 {artistName}
               </h1>
               {bio && (
-                <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-zinc-300">
-                  {bio}
-                </p>
+                <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-orange-500/20 bg-gradient-to-r from-orange-500/10 via-zinc-900/60 to-purple-500/10 px-4 py-1.5 text-xs font-medium italic text-zinc-200 backdrop-blur-md shadow-sm max-w-xs sm:max-w-md">
+                  <span className="text-orange-400 font-serif font-black not-italic text-sm">“</span>
+                  <span className="truncate">{bio}</span>
+                  <span className="text-orange-400 font-serif font-black not-italic text-sm">”</span>
+                </div>
               )}
             </div>
 
-            {/* Profile Stats with premium styling and responsive wrapping */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-2 max-w-xl select-none">
+            {/* MOBILE 1-LINE STAT BAR */}
+            <div className="flex sm:hidden items-center justify-center gap-6 py-2.5 border-y border-zinc-900/80 my-3 text-center">
+              <button
+                type="button"
+                onClick={() => setActiveFollowModal("followers")}
+                className="group/stat flex-1"
+              >
+                <span className="block text-base font-black text-white font-mono group-hover/stat:text-orange-400">{headerData.followersCount}</span>
+                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Followers</span>
+              </button>
+              <span className="h-5 w-px bg-zinc-850" />
+              <button
+                type="button"
+                onClick={() => setActiveFollowModal("following")}
+                className="group/stat flex-1"
+              >
+                <span className="block text-base font-black text-white font-mono group-hover/stat:text-purple-400">{headerData.followingCount}</span>
+                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Following</span>
+              </button>
+              <span className="h-5 w-px bg-zinc-850" />
+              <div className="flex-1">
+                <span className="block text-base font-black text-white font-mono">{headerData.trackCount}</span>
+                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Tracks</span>
+              </div>
+            </div>
+
+            {/* MOBILE COMPACT FOLLOW BUTTON */}
+            <div className="flex sm:hidden items-center justify-center pt-1 w-full">
+              {!isSelf && (
+                <button
+                  type="button"
+                  disabled={followLoading}
+                  onClick={() => void toggleFollow(artist.id, artistName)}
+                  className={cn(
+                    "inline-flex h-9 px-7 items-center justify-center gap-1.5 rounded-full text-xs font-black transition active:scale-95 disabled:opacity-60 shadow-md shadow-orange-500/10",
+                    isArtistFollowed
+                      ? "bg-zinc-900/90 text-zinc-300 border border-zinc-800"
+                      : "bg-gradient-to-r from-orange-500 to-pink-600 text-zinc-950"
+                  )}
+                >
+                  {followLoading
+                    ? "Loading..."
+                    : isArtistFollowed
+                      ? "Following"
+                      : "Follow"}
+                </button>
+              )}
+            </div>
+
+            {/* DESKTOP STATS GRID */}
+            <div className="hidden sm:grid grid-cols-2 md:grid-cols-3 gap-4 pt-2 max-w-xl select-none">
               <button
                 type="button"
                 onClick={() => setActiveFollowModal("followers")}
