@@ -18,6 +18,8 @@ type SongCommentsProps = {
   songOwnerId?: string | null;
   artist?: Song["artist"];
   song?: Song | null;
+  minimal?: boolean;
+  addedComment?: SongComment | null;
 };
 
 // Clean inline SVGs for professional SoundCloud style stats icons
@@ -64,7 +66,14 @@ type ArtistDetail = {
   tracks?: number | string | null;
 };
 
-export function SongComments({ songId, songOwnerId, artist, song }: SongCommentsProps) {
+export function SongComments({
+  songId,
+  songOwnerId,
+  artist,
+  song,
+  minimal = false,
+  addedComment = null,
+}: SongCommentsProps) {
   const { user } = useAuth();
   const { isFollowing, toggleFollow, actionId } = useFollow();
   const { isSongLiked, toggleLike, actionSongId } = useLikes();
@@ -74,6 +83,9 @@ export function SongComments({ songId, songOwnerId, artist, song }: SongComments
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
   const [error, setError] = useState<string | null>(null);
+  const [hiddenCommentIds, setHiddenCommentIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   // Full artist details for stats
   const [fullArtist, setFullArtist] = useState<ArtistDetail | null>(null);
@@ -188,6 +200,11 @@ export function SongComments({ songId, songOwnerId, artist, song }: SongComments
   };
 
   const handleCommentDeleted = (commentId: string) => {
+    setHiddenCommentIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      nextIds.add(commentId);
+      return nextIds;
+    });
     setComments((prev) => {
       const filteredParents = prev.filter((c) => c.id !== commentId);
       return filteredParents.map((parent) => ({
@@ -211,7 +228,18 @@ export function SongComments({ songId, songOwnerId, artist, song }: SongComments
     );
   };
 
-  const totalComments = comments.reduce(
+  const shouldShowAddedComment =
+    Boolean(addedComment) &&
+    !hiddenCommentIds.has(addedComment?.id ?? "") &&
+    !comments.some((comment) => comment.id === addedComment?.id);
+
+  const displayedComments = shouldShowAddedComment && addedComment
+    ? sort === "newest"
+      ? [addedComment, ...comments]
+      : [...comments, addedComment]
+    : comments;
+
+  const totalComments = displayedComments.reduce(
     (acc, curr) => acc + 1 + (curr.replies?.length || 0),
     0
   );
@@ -236,6 +264,29 @@ export function SongComments({ songId, songOwnerId, artist, song }: SongComments
     const rawVal = fullArtist.tracks_count ?? fullArtist.track_count ?? fullArtist.song_count ?? fullArtist.tracks;
     return rawVal ? parseInt(rawVal.toString()) : 0;
   };
+
+  if (minimal) {
+    return (
+      <div id="comments" className="space-y-3 pt-1">
+        {error && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
+            {error}
+          </div>
+        )}
+        {loading ? (
+          <CommentSkeleton />
+        ) : (
+          <CommentList
+            comments={displayedComments}
+            songId={songId}
+            songOwnerId={songOwnerId}
+            onCommentDeleted={handleCommentDeleted}
+            onReplyAdded={handleReplyAdded}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div id="comments" className="space-y-6 pt-2">
@@ -455,7 +506,7 @@ export function SongComments({ songId, songOwnerId, artist, song }: SongComments
             <CommentSkeleton />
           ) : (
             <CommentList
-              comments={comments}
+              comments={displayedComments}
               songId={songId}
               songOwnerId={songOwnerId}
               onCommentDeleted={handleCommentDeleted}

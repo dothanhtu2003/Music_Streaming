@@ -70,6 +70,12 @@ const formatSongItem = (song) => ({
   imageUrl: getImageUrl(song.cover_url, song.artist_avatar_url),
   href: `/songs/${song.id}`,
   score: formatScore(song.score),
+  duration: Number(song.duration_sec || 0),
+  createdAt: song.created_at,
+  likeCount: Number(song.likes_count || 0),
+  repostCount: 0,
+  commentCount: Number(song.comments_count || 0),
+  playCount: Number(song.play_count || 0),
 });
 
 const formatArtistItem = (artist) => ({
@@ -101,11 +107,14 @@ const searchSongs = async (normalizedQuery, limit) => {
        s.id,
        s.title,
        s.cover_url,
+       s.duration_sec,
        s.play_count,
        s.created_at,
        ar.name AS artist_name,
        COALESCE(NULLIF(u.display_name, ''), ar.name) AS artist_display_name,
        COALESCE(u.avatar_url, ar.avatar_url) AS artist_avatar_url,
+       COALESCE(likes.likes_count, 0) AS likes_count,
+       COALESCE(comments.comments_count, 0) AS comments_count,
        (
          CASE
            WHEN immutable_unaccent(lower(s.title)) = $1 THEN 100
@@ -131,6 +140,11 @@ const searchSongs = async (normalizedQuery, limit) => {
        FROM likes
        GROUP BY song_id
      ) likes ON likes.song_id = s.id
+     LEFT JOIN (
+       SELECT song_id, COUNT(*)::int AS comments_count
+       FROM song_comments
+       GROUP BY song_id
+     ) comments ON comments.song_id = s.id
      WHERE s.is_active = TRUE
        AND (
          immutable_unaccent(lower(s.title)) LIKE '%' || $1 || '%'

@@ -67,9 +67,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   );
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const volume = usePlayerStore((state) => state.volume);
-  const queue = usePlayerStore((state) => state.queue);
   const repeatMode = usePlayerStore((state) => state.repeatMode);
-  const shuffle = usePlayerStore((state) => state.shuffle);
   const seekTarget = usePlayerStore((state) => state.seekTarget);
   const seekVersion = usePlayerStore((state) => state.seekVersion);
   const setCurrentTime = usePlayerStore((state) => state.setCurrentTime);
@@ -77,19 +75,43 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
   const setPlayerError = usePlayerStore((state) => state.setPlayerError);
   const seek = usePlayerStore((state) => state.seek);
-  const nextSong = usePlayerStore((state) => state.nextSong);
+  const nextSongAfterEnd = usePlayerStore((state) => state.nextSongAfterEnd);
   const clearSeekRequest = usePlayerStore((state) => state.clearSeekRequest);
   const setAllCatalogSongs = usePlayerStore((state) => state.setAllCatalogSongs);
   const audioSrc = currentSong ? getSongAudioUrl(currentSong) : null;
 
   useEffect(() => {
-    void getSongsRequest(1, 50).then((res) => {
-      if (res?.items?.length) {
-        setAllCatalogSongs(res.items);
+    let isMounted = true;
+
+    async function loadCatalogSongs() {
+      try {
+        const firstPage = await getSongsRequest(1, 100);
+        const remainingPages = Array.from(
+          { length: Math.max(0, firstPage.pagination.totalPages - 1) },
+          (_, index) => index + 2,
+        );
+        const remainingResults = await Promise.allSettled(
+          remainingPages.map((page) => getSongsRequest(page, 100)),
+        );
+
+        if (isMounted) {
+          setAllCatalogSongs([
+            ...firstPage.items,
+            ...remainingResults.flatMap((result) =>
+              result.status === "fulfilled" ? result.value.items : [],
+            ),
+          ]);
+        }
+      } catch {
+        // Playback can still continue with the queue supplied by the page.
       }
-    }).catch(() => {
-      // Ignore fallback errors
-    });
+    }
+
+    void loadCatalogSongs();
+
+    return () => {
+      isMounted = false;
+    };
   }, [setAllCatalogSongs]);
 
   useEffect(() => {
@@ -277,30 +299,14 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       return;
     }
 
-    if (queue.length > 1) {
-      const currentIndex = queue.findIndex((song) => song.id === currentSong.id);
-      const isLastTrack = currentIndex >= queue.length - 1;
-
-      if (shuffle || repeatMode === "all" || !isLastTrack) {
-        nextSong();
-        return;
-      }
-
-      setIsPlaying(false);
-      return;
-    }
-
-    // Standalone track outside playlist -> Auto-play next random catalog song!
-    nextSong();
+    nextSongAfterEnd();
   }, [
     currentSong,
-    nextSong,
-    queue,
+    nextSongAfterEnd,
     repeatMode,
     seek,
     setIsPlaying,
     setPlayerError,
-    shuffle,
   ]);
 
   const handleAudioError = useCallback(() => {

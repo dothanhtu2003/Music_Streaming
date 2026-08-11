@@ -20,6 +20,8 @@ type PlayerState = {
   volume: number;
   repeatMode: RepeatMode;
   shuffle: boolean;
+  shuffleOrder: Song[];
+  shuffleIndex: number;
   currentTime: number;
   duration: number;
   playerError: string | null;
@@ -36,6 +38,7 @@ type PlayerActions = {
   pauseSong: () => void;
   togglePlay: () => void;
   nextSong: () => void;
+  nextSongAfterEnd: () => void;
   previousSong: () => void;
   setQueue: (queue: Song[]) => void;
   setAllCatalogSongs: (songs: Song[]) => void;
@@ -71,10 +74,6 @@ function uniqueSongs(songs: Song[]) {
   return nextSongs;
 }
 
-function hasPlayableQueue(songs?: Song[]) {
-  return Boolean(songs && songs.length > 1);
-}
-
 function buildQueue(selectedSong: Song, songs?: Song[]) {
   const nextQueue = uniqueSongs(songs?.length ? songs : [selectedSong]);
 
@@ -97,67 +96,192 @@ function selectSong(song: Song, shouldPlay = true) {
   });
 }
 
-function getNextSong(state: PlayerStore) {
-  const {
+function buildPlaybackPool(
+  currentSong: Song | null,
+  queue: Song[],
+  allCatalogSongs: Song[],
+  includeCatalog = false,
+) {
+  const pool = uniqueSongs(
+    !includeCatalog && queue.length > 1
+      ? queue
+      : includeCatalog
+        ? [...queue, ...allCatalogSongs]
+        : allCatalogSongs.length > 0
+          ? allCatalogSongs
+          : queue,
+  );
+
+  if (currentSong && !pool.some((song) => song.id === currentSong.id)) {
+    return [currentSong, ...pool];
+  }
+
+  return pool;
+}
+
+function getPlaybackPool(state: PlayerStore, includeCatalog = false) {
+  return buildPlaybackPool(
+    state.currentSong,
+    state.queue,
+    state.allCatalogSongs,
+    includeCatalog,
+  );
+}
+
+function shuffleSongs(songs: Song[]) {
+  const shuffledSongs = [...songs];
+
+  for (let index = shuffledSongs.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffledSongs[index], shuffledSongs[randomIndex]] = [
+      shuffledSongs[randomIndex],
+      shuffledSongs[index],
+    ];
+  }
+
+  return shuffledSongs;
+}
+
+function buildShuffleOrder(currentSong: Song | null, pool: Song[]) {
+  if (!currentSong) {
+    return shuffleSongs(pool);
+  }
+
+  return [
     currentSong,
-    queue,
-    shuffle,
-    allCatalogSongs,
-    recentlyPlayedContext,
-  } = state;
+    ...shuffleSongs(pool.filter((song) => song.id !== currentSong.id)),
+  ];
+}
+
+function reconcileShuffleOrder(state: PlayerStore, pool: Song[]) {
+  const poolById = new Map(pool.map((song) => [song.id, song]));
+  const preservedOrder = state.shuffleOrder
+    .map((song) => poolById.get(song.id))
+    .filter((song): song is Song => Boolean(song));
+
+  if (!state.currentSong) {
+    const preservedIds = new Set(preservedOrder.map((song) => song.id));
+    const addedSongs = shuffleSongs(
+      pool.filter((song) => !preservedIds.has(song.id)),
+    );
+
+    return {
+      order: [...preservedOrder, ...addedSongs],
+      index: -1,
+    };
+  }
+
+  const currentIndex = preservedOrder.findIndex(
+    (song) => song.id === state.currentSong?.id,
+  );
+
+  if (currentIndex === -1) {
+    return {
+      order: buildShuffleOrder(state.currentSong, pool),
+      index: 0,
+    };
+  }
+
+  const preservedIds = new Set(preservedOrder.map((song) => song.id));
+  const addedSongs = shuffleSongs(
+    pool.filter((song) => !preservedIds.has(song.id)),
+  );
+
+  return {
+    order: [...preservedOrder, ...addedSongs],
+    index: currentIndex,
+  };
+}
+
+function getValidShufflePosition(state: PlayerStore, pool: Song[]) {
+  const poolIds = new Set(pool.map((song) => song.id));
+  const hasSameSongs =
+    state.shuffleOrder.length === pool.length &&
+    state.shuffleOrder.every((song) => poolIds.has(song.id));
+  const currentMatches =
+    state.currentSong?.id === state.shuffleOrder[state.shuffleIndex]?.id;
+
+  if (hasSameSongs && currentMatches) {
+    return {
+      order: state.shuffleOrder,
+      index: state.shuffleIndex,
+    };
+  }
+
+  return reconcileShuffleOrder(state, pool);
+}
+
+function getNextShuffledSong(state: PlayerStore, startNewCycle: boolean) {
+  const pool = getPlaybackPool(state, true);
+
+  if (!state.currentSong) {
+    const order = buildShuffleOrder(null, pool);
+    return order[0]
+      ? { song: order[0], order, index: 0 }
+      : null;
+  }
+
+  const position = getValidShufflePosition(state, pool);
+  const nextSong = position.order[position.index + 1];
+
+  if (nextSong) {
+    return {
+      song: nextSong,
+      order: position.order,
+      index: position.index + 1,
+    };
+  }
+
+  if (!startNewCycle) {
+    return null;
+  }
+
+  const nextOrder = buildShuffleOrder(state.currentSong, pool);
+  const nextIndex = nextOrder.length > 1 ? 1 : 0;
+  const firstSongOfNextCycle = nextOrder[nextIndex];
+
+  return firstSongOfNextCycle
+    ? { song: firstSongOfNextCycle, order: nextOrder, index: nextIndex }
+    : null;
+}
+
+function getNextSong(state: PlayerStore, wrapAtEnd: boolean) {
+  const { currentSong } = state;
+  const pool = getPlaybackPool(state);
 
   if (!currentSong) {
-    return queue[0] ?? allCatalogSongs[0] ?? null;
+    return pool[0] ?? null;
   }
 
-  const isPlayingPlaylist = recentlyPlayedContext?.type === "playlist";
-
-  // Keep the playlist order only when playback actually started from a playlist.
-  if (isPlayingPlaylist && queue.length > 1) {
-    if (shuffle) {
-      const currentIndex = queue.findIndex((song) => song.id === currentSong.id);
-      let nextIndex = currentIndex;
-
-      while (nextIndex === currentIndex && queue.length > 1) {
-        nextIndex = Math.floor(Math.random() * queue.length);
-      }
-
-      return queue[nextIndex] ?? currentSong;
-    }
-
-    const currentIndex = queue.findIndex((song) => song.id === currentSong.id);
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % queue.length;
-
-    return queue[nextIndex] ?? currentSong;
+  if (pool.length <= 1) {
+    return wrapAtEnd ? currentSong : null;
   }
 
-  // Outside a playlist, swiping left/pressing Next picks another random catalog song.
-  const pool = allCatalogSongs.length > 0 ? allCatalogSongs : queue;
-  const availableSongs = pool.filter((song) => song.id !== currentSong.id);
+  const currentIndex = pool.findIndex((song) => song.id === currentSong.id);
 
-  if (availableSongs.length === 0) {
-    return currentSong;
+  if (currentIndex === -1) {
+    return pool[0] ?? null;
   }
 
-  const randomIndex = Math.floor(Math.random() * availableSongs.length);
-  return availableSongs[randomIndex] ?? currentSong;
+  return pool[currentIndex + 1] ?? (wrapAtEnd ? pool[0] : null);
 }
 
 function getPreviousSong(state: PlayerStore) {
-  const { currentSong, queue } = state;
+  const { currentSong } = state;
+  const pool = getPlaybackPool(state);
 
   if (!currentSong) {
-    return queue[0] ?? null;
+    return pool[0] ?? null;
   }
 
-  if (queue.length <= 1) {
-    return currentSong;
+  if (pool.length <= 1) {
+    return null;
   }
 
-  const currentIndex = queue.findIndex((song) => song.id === currentSong.id);
-  const previousIndex = currentIndex <= 0 ? queue.length - 1 : currentIndex - 1;
+  const currentIndex = pool.findIndex((song) => song.id === currentSong.id);
+  const previousIndex = currentIndex <= 0 ? pool.length - 1 : currentIndex - 1;
 
-  return queue[previousIndex] ?? currentSong;
+  return pool[previousIndex] ?? null;
 }
 
 export const usePlayerStore = create<PlayerStore>((set, get) => ({
@@ -169,6 +293,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   volume: 0.8,
   repeatMode: "off",
   shuffle: false,
+  shuffleOrder: [],
+  shuffleIndex: -1,
   currentTime: 0,
   duration: 0,
   playerError: null,
@@ -176,12 +302,23 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   seekVersion: 0,
 
   playSong: (song, nextQueue, recentlyPlayedContext = null) => {
-    set((state) => ({
-      ...selectSong(song)(state),
-      queue: buildQueue(song, nextQueue),
-      recentlyPlayedContext,
-      shuffle: hasPlayableQueue(nextQueue) ? false : state.shuffle,
-    }));
+    set((state) => {
+      const queue = buildQueue(song, nextQueue);
+      const pool = buildPlaybackPool(
+        song,
+        queue,
+        state.allCatalogSongs,
+        true,
+      );
+
+      return {
+        ...selectSong(song)(state),
+        queue,
+        recentlyPlayedContext,
+        shuffleOrder: state.shuffle ? buildShuffleOrder(song, pool) : [],
+        shuffleIndex: state.shuffle ? 0 : -1,
+      };
+    });
   },
 
   pauseSong: () => {
@@ -204,15 +341,81 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   },
 
   nextSong: () => {
-    const nextSong = getNextSong(get());
+    const state = get();
+
+    if (state.shuffle) {
+      const selection = getNextShuffledSong(state, true);
+
+      if (selection) {
+        set({
+          ...selectSong(selection.song)(state),
+          shuffleOrder: selection.order,
+          shuffleIndex: selection.index,
+        });
+      }
+
+      return;
+    }
+
+    const nextSong = getNextSong(state, true);
 
     if (nextSong) {
       set(selectSong(nextSong));
     }
   },
 
+  nextSongAfterEnd: () => {
+    const state = get();
+
+    if (state.shuffle) {
+      const selection = getNextShuffledSong(
+        state,
+        state.repeatMode === "all",
+      );
+
+      if (selection) {
+        set({
+          ...selectSong(selection.song)(state),
+          shuffleOrder: selection.order,
+          shuffleIndex: selection.index,
+        });
+        return;
+      }
+
+      set({ isPlaying: false, currentTime: 0, seekTarget: 0 });
+      return;
+    }
+
+    const nextSong = getNextSong(state, state.repeatMode === "all");
+
+    if (nextSong) {
+      set(selectSong(nextSong));
+      return;
+    }
+
+    set({ isPlaying: false, currentTime: 0, seekTarget: 0 });
+  },
+
   previousSong: () => {
     const state = get();
+
+    if (state.shuffle) {
+      const pool = getPlaybackPool(state, true);
+      const position = getValidShufflePosition(state, pool);
+      const previousIndex = position.index - 1;
+      const previousSong = position.order[previousIndex];
+
+      if (previousSong) {
+        set({
+          ...selectSong(previousSong)(state),
+          shuffleOrder: position.order,
+          shuffleIndex: previousIndex,
+        });
+      }
+
+      return;
+    }
+
     const previousSong = getPreviousSong(state);
 
     if (previousSong) {
@@ -221,11 +424,48 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   },
 
   setQueue: (queue) => {
-    set({ queue: uniqueSongs(queue) });
+    set((state) => {
+      const nextQueue = uniqueSongs(queue);
+      const pool = buildPlaybackPool(
+        state.currentSong,
+        nextQueue,
+        state.allCatalogSongs,
+        true,
+      );
+      const shufflePosition = state.shuffle
+        ? reconcileShuffleOrder(state, pool)
+        : null;
+
+      return {
+        queue: nextQueue,
+        shuffleOrder: shufflePosition?.order ?? [],
+        shuffleIndex: shufflePosition?.index ?? -1,
+      };
+    });
   },
 
   setAllCatalogSongs: (songs) => {
-    set({ allCatalogSongs: uniqueSongs(songs) });
+    set((state) => {
+      const allCatalogSongs = uniqueSongs(songs);
+
+      if (!state.shuffle) {
+        return { allCatalogSongs };
+      }
+
+      const pool = buildPlaybackPool(
+        state.currentSong,
+        state.queue,
+        allCatalogSongs,
+        true,
+      );
+      const shufflePosition = reconcileShuffleOrder(state, pool);
+
+      return {
+        allCatalogSongs,
+        shuffleOrder: shufflePosition.order,
+        shuffleIndex: shufflePosition.index,
+      };
+    });
   },
 
   setVolume: (volume) => {
@@ -252,7 +492,23 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   },
 
   toggleShuffle: () => {
-    set((state) => ({ shuffle: !state.shuffle }));
+    set((state) => {
+      if (state.shuffle) {
+        return {
+          shuffle: false,
+          shuffleOrder: [],
+          shuffleIndex: -1,
+        };
+      }
+
+      const pool = getPlaybackPool(state, true);
+
+      return {
+        shuffle: true,
+        shuffleOrder: buildShuffleOrder(state.currentSong, pool),
+        shuffleIndex: state.currentSong ? 0 : -1,
+      };
+    });
   },
 
   setCurrentTime: (time) => {

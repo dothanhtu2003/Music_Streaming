@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { CommentComposer } from "@/components/song/CommentComposer";
 import { SongComments } from "@/components/song/SongComments";
 import {
   ChevronDownIcon,
@@ -17,13 +18,19 @@ import {
   VolumeIcon,
   VolumeMuteIcon,
 } from "@/components/ui/Icons";
-import { formatDuration, getSongAudioUrl, getSongCoverUrl } from "@/lib/song-format";
+import {
+  formatDuration,
+  getArtistDisplayName,
+  getSongAudioUrl,
+  getSongCoverUrl,
+} from "@/lib/song-format";
 import { WaveformVisualizer } from "@/components/WaveformVisualizer";
 import { usePlayerStore } from "@/stores/player-store";
 import { useLikes } from "@/components/like/LikeProvider";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { createSongCommentRequest } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import type { SongComment } from "@/types/music";
 
 const QUICK_COMMENTS = ["🔥", "👏", "🥺"] as const;
 
@@ -52,6 +59,7 @@ export function BottomPlayer() {
   const pathname = usePathname();
   const router = useRouter();
   const currentSong = usePlayerStore((state) => state.currentSong);
+  const currentArtistName = getArtistDisplayName(currentSong?.artist);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const volume = usePlayerStore((state) => state.volume);
   const repeatMode = usePlayerStore((state) => state.repeatMode);
@@ -74,6 +82,10 @@ export function BottomPlayer() {
   const [commentFeedback, setCommentFeedback] = useState<{
     type: "success" | "error";
     message: string;
+  } | null>(null);
+  const [mobileAddedComment, setMobileAddedComment] = useState<{
+    songId: string;
+    comment: SongComment;
   } | null>(null);
   const closeAfterNavigationRef = useRef(false);
 
@@ -145,11 +157,15 @@ export function BottomPlayer() {
     setCommentFeedback(null);
 
     try {
-      await createSongCommentRequest(
+      const newComment = await createSongCommentRequest(
         currentSong.id,
         { content: trimmedContent, parentId: null },
         accessToken,
       );
+      setMobileAddedComment({
+        songId: currentSong.id,
+        comment: newComment,
+      });
       setCommentContent("");
       setCommentFeedback({ type: "success", message: "Comment posted." });
     } catch (error) {
@@ -279,7 +295,7 @@ export function BottomPlayer() {
               </div>
               <div>
                 <span className="inline-block rounded-md bg-black/65 backdrop-blur-md border border-white/10 px-2.5 py-1 text-xs font-bold text-zinc-300">
-                  {currentSong.artist.name}
+                  {currentArtistName}
                 </span>
               </div>
               <div>
@@ -428,11 +444,10 @@ export function BottomPlayer() {
               type="button"
               disabled={!canControl}
               onClick={() => setShowCommentsSheet(true)}
-              className="flex items-center gap-1.5 text-xs font-bold text-zinc-300 hover:text-white transition active:scale-90 touch-target disabled:opacity-30"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-zinc-300 hover:text-white transition active:scale-90 disabled:opacity-30 touch-target"
               title="View comments"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              <span>Bình luận</span>
             </button>
 
             {/* Repeat Mode Button */}
@@ -466,44 +481,123 @@ export function BottomPlayer() {
         </div>
       )}
 
-      {/* COMMENTS BOTTOM SHEET DRAWER MODAL */}
+      {/* COMMENTS BOTTOM SHEET DRAWER MODAL (SoundCloud style) */}
       {showCommentsSheet && currentSong && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Song comments"
-          className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/80 backdrop-blur-md animate-in fade-in duration-200 md:hidden"
+          className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setShowCommentsSheet(false)}
         >
           <div
-            className="relative flex flex-col w-full max-h-[82vh] rounded-t-3xl bg-zinc-950 border-t border-zinc-800 shadow-2xl p-4 sm:p-6 animate-in slide-in-from-bottom duration-300"
+            className="relative flex flex-col w-full h-[75vh] max-h-[85vh] rounded-t-[28px] bg-zinc-950 border-t border-zinc-800 shadow-2xl p-4 sm:p-5 animate-in slide-in-from-bottom duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top Handle & Title */}
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3 mb-4 px-1">
-              <div className="flex items-center gap-2 min-w-0 pr-4">
-                <span className="text-base font-extrabold text-white">Danh sách bình luận</span>
-                <span className="truncate rounded-full bg-orange-500/10 text-orange-400 px-2.5 py-0.5 text-xs font-bold border border-orange-500/20">
-                  {currentSong.title}
-                </span>
-              </div>
+            {/* Pull handle indicator */}
+            <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-2" />
+
+            {/* Header Bar: Chevron Down close | Comments Title | Sort Icon */}
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-900 px-1">
               <button
                 type="button"
                 onClick={() => setShowCommentsSheet(false)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-zinc-400 hover:text-white transition active:scale-95 border border-zinc-800"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-400 hover:text-white transition active:scale-95"
                 aria-label="Close comments"
               >
-                ✕
+                <ChevronDownIcon size={22} />
+              </button>
+
+              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                Comments
+              </h3>
+
+              <button
+                type="button"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-400 hover:text-white transition active:scale-95"
+                aria-label="Sort options"
+              >
+                <svg className="h-5 w-5 stroke-current stroke-2" fill="none" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
               </button>
             </div>
 
+            {/* Track Info Banner */}
+            <div className="flex items-center gap-3 py-3 px-1 border-b border-zinc-900">
+              <CoverThumb />
+              <div className="min-w-0 flex-1">
+                <h4 className="truncate text-sm sm:text-base font-bold text-white">
+                  {currentSong.title}
+                </h4>
+                <p className="truncate text-xs font-semibold text-zinc-400 uppercase tracking-wide mt-0.5">
+                  {currentArtistName}
+                </p>
+              </div>
+            </div>
+
+            {/* Reaction Stats Row */}
+            <div className="flex items-center justify-between py-2.5 px-1 border-b border-zinc-900 text-xs font-semibold text-zinc-400">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex -space-x-1.5 overflow-hidden text-sm">
+                  <span>🔥</span>
+                  <span>👏</span>
+                  <span>🥳</span>
+                </span>
+                <span className="text-white font-bold">20</span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-zinc-400">
+                <span>9 comments</span>
+                <span>•</span>
+                <span>18 reposts</span>
+              </div>
+            </div>
+
             {/* Scrollable SongComments List */}
-            <div className="flex-1 overflow-y-auto max-h-[68vh] pr-1 space-y-4 no-scrollbar">
+            <div className="flex-1 min-h-0 overflow-y-auto py-2 px-1 space-y-4 no-scrollbar">
               <SongComments
                 songId={currentSong.id}
                 songOwnerId={currentSong.artist?.user_id}
                 artist={currentSong.artist}
                 song={currentSong}
+                minimal={true}
+                addedComment={
+                  mobileAddedComment?.songId === currentSong.id
+                    ? mobileAddedComment.comment
+                    : null
+                }
+              />
+            </div>
+
+            {/* Quick Reaction Pills */}
+            <div className="flex gap-2 overflow-x-auto py-2.5 px-1 border-t border-zinc-900 scrollbar-none">
+              {["i love this ❤️‍🔥", "on repeat!!!", "this is my vibe 🫶", "fire 🔥", "masterpiece 🎵"].map((quickText) => (
+                <button
+                  key={quickText}
+                  type="button"
+                  onClick={() => setCommentContent(quickText)}
+                  className="shrink-0 rounded-full border border-zinc-800 bg-zinc-900/90 px-3.5 py-1.5 text-xs font-semibold text-zinc-300 transition hover:border-orange-500/50 hover:bg-zinc-850 hover:text-white active:scale-95"
+                >
+                  {quickText}
+                </button>
+              ))}
+            </div>
+
+            {/* Bottom Timestamp Comment Bar */}
+            <div className="pt-2 px-1">
+              <CommentComposer
+                songId={currentSong.id}
+                value={commentContent}
+                onChange={setCommentContent}
+                timestampText={formatDuration(currentTime || 0)}
+                placeholder="Add a comment at..."
+                onCommentAdded={(newComment) => {
+                  setMobileAddedComment({
+                    songId: currentSong.id,
+                    comment: newComment,
+                  });
+                  setCommentContent("");
+                }}
               />
             </div>
           </div>
@@ -544,7 +638,7 @@ export function BottomPlayer() {
                     {currentSong.title}
                   </span>
                   <span className="block truncate text-[10px] leading-tight text-zinc-400 mt-0.5">
-                    {currentSong.artist.name}
+                    {currentArtistName}
                   </span>
                 </div>
               </button>
@@ -606,12 +700,18 @@ export function BottomPlayer() {
                     >
                       {currentSong.title}
                     </Link>
-                    <Link
-                      href={`/artists/${currentSong.artist.id}`}
-                      className="block truncate text-[10px] text-zinc-400 hover:text-zinc-200 transition-colors mt-0.5"
-                    >
-                      {currentSong.artist.name}
-                    </Link>
+                    {currentSong.artist?.id ? (
+                      <Link
+                        href={`/artists/${currentSong.artist.id}`}
+                        className="block truncate text-[10px] text-zinc-400 hover:text-zinc-200 transition-colors mt-0.5"
+                      >
+                        {currentArtistName}
+                      </Link>
+                    ) : (
+                      <span className="block truncate text-[10px] text-zinc-400 mt-0.5">
+                        {currentArtistName}
+                      </span>
+                    )}
                   </div>
                   
                   {/* Nút Like thực tế */}

@@ -103,19 +103,25 @@ export function CommentItem({
         <div className="min-w-0 flex-1 space-y-1">
           {/* Metadata Row */}
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-zinc-200 hover:text-[#ff5500] transition duration-150 cursor-pointer">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs sm:text-sm font-bold text-zinc-100 hover:text-orange-400 transition cursor-pointer">
                 {comment.user.username}
               </span>
 
+              <span className="rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.2 text-[10px] font-mono font-semibold">
+                at 0:00
+              </span>
+
               {comment.isArtist && (
-                <span className="rounded bg-[#ff5500] px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-white">
+                <span className="rounded bg-orange-500 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider text-orange-950">
                   Artist
                 </span>
               )}
-            </div>
 
-            <span className="text-[11px] text-zinc-500">{timeAgo(comment.created_at)}</span>
+              <span className="text-[10px] text-zinc-500">
+                • {timeAgo(comment.created_at)}
+              </span>
+            </div>
           </div>
 
           {/* Comment text */}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useFollow } from "@/components/follow/FollowProvider";
@@ -345,6 +346,8 @@ function buildArtists(songs: Song[]) {
 }
 
 export function RightSidebar() {
+  const pathname = usePathname();
+  const isSearchPage = pathname === "/search" || pathname.startsWith("/search");
   const { accessToken, isLoading: authLoading } = useAuth();
   const { likedSongs } = useLikes();
   const { playlists } = usePlaylists();
@@ -476,7 +479,7 @@ export function RightSidebar() {
         data-right-sidebar-scroll
         className="sticky top-20 space-y-5 pb-[120px]"
       >
-        {artists.length > 0 && (
+        {!isSearchPage && artists.length > 0 && (
           <SidebarSection title="Artists you should follow">
             {artists.map((artist) => (
               <ArtistItem key={artist.id} artist={artist} />

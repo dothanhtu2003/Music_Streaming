@@ -201,6 +201,12 @@ export type UniversalSearchItem = {
   imageUrl?: string | null;
   href: string;
   score?: number;
+  duration?: number | null;
+  createdAt?: string | null;
+  likeCount?: number | null;
+  repostCount?: number | null;
+  commentCount?: number | null;
+  playCount?: number | null;
 };
 
 export type SearchHistoryItem = {

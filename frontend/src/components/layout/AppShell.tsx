@@ -20,7 +20,8 @@ export function AppShell({ children }: AppShellProps) {
     pathname === "/" ||
     pathname.startsWith("/studio") ||
     pathname.startsWith("/about") ||
-    pathname.startsWith("/popular");
+    pathname.startsWith("/popular") ||
+    pathname.startsWith("/search");
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-black text-zinc-100">
