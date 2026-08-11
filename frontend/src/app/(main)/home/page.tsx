@@ -206,7 +206,7 @@ function HomeContent() {
       />
 
       {/* Quick Vibe Filter Chips (Spotify Style) */}
-      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pt-1 pb-1">
+      <div className="hidden">
         <span className="rounded-full bg-orange-500 px-4 py-1.5 text-xs font-black text-orange-950 shadow-md shadow-orange-500/20 shrink-0 cursor-pointer">
           🎵 All
         </span>

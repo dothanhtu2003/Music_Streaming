@@ -36,7 +36,6 @@ const headerNavItems = [
   { label: "Home", href: "/home" },
   { label: "Feed", href: "/feed" },
   { label: "Library", href: "/playlists" },
-  { label: "About", href: "/about" },
 ];
 
 function isActivePath(pathname: string, href: string) {
