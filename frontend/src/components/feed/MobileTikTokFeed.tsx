@@ -373,8 +373,8 @@ export function MobileTikTokFeed() {
                   <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-950 rounded-[2rem]" />
                 )}
 
-                {/* Dark Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/20 to-black/90 rounded-[2rem] pointer-events-none" />
+                {/* Subtle Light Gradient Overlay (Preserves image brightness & legibility) */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/50 rounded-[2rem] pointer-events-none" />
 
                 {/* Top Pill Navigation inside Card */}
                 <div className="relative z-30 flex items-center justify-between pt-1 px-2">
