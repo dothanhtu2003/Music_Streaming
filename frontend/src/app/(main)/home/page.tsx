@@ -6,7 +6,6 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { NowPlayingHero } from "@/components/NowPlayingHero";
 import { HorizontalSongCarousel } from "@/components/song/HorizontalSongCarousel";
 import { RecentlyPlayedList } from "@/components/song/RecentlyPlayedList";
-import { PlayIcon } from "@/components/ui/Icons";
 import {
   getGenresRequest,
   getRecentlyPlayed,
@@ -199,14 +198,6 @@ function HomeContent() {
     };
   }, [accessToken, authLoading]);
 
-  const handleShufflePlay = () => {
-    const allSongs = genreRows.flatMap((row) => row.songs);
-    if (allSongs.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * allSongs.length);
-    const randomSong = allSongs[randomIndex];
-    playSong(randomSong, allSongs);
-  };
-
   return (
     <div className="space-y-10 page-fade-in relative pb-10">
       {/* Dynamic Background Glow representing the Vibe */}
@@ -257,16 +248,6 @@ function HomeContent() {
                 Discover, play, and save your music. Browse songs from the catalog, create playlists, and build your personal collection.
               </p>
 
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={handleShufflePlay}
-                  className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-black text-black shadow-lg shadow-orange-500/20 transition-all hover:bg-orange-400 active:scale-95"
-                >
-                  <PlayIcon size={14} className="fill-current" />
-                  <span>Phát ngẫu nhiên</span>
-                </button>
-              </div>
             </div>
 
             {/* Dynamic visual monitor block inside Hero - Visible on Desktop only */}
