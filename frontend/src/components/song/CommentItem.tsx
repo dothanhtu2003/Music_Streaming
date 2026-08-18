@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { deleteSongCommentRequest, resolveApiAssetUrl } from "@/lib/api";
 import { ReplyForm } from "@/components/song/ReplyForm";
@@ -88,25 +89,30 @@ export function CommentItem({
     <div className="space-y-3">
       <div className="group flex items-start gap-4 py-3 border-b border-zinc-900/60 last:border-b-0 transition duration-200">
         {/* Avatar */}
-        {avatarUrl ? (
-          <div
-            className="h-10 w-10 shrink-0 rounded-full bg-cover bg-center border border-zinc-800 shadow-sm"
-            style={{ backgroundImage: `url(${avatarUrl})` }}
-          />
-        ) : (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-xs font-bold text-zinc-400 uppercase tracking-wider">
-            {comment.user.username.slice(0, 2)}
-          </div>
-        )}
+        <Link href={`/users/${comment.user.id}`} className="shrink-0 hover:opacity-90 transition">
+          {avatarUrl ? (
+            <div
+              className="h-10 w-10 shrink-0 rounded-full bg-cover bg-center border border-zinc-800 shadow-sm"
+              style={{ backgroundImage: `url(${avatarUrl})` }}
+            />
+          ) : (
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-xs font-bold text-zinc-400 uppercase tracking-wider">
+              {comment.user.username.slice(0, 2)}
+            </div>
+          )}
+        </Link>
 
         {/* Content Area */}
         <div className="min-w-0 flex-1 space-y-1">
           {/* Metadata Row */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs sm:text-sm font-bold text-zinc-100 hover:text-orange-400 transition cursor-pointer">
+              <Link
+                href={`/users/${comment.user.id}`}
+                className="text-xs sm:text-sm font-bold text-zinc-100 hover:text-orange-400 transition cursor-pointer"
+              >
                 {comment.user.username}
-              </span>
+              </Link>
 
               <span className="rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.2 text-[10px] font-mono font-semibold">
                 at 0:00

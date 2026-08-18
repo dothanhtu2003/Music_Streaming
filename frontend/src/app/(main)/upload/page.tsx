@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { getGenresRequest, uploadTrackRequest } from "@/lib/api";
 import { notifySongUploaded } from "@/lib/song-events";
@@ -739,9 +740,12 @@ export default function UploadPage() {
               <div className="flex min-w-0 items-center gap-4">
                 {sharedCoverFile && sharedCoverPreviewUrl ? (
                   <div className="relative shrink-0">
-                    <img
+                    <Image
                       src={sharedCoverPreviewUrl}
                       alt="Shared cover preview"
+                      width={64}
+                      height={64}
+                      unoptimized
                       className="h-16 w-16 rounded-lg border border-zinc-800 object-cover shadow-md"
                     />
                     <button

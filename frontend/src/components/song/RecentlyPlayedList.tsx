@@ -256,11 +256,11 @@ export function RecentlyPlayedList({
   const displayedItems = limit !== undefined ? safeItems.slice(0, limit) : safeItems;
 
   return (
-    <div className="no-scrollbar flex overflow-x-auto gap-3 snap-x snap-mandatory py-1 md:flex-col md:overflow-x-visible md:gap-2">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:flex md:flex-col md:gap-2">
       {displayedItems.map((entry) => (
         <div
           key={entry.recentlyPlayedId}
-          className="w-[280px] shrink-0 snap-start md:w-auto md:shrink-1 md:snap-align-none"
+          className="w-full md:w-auto"
         >
           {isSongItem(entry) ? (
             <RecentlyPlayedSongRow

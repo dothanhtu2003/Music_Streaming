@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
   AdminNotice,
@@ -454,9 +455,12 @@ export default function AdminSongsPage() {
                     <tr key={song.id} className="text-zinc-300 hover:bg-zinc-900/35 transition-colors">
                       <td className="px-5 py-3 text-center">
                         {song.cover_url ? (
-                          <img
+                          <Image
                             src={song.cover_url}
                             alt={`${song.title} artwork`}
+                            width={48}
+                            height={48}
+                            unoptimized
                             className="h-12 w-12 rounded-lg object-cover border border-zinc-800 shadow-md mx-auto"
                           />
                         ) : (

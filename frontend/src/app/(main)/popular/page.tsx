@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { getSongsRequest } from "@/lib/api";
-import { SongListItem } from "@/components/song/SongListItem";
 import { ListItemSkeleton } from "@/components/ui/Skeletons";
 import { HeartIcon, MoreIcon, PauseIcon, PlayIcon, PlusIcon, UserIcon, MusicIcon } from "@/components/ui/Icons";
 import { usePlayerStore } from "@/stores/player-store";

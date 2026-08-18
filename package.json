@@ -6,32 +6,39 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "lint": "npm --prefix frontend run lint",
-    "build": "npm --prefix frontend run build"
+    "db:setup": "node src/db/setup.js",
+    "db:migrate": "node src/db/migrate.js",
+    "test": "node --test --test-concurrency=1 test/backend.test.js",
+    "test:backend": "node --test --test-concurrency=1 test/backend.test.js",
+    "test:cloudinary": "node test/cloudinary.integration.test.js",
+    "lint": "eslint src test",
+    "lint:frontend": "npm --prefix frontend run lint",
+    "build": "npm --prefix frontend run build",
+    "verify": "npm run lint && npm test && npm --prefix frontend test && npm run lint:frontend && npm run build"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "engines": {
-    "node": "18.20.4"
+    "node": ">=20.9.0"
   },
   "dependencies": {
-    "axios": "^1.17.0",
+    "axios": "^1.18.0",
     "bcrypt": "^6.0.0",
-    "cloudinary": "^1.41.3",
+    "cloudinary": "^2.10.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
-    "morgan": "^1.10.1",
-    "multer": "^2.1.1",
-    "multer-storage-cloudinary": "^4.0.0",
+    "multer": "^2.2.0",
     "pg": "^8.21.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "eslint": "^9.39.5",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
   }
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SongCard } from "@/components/song/SongCard";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -114,9 +115,12 @@ function AlbumDetailContent({ albumId }: { albumId: string }) {
         
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
           {coverUrl ? (
-            <img
+            <Image
               src={coverUrl}
               alt={`${album.title} cover`}
+              width={144}
+              height={144}
+              unoptimized
               className="h-32 w-32 rounded-xl border border-zinc-800 object-cover shadow-lg sm:h-36 sm:w-36"
             />
           ) : (

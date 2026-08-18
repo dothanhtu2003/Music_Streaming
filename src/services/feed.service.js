@@ -107,6 +107,78 @@ const getFeedSongs = async (userId, query) => {
   };
 };
 
+/**
+ * Gets a randomized list of active songs, prioritizing unlistened songs for the user.
+ */
+const getDiscoverSongs = async (userId, query = {}) => {
+  const { page, limit, offset } = parsePagination(query);
+  const excludeIds = query.exclude_ids
+    ? String(query.exclude_ids).split(",").map((id) => id.trim()).filter(Boolean)
+    : [];
+
+  const whereConditions = ["s.is_active = TRUE"];
+  const params = [];
+
+  if (excludeIds.length > 0) {
+    params.push(excludeIds);
+    whereConditions.push(`s.id NOT IN (SELECT UNNEST($${params.length}::uuid[]))`);
+  }
+
+  if (userId) {
+    params.push(userId);
+    whereConditions.push(`s.id NOT IN (SELECT song_id FROM listening_history WHERE user_id = $${params.length})`);
+  }
+
+  let whereSql = whereConditions.join(" AND ");
+
+  const countResult = await pool.query(
+    `SELECT COUNT(*) AS total
+     FROM songs s
+     WHERE ${whereSql}`,
+    params
+  );
+
+  let totalItems = Number(countResult.rows[0].total);
+
+  if (totalItems === 0 && userId) {
+    const fallbackWhere = ["s.is_active = TRUE"];
+    const fallbackParams = [];
+    if (excludeIds.length > 0) {
+      fallbackParams.push(excludeIds);
+      fallbackWhere.push(`s.id NOT IN (SELECT UNNEST($${fallbackParams.length}::uuid[]))`);
+    }
+
+    const fallbackCount = await pool.query(
+      `SELECT COUNT(*) AS total FROM songs s WHERE ${fallbackWhere.join(" AND ")}`,
+      fallbackParams
+    );
+    totalItems = Number(fallbackCount.rows[0].total);
+    whereSql = fallbackWhere.join(" AND ");
+    params.length = 0;
+    params.push(...fallbackParams);
+  }
+
+  params.push(limit, offset);
+  const result = await pool.query(
+    `SELECT ${songSelect}
+     FROM songs s
+     JOIN artists ar ON ar.id = s.artist_id
+     ${artistLinkedUserJoin}
+     LEFT JOIN albums al ON al.id = s.album_id
+     LEFT JOIN genres g ON g.id = s.genre_id
+     WHERE ${whereSql}
+     ORDER BY RANDOM()
+     LIMIT $${params.length - 1} OFFSET $${params.length}`,
+    params
+  );
+
+  return {
+    items: result.rows.map(formatSong),
+    pagination: buildPagination(totalItems, page, limit),
+  };
+};
+
 module.exports = {
   getFeedSongs,
+  getDiscoverSongs,
 };

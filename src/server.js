@@ -1,5 +1,3 @@
-
-
 const app = require("./app");
 const env = require("./config/env");
 const { connectToDatabase, pool } = require("./db/pool");
@@ -15,10 +13,22 @@ const startServer = async () => {
     const shutdown = async (signal) => {
       console.log(`${signal} received. Closing server...`);
 
+      const forceExitTimer = setTimeout(() => {
+        console.error("Graceful shutdown timed out");
+        process.exit(1);
+      }, 10000);
+      forceExitTimer.unref();
+
       server.close(async () => {
-        await pool.end();
-        console.log("Server closed");
-        process.exit(0);
+        try {
+          await pool.end();
+          clearTimeout(forceExitTimer);
+          console.log("Server closed");
+          process.exit(0);
+        } catch (error) {
+          console.error("Failed to close database pool:", error.message);
+          process.exit(1);
+        }
       });
     };
 
@@ -29,9 +39,5 @@ const startServer = async () => {
     process.exit(1);
   }
 };
-
-console.log('DB_USER:', process.env.DB_USER);
-console.log('DB_HOST:', process.env.DB_HOST);
-console.log('DB_SSL:', process.env.DB_SSL);
 
 startServer();

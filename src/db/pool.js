@@ -83,27 +83,9 @@ const getPoolConfig = () => {
 
 const pool = new Pool(getPoolConfig());
 
-// const connectToDatabase = async () => {
-//   const client = await pool.connect();
-
-//   try {
-//     await client.query("SELECT 1");
-//     console.log("PostgreSQL connected successfully");
-//   } finally {
-//     client.release();
-//   }
-// };
-
 const connectToDatabase = async () => {
-  const config = getPoolConfig();
-  console.log('Connecting with:', {
-    host: config.host,
-    port: config.port,
-    user: config.user,
-    database: config.database,
-    ssl: config.ssl
-  });
   const client = await pool.connect();
+
   try {
     await client.query("SELECT 1");
     console.log("PostgreSQL connected successfully");

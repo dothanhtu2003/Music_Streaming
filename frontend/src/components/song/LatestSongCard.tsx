@@ -35,7 +35,7 @@ function LatestSongCover({
 
   return (
     <div className={cn(
-      "group/cover relative h-[160px] w-[160px] overflow-hidden rounded-xl bg-zinc-900 transition-all duration-300",
+      "group/cover relative h-[136px] w-[136px] sm:h-[160px] sm:w-[160px] overflow-hidden rounded-xl bg-zinc-900 transition-all duration-300",
       isCurrentSong && "border-2 border-orange-500 shadow-lg shadow-orange-500/25 ring-2 ring-orange-500/20"
     )}>
       {hasCover ? (
@@ -45,11 +45,11 @@ function LatestSongCover({
           alt={`${song.title} cover`}
           draggable={false}
           onError={() => setFailedCoverUrl(safeCoverUrl)}
-          className="h-[160px] w-[160px] select-none object-cover transition-transform duration-500 group-hover/cover:scale-105"
+          className="h-[136px] w-[136px] sm:h-[160px] sm:w-[160px] select-none object-cover transition-transform duration-500 group-hover/cover:scale-105"
         />
       ) : (
-        <div className="grid h-[160px] w-[160px] place-items-center bg-gradient-to-br from-orange-500/20 to-zinc-950 transition-transform duration-500 group-hover/cover:scale-105">
-          <span className="text-4xl font-black text-orange-500/70">
+        <div className="grid h-[136px] w-[136px] sm:h-[160px] sm:w-[160px] place-items-center bg-gradient-to-br from-orange-500/20 to-zinc-950 transition-transform duration-500 group-hover/cover:scale-105">
+          <span className="text-3xl sm:text-4xl font-black text-orange-500/70">
             {fallbackLetter}
           </span>
         </div>
@@ -135,7 +135,7 @@ export function LatestSongCard({ song, queue }: LatestSongCardProps) {
   return (
     <article
       className={cn(
-        "w-[160px] flex-none snap-start",
+        "w-[136px] sm:w-[160px] flex-none snap-start",
         isCurrentSong && "text-orange-400",
       )}
     >

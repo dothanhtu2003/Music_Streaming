@@ -38,7 +38,15 @@ const validateUsername = (username) => {
 };
 
 const validatePassword = (password) => {
-  return typeof password === "string" && password.length >= 6;
+  return (
+    typeof password === "string" &&
+    password.length >= 8 &&
+    password.length <= 128
+  );
+};
+
+const validateLoginPassword = (password) => {
+  return typeof password === "string" && password.length > 0 && password.length <= 128;
 };
 
 const normalizeOptionalString = (value) => {
@@ -70,7 +78,7 @@ const validateOptionalUrl = (value, fieldName) => {
 };
 
 const validateRegisterInput = ({ email, username, password }) => {
-  if (!validateEmail(email)) {
+  if (!validateEmail(email) || email.length > 254) {
     throw new AppError("Invalid email", 400);
   }
 
@@ -82,7 +90,7 @@ const validateRegisterInput = ({ email, username, password }) => {
   }
 
   if (!validatePassword(password)) {
-    throw new AppError("Password must be at least 6 characters", 400);
+    throw new AppError("Password must be between 8 and 128 characters", 400);
   }
 };
 
@@ -91,8 +99,8 @@ const validateLoginInput = ({ email, password }) => {
     throw new AppError("Invalid email", 400);
   }
 
-  if (!validatePassword(password)) {
-    throw new AppError("Password must be at least 6 characters", 400);
+  if (!validateLoginPassword(password)) {
+    throw new AppError("Password is required and must be at most 128 characters", 400);
   }
 };
 

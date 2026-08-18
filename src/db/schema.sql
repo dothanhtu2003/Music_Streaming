@@ -275,10 +275,15 @@ CREATE INDEX IF NOT EXISTS idx_playlist_songs_position ON playlist_songs(playlis
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_revoked_at ON refresh_tokens(revoked_at);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_active_user
+ON refresh_tokens(user_id, expires_at)
+WHERE revoked_at IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_listening_history_user_id ON listening_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_listening_history_song_id ON listening_history(song_id);
 CREATE INDEX IF NOT EXISTS idx_listening_history_listened_at ON listening_history(listened_at DESC);
+CREATE INDEX IF NOT EXISTS idx_listening_history_user_listened_at
+ON listening_history(user_id, listened_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_recently_played_user_id ON recently_played(user_id);
 CREATE INDEX IF NOT EXISTS idx_recently_played_song_id ON recently_played(song_id);

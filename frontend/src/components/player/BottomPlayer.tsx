@@ -87,6 +87,7 @@ export function BottomPlayer() {
     songId: string;
     comment: SongComment;
   } | null>(null);
+  const [isClosingMobilePlayer, setIsClosingMobilePlayer] = useState(false);
   const closeAfterNavigationRef = useRef(false);
 
   useEffect(() => {
@@ -100,7 +101,7 @@ export function BottomPlayer() {
   }, []);
 
   useEffect(() => {
-    if (closeAfterNavigationRef.current && pathname === "/home") {
+    if (closeAfterNavigationRef.current && !pathname.startsWith("/songs/")) {
       closeAfterNavigationRef.current = false;
       setShowCommentsSheet(false);
       setIsMobileExpanded(false);
@@ -188,11 +189,20 @@ export function BottomPlayer() {
 
     if (pathname.startsWith("/songs/")) {
       closeAfterNavigationRef.current = true;
-      router.replace("/home", { scroll: false });
+      if (typeof window !== "undefined" && window.history.length > 1) {
+        router.back();
+      } else {
+        router.replace("/home", { scroll: false });
+      }
       return;
     }
 
-    setIsMobileExpanded(false);
+    if (isClosingMobilePlayer) return;
+    setIsClosingMobilePlayer(true);
+    setTimeout(() => {
+      setIsMobileExpanded(false);
+      setIsClosingMobilePlayer(false);
+    }, 280);
   };
 
   const touchStartXRef = useRef<number | null>(null);
@@ -232,7 +242,12 @@ export function BottomPlayer() {
         <div
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          className="fixed inset-0 z-50 flex flex-col justify-between bg-black text-white md:hidden animate-in fade-in slide-in-from-bottom duration-300 overflow-hidden"
+          className={cn(
+            "fixed inset-0 z-50 flex flex-col justify-between bg-black text-white md:hidden overflow-hidden transition-all duration-300 ease-out",
+            isClosingMobilePlayer
+              ? "translate-y-full opacity-0 pointer-events-none"
+              : "animate-in fade-in slide-in-from-bottom duration-300 ease-out translate-y-0 opacity-100",
+          )}
         >
           {/* Full-Screen Immersive Cover Background with Horizontal Panning */}
           <div
@@ -630,7 +645,7 @@ export function BottomPlayer() {
               <button
                 type="button"
                 onClick={() => setIsMobileExpanded(true)}
-                className="flex min-w-0 flex-1 items-center gap-2.5 text-left focus:outline-none"
+                className="flex min-w-0 flex-1 items-center gap-2.5 text-left focus:outline-none active:scale-95 transition-transform duration-200 cursor-pointer"
               >
                 <CoverThumb />
                 <div className="min-w-0 flex-1">

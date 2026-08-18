@@ -52,10 +52,10 @@ function ArrowIcon({ direction }: { direction: "left" | "right" }) {
 
 function LatestSongCardSkeleton() {
   return (
-    <div className="w-[160px] flex-none snap-start animate-pulse">
-      <div className="h-[160px] w-[160px] rounded-xl bg-zinc-900 shimmer" />
-      <div className="mt-3 h-4 w-32 rounded bg-zinc-900 shimmer" />
-      <div className="mt-2 h-3 w-24 rounded bg-zinc-900 shimmer" />
+    <div className="w-[136px] sm:w-[160px] flex-none snap-start animate-pulse">
+      <div className="h-[136px] w-[136px] sm:h-[160px] sm:w-[160px] rounded-xl bg-zinc-900 shimmer" />
+      <div className="mt-3 h-4 w-28 sm:w-32 rounded bg-zinc-900 shimmer" />
+      <div className="mt-2 h-3 w-20 sm:w-24 rounded bg-zinc-900 shimmer" />
       <div className="mt-2 flex gap-2">
         <div className="h-8 w-8 rounded-full bg-zinc-900 shimmer" />
         <div className="h-8 w-8 rounded-full bg-zinc-900 shimmer" />

@@ -16,6 +16,7 @@ type AppShellProps = {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const currentSong = usePlayerStore((state) => state.currentSong);
+  const isFeedPage = pathname === "/feed";
   const isFullWidthPage =
     pathname === "/" ||
     pathname.startsWith("/studio") ||
@@ -25,22 +26,40 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-black text-zinc-100">
-      <div className={cn(
-        "min-h-screen transition-all duration-300",
-        currentSong ? "pb-36 md:pb-28" : "pb-24 md:pb-8"
-      )}>
-        <AppHeader />
+      <div
+        className={cn(
+          "min-h-screen transition-all duration-300",
+          isFeedPage
+            ? "pb-16 md:pb-28"
+            : currentSong
+            ? "pb-40 md:pb-28"
+            : "pb-24 md:pb-8",
+        )}
+      >
+        <div className={cn(pathname !== "/home" && "hidden md:block")}>
+          <AppHeader />
+        </div>
         {pathname === "/" || pathname === "/about" ? (
           <main className="w-full">{children}</main>
         ) : (
-          <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-5 sm:px-6 lg:px-8">
+          <div
+            className={cn(
+              "mx-auto flex w-full max-w-7xl gap-6",
+              isFeedPage
+                ? "p-0 sm:px-6 lg:px-8 py-0 sm:py-5"
+                : "px-4 py-5 sm:px-6 lg:px-8",
+            )}
+          >
             <main className="min-w-0 flex-1">{children}</main>
             {!isFullWidthPage && <RightSidebar />}
           </div>
         )}
       </div>
       <MiniSidebar />
-      <BottomPlayer />
+      <div className={cn(isFeedPage && "hidden md:block")}>
+        <BottomPlayer />
+      </div>
     </div>
   );
 }
+

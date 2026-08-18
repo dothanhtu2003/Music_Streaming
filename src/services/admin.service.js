@@ -288,26 +288,6 @@ const getUserOptions = async () => {
   }));
 };
 
-const getUserById = async (userId) => {
-  validateUuid(userId, "userId");
-
-  const result = await pool.query(
-    `SELECT ${userFields}
-     FROM users
-     WHERE id = $1
-     LIMIT 1`,
-    [userId]
-  );
-
-  const user = result.rows[0];
-
-  if (!user) {
-    throw new AppError("User not found", 404);
-  }
-
-  return user;
-};
-
 const validateRole = (role) => {
   const normalizedRole = validateRequiredString(role, "role", 20);
 
@@ -346,26 +326,39 @@ const setUserBanned = async (targetUserId, adminUserId, isBanned) => {
     throw new AppError("Admin cannot ban themselves", 400);
   }
 
-  await getUserById(targetUserId);
+  const client = await pool.connect();
 
-  const result = await pool.query(
-    `UPDATE users
-     SET is_banned = $2, updated_at = NOW()
-     WHERE id = $1
-     RETURNING ${userFields}`,
-    [targetUserId, isBanned]
-  );
-
-  if (isBanned) {
-    await pool.query(
-      `UPDATE refresh_tokens
-       SET revoked_at = NOW()
-       WHERE user_id = $1 AND revoked_at IS NULL`,
-      [targetUserId]
+  try {
+    await client.query("BEGIN");
+    const result = await client.query(
+      `UPDATE users
+       SET is_banned = $2, updated_at = NOW()
+       WHERE id = $1
+       RETURNING ${userFields}`,
+      [targetUserId, isBanned]
     );
-  }
 
-  return formatUser(result.rows[0]);
+    if (!result.rows[0]) {
+      throw new AppError("User not found", 404);
+    }
+
+    if (isBanned) {
+      await client.query(
+        `UPDATE refresh_tokens
+         SET revoked_at = NOW()
+         WHERE user_id = $1 AND revoked_at IS NULL`,
+        [targetUserId]
+      );
+    }
+
+    await client.query("COMMIT");
+    return formatUser(result.rows[0]);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 module.exports = {

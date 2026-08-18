@@ -1,12 +1,11 @@
 const express = require("express");
 const feedController = require("../controllers/feed.controller");
-const { authMiddleware } = require("../middlewares/auth.middleware");
+const { authMiddleware, optionalAuthMiddleware } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
-// Feed requires authentication
-router.use(authMiddleware);
-
-router.get("/", feedController.getFeedSongs);
+router.get("/discover", optionalAuthMiddleware, feedController.getDiscover);
+router.get("/", authMiddleware, feedController.getFeedSongs);
 
 module.exports = router;
+

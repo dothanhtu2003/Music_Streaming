@@ -2,7 +2,6 @@ const express = require("express");
 const path = require("path");
 const cors = require("cors");
 const helmet = require("helmet");
-const morgan = require("morgan");
 const { rateLimit } = require("express-rate-limit");
 const env = require("./config/env");
 const routes = require("./routes");
@@ -12,6 +11,7 @@ const {
   notFoundHandler,
   errorHandler,
 } = require("./middlewares/error.middleware");
+const { requestContext } = require("./middlewares/request-context.middleware");
 
 const app = express();
 
@@ -42,9 +42,10 @@ app.use(
     },
   })
 );
+app.use(requestContext);
 app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 app.use(apiLimiter);
 app.use(
   "/uploads",
@@ -54,10 +55,6 @@ app.use(
     },
   })
 );
-
-if (env.nodeEnv !== "test") {
-  app.use(morgan("dev"));
-}
 
 app.use("/api", routes);
 

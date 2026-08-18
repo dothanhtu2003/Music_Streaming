@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: music_streaming_test_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d music_streaming_test_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_NAME: music_streaming_test_ci
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_SSL: "false"
+      JWT_ACCESS_SECRET: ci-access-secret-at-least-32-characters
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_TOKEN_EXPIRES_DAYS: 7
+      FRONTEND_URL: http://127.0.0.1:3200
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - name: Install backend dependencies
+        run: npm ci
+      - name: Audit backend production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Lint backend
+        run: npm run lint
+      - name: Test backend
+        run: npm test
+      - name: Set up and migrate test database
+        run: |
+          npm run db:setup
+          npm run db:migrate
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Audit frontend production dependencies
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5000/api
+        run: npm run build
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run browser E2E tests
+        working-directory: frontend
+        env:
+          E2E_DB_NAME: music_streaming_test_ci
+        run: npm run test:e2e
+      - name: Check tracked files for obvious secrets
+        shell: bash
+        run: |
+          if git grep -n -I -E '(sk-[A-Za-z0-9_-]{20,}|postgres(ql)?://[^[:space:]]+:[^[:space:]]+@)' -- ':!*.example' ':!README.md' ':!tatus'; then
+            echo 'Potential secret found in a tracked file.' >&2
+            exit 1
+          fi

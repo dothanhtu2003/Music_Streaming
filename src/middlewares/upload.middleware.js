@@ -1,7 +1,6 @@
 const crypto = require("crypto");
 const path = require("path");
 const multer = require("multer");
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const { cloudinary } = require("../config/cloudinary");
 const AppError = require("../utils/appError");
 
@@ -153,36 +152,114 @@ const createFileFilter = (fallbackType = null) => {
   };
 };
 
-const createCloudinaryStorage = (fallbackType = null) => {
-  return new CloudinaryStorage({
-    cloudinary,
-    params: async (req, file) => {
-      const uploadType = getFileUploadType(file, fallbackType);
+const hasValidMagicBytes = (file, uploadType) => {
+  const buffer = file.buffer;
 
-      if (!uploadType) {
-        throw new AppError(
-          "Invalid file field. Use audio/audio_file and cover/cover_image",
-          400
-        );
+  if (!Buffer.isBuffer(buffer) || buffer.length < 4) {
+    return false;
+  }
+
+  if (uploadType === "audio") {
+    const hasId3Header = buffer.subarray(0, 3).toString("ascii") === "ID3";
+    const hasMpegFrameSync = buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0;
+    return hasId3Header || hasMpegFrameSync;
+  }
+
+  if (file.mimetype === "image/jpeg") {
+    return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  }
+
+  if (file.mimetype === "image/png") {
+    return buffer.subarray(0, 8).equals(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    );
+  }
+
+  if (file.mimetype === "image/webp") {
+    return (
+      buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+      buffer.subarray(8, 12).toString("ascii") === "WEBP"
+    );
+  }
+
+  return false;
+};
+
+const getMaxSize = (uploadType) => {
+  if (uploadType === "audio") return AUDIO_MAX_SIZE;
+  if (uploadType === "avatar") return AVATAR_MAX_SIZE;
+  return COVER_MAX_SIZE;
+};
+
+const uploadBuffer = (file, options) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
+      if (error) return reject(error);
+      return resolve(result);
+    });
+
+    stream.end(file.buffer);
+  });
+};
+
+const uploadFilesToCloudinary = (fallbackType = null) => {
+  return async (req, res, next) => {
+    const files = req.file
+      ? [req.file]
+      : Object.values(req.files || {}).flat();
+    const uploadedFiles = [];
+
+    try {
+      for (const file of files) {
+        const uploadType = getFileUploadType(file, fallbackType);
+
+        if (!uploadType) {
+          throw new AppError(
+            "Invalid file field. Use audio/audio_file and cover/cover_image",
+            400
+          );
+        }
+
+        validateFileType(file, uploadType);
+
+        if (file.size > getMaxSize(uploadType)) {
+          throw new AppError(`${uploadType} file is too large`, 413);
+        }
+
+        if (!hasValidMagicBytes(file, uploadType)) {
+          throw new AppError(
+            `Invalid ${uploadType} file content. The file signature does not match its type`,
+            400
+          );
+        }
+
+        const config = getAllowedConfig(uploadType);
+        const userPrefix = req.user?.id || "user";
+        const publicId =
+          uploadType === "avatar"
+            ? `${userPrefix}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`
+            : crypto.randomUUID();
+        const result = await uploadBuffer(file, {
+          folder: CLOUDINARY_FOLDERS[uploadType],
+          resource_type: config.resourceType,
+          allowed_formats: config.allowedFormats,
+          public_id: publicId,
+        });
+
+        file.filename = result.public_id;
+        file.path = result.secure_url;
+        file.secure_url = result.secure_url;
+        file.size = result.bytes || file.size;
+        delete file.buffer;
+        uploadedFiles.push(file);
       }
 
-      validateFileType(file, uploadType);
-
-      const config = getAllowedConfig(uploadType);
-      const userPrefix = req.user?.id || "user";
-      const publicId =
-        uploadType === "avatar"
-          ? `${userPrefix}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`
-          : crypto.randomUUID();
-
-      return {
-        folder: CLOUDINARY_FOLDERS[uploadType],
-        resource_type: config.resourceType,
-        allowed_formats: config.allowedFormats,
-        public_id: publicId,
-      };
-    },
-  });
+      return next();
+    } catch (error) {
+      await removeUploadedFiles(uploadedFiles);
+      return next(error);
+    }
+  };
 };
 
 const getCloudinaryResourceType = (file) => {
@@ -249,7 +326,7 @@ const validateTrackUpload = async (req, res, next) => {
 };
 
 const audioMulter = multer({
-  storage: createCloudinaryStorage("audio"),
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: AUDIO_MAX_SIZE,
     files: 1,
@@ -258,7 +335,7 @@ const audioMulter = multer({
 });
 
 const coverMulter = multer({
-  storage: createCloudinaryStorage("cover"),
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: COVER_MAX_SIZE,
     files: 1,
@@ -267,7 +344,7 @@ const coverMulter = multer({
 });
 
 const avatarMulter = multer({
-  storage: createCloudinaryStorage("avatar"),
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: AVATAR_MAX_SIZE,
     files: 1,
@@ -276,7 +353,7 @@ const avatarMulter = multer({
 });
 
 const trackMulter = multer({
-  storage: createCloudinaryStorage(),
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: AUDIO_MAX_SIZE,
     files: 2,
@@ -284,11 +361,14 @@ const trackMulter = multer({
   fileFilter: createFileFilter(),
 });
 
-const uploadAudio = [audioMulter.single("file")];
+const uploadAudio = [audioMulter.single("file"), uploadFilesToCloudinary("audio")];
 
-const uploadCover = [coverMulter.single("file")];
+const uploadCover = [coverMulter.single("file"), uploadFilesToCloudinary("cover")];
 
-const uploadAvatar = [avatarMulter.single("avatar")];
+const uploadAvatar = [
+  avatarMulter.single("avatar"),
+  uploadFilesToCloudinary("avatar"),
+];
 
 const uploadTrack = [
   trackMulter.fields([
@@ -297,6 +377,7 @@ const uploadTrack = [
     { name: "cover", maxCount: 1 },
     { name: "cover_image", maxCount: 1 },
   ]),
+  uploadFilesToCloudinary(),
   validateTrackUpload,
 ];
 

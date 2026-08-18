@@ -12,6 +12,20 @@ const getFeedSongs = async (req, res, next) => {
   }
 };
 
+const getDiscover = async (req, res, next) => {
+  try {
+    const userId = req.user ? req.user.id : null;
+    const result = await feedService.getDiscoverSongs(userId, req.query);
+    return successResponse(res, "Discover songs fetched successfully", result.items, 200, {
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getFeedSongs,
+  getDiscover,
 };
+

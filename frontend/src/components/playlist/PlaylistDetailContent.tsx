@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -71,16 +72,14 @@ function PlaylistCover({ playlist }: { playlist: PlaylistDetail }) {
   if (coverUrl && !imageError) {
     return (
       <div className="relative h-36 w-36 shrink-0 md:h-44 md:w-44">
-        <img
+        <Image
           src={coverUrl}
-          alt=""
-          className="hidden"
+          alt={`${playlist.title} cover`}
+          fill
+          sizes="(max-width: 768px) 144px, 176px"
+          unoptimized
+          className="rounded-lg object-cover"
           onError={() => setImageError(true)}
-        />
-        <div
-          className="h-full w-full rounded-lg bg-cover bg-center"
-          style={{ backgroundImage: `url(${coverUrl})` }}
-          aria-label={`${playlist.title} cover`}
         />
       </div>
     );

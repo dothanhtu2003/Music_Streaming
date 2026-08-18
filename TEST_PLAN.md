@@ -3,12 +3,15 @@
 ## 1. Thong tin chung
 
 - Project: Music Streaming Web App
-- Scope: Manual test cho backend API va frontend UI
+- Scope: Automated test cho cac luong cot loi va manual test cho backend API/frontend UI
 - Test environment:
   - Backend: `http://localhost:5000/api`
   - Frontend: `http://localhost:3000`
-  - Database: PostgreSQL `music_streaming`
+  - Database: dedicated PostgreSQL `music_streaming_test_codex_20260813`
 - Status mac dinh: `Chua chay`
+- Automated status (2026-08-13): backend `31 passed`, frontend unit `7 passed`,
+  Playwright E2E `7 passed`, Cloudinary cleanup integration `passed`; `0 failed`.
+- Cac dong manual ben duoi van la `Chua chay`; automated test khong tu dong danh dau manual case la Pass.
 - Priority:
   - `P1`: Chuc nang quan trong, anh huong truc tiep den luong chinh
   - `P2`: Chuc nang quan trong nhung co the test sau P1
@@ -21,7 +24,7 @@
 - Bai hat mau: `Demo Song`
 - Artist mau: `Demo Artist`
 - Genre mau: `Pop`
-- File audio hop le: file `.mp3` nho hon 20MB
+- File audio hop le: file `.mp3` nho hon 20MB (Cloudinary test tao file tam va xoa sau khi test)
 - File cover hop le: file `.jpg`, `.png` hoac `.webp` nho hon 5MB
 
 ## 3. Test Cases
@@ -52,7 +55,7 @@
 
 | Test case ID | Test case name | Steps | Input | Expected result | Priority | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| UPLOAD-001 | Admin upload audio hop le | 1. Dang nhap admin<br>2. Goi `POST /upload/audio` dang `multipart/form-data`<br>3. Chon file MP3 hop le | Key `file`, file `.mp3` nho hon 20MB | Upload thanh cong, response co `url`, file duoc luu trong `uploads/audio` | P1 | Chua chay |
+| UPLOAD-001 | Admin upload audio hop le | 1. Dang nhap admin<br>2. Goi `POST /upload/audio` dang `multipart/form-data`<br>3. Chon file MP3 hop le | Key `file`, file `.mp3` nho hon 20MB | Upload thanh cong, response co Cloudinary URL | P1 | Chua chay |
 | UPLOAD-002 | Admin upload cover hop le | 1. Dang nhap admin<br>2. Goi `POST /upload/cover`<br>3. Chon anh hop le | Key `file`, file `.jpg/.png/.webp` nho hon 5MB | Upload thanh cong, response co `url`, file duoc luu trong `uploads/covers` | P1 | Chua chay |
 | UPLOAD-003 | Upload audio sai dinh dang | 1. Dang nhap admin<br>2. Goi `POST /upload/audio`<br>3. Chon file khong phai MP3 | File `.txt` hoac audio sai content | He thong tra ve loi file khong hop le, khong luu file | P1 | Chua chay |
 | UPLOAD-004 | User thuong upload file | 1. Dang nhap user thuong<br>2. Goi `POST /upload/audio` hoac `/upload/cover` | File hop le | He thong tra ve `403 Forbidden` | P1 | Chua chay |
@@ -147,7 +150,10 @@
 
 ```bash
 npm install
-psql -U postgres -d music_streaming -f src/db/schema.sql
+npm run db:setup
+npm run db:migrate
+npm test
+npm run test:cloudinary
 npm run dev
 ```
 
@@ -162,6 +168,10 @@ http://localhost:5000/api
 ```bash
 cd frontend
 npm install
+npm test
+npm run test:e2e
+npm run lint
+npm run build
 npm run dev
 ```
 
@@ -175,5 +185,7 @@ http://localhost:3000
 
 - Test API bang Postman hoac Thunder Client theo endpoint trong tung test case.
 - Test UI bang trinh duyet tai `http://localhost:3000`.
+- `npm run test:e2e` seeds only a database whose name contains `_test_` and covers
+  login, refresh, playback, mobile, accessibility, admin redirect, 401, and 403.
 - Test responsive bang Chrome DevTools voi cac viewport: desktop `1366x768`, tablet `768x1024`, mobile `390x844`.
 - Sau khi test, cap nhat cot `Status` thanh `Pass`, `Fail` hoac `Blocked`.

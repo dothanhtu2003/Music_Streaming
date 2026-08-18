@@ -35,7 +35,7 @@ This **Music Streaming Web App** is a portfolio-ready, full-stack streaming plat
 ### 🎧 User Experience & Core Engine
 
 - **Stateful Audio Player**: Implements a Zustand-backed music player supporting continuous playback, queue management, volume controls, progression scrubbing, random shuffle, and various loop states (loop-track, loop-all, loop-off).
-- **Cloudinary-backed Uploads**: New audio, cover, and avatar uploads are handled by **Multer** with **CloudinaryStorage**, then persisted as Cloudinary URLs in PostgreSQL. The backend still exposes `/uploads` as a static path for existing or legacy local media assets.
+- **Cloudinary-backed Uploads**: New audio, cover, and avatar uploads are validated in Multer memory storage, streamed through the Cloudinary SDK, then persisted as Cloudinary URLs in PostgreSQL. The backend still exposes `/uploads` as a static path for existing or legacy local media assets.
 - **Waveform Visualization**: Generates, renders, and caches audio waveform peak data via **WaveSurfer.js** to deliver interactive audio player aesthetics.
 - **User Track Upload**: Authenticated users can upload their own tracks (MP3 + cover art) via a drag-and-drop upload page, with automatic notification on successful upload.
 - **Dynamic Content Discovery**:
@@ -377,7 +377,7 @@ erDiagram
 
 ### 📋 Prerequisites
 
-- **Runtime**: Node.js v18.x or higher
+- **Runtime**: Node.js v20.9 or higher (Node.js 20.19 recommended)
 - **Database**: PostgreSQL v14.x or higher
 - **Cloud Accounts**: Cloudinary API credentials
 
@@ -429,24 +429,15 @@ CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 ```
 
 #### 2. Configure the Database
-Create your local PostgreSQL database, then apply the base schema and all migrations:
+Create your local PostgreSQL database, then apply the base schema and tracked migrations:
 ```bash
-psql -U postgres -d music_streaming -f src/db/schema.sql
+npm run db:setup
+npm run db:migrate
 ```
 
-On PowerShell, run migrations in filename order:
-```powershell
-Get-ChildItem src/db/migrations/*.sql |
-  Sort-Object Name |
-  ForEach-Object { psql -U postgres -d music_streaming -f $_.FullName }
-```
-
-On bash, run:
-```bash
-for file in src/db/migrations/*.sql; do
-  psql -U postgres -d music_streaming -f "$file"
-done
-```
+`db:migrate` records applied filenames in `schema_migrations`, runs pending files
+in numeric order, and protects concurrent migration runs with a PostgreSQL
+advisory lock. Existing data is not reset.
 
 #### 3. Run Backend Server
 ```bash
@@ -482,14 +473,14 @@ All routes are mounted under `/api`. Paths below are relative to each module bas
 
 | Module | Base Path | Authentication | Implemented Endpoints |
 |---|---|---|---|
-| **Health** | `/api/health` | Open | `GET /` |
+| **Health** | `/api/health` | Open | `GET /`, `GET /readiness` |
 | **Auth** | `/api/auth` | Mixed | `POST /register`, `POST /login`, `POST /refresh`, `POST /logout`, `GET /me`, `PATCH /me`, `POST /me/avatar` |
 | **Songs** | `/api/songs` | Mixed | `GET /`, `GET /search`, `GET /me`, `GET /:id`, `GET /:id/waveform`, `POST /:id/waveform`, `POST /upload`, `POST /:id/listen`, `PATCH /:id/play`, `GET /:songId/comments`, `POST /:songId/comments`, admin `POST /`, `PUT /:id`, `DELETE /:id` |
 | **Comments** | `/api/comments` | User Session | `DELETE /:commentId` |
 | **Upload** | `/api/upload` | Admin Session | `POST /audio`, `POST /cover` |
 | **Playlists** | `/api/playlists` | Mixed | `GET /public/:slugOrId`, `POST /:id/share`, `POST /`, `GET /me`, `GET /`, `GET /:id`, `PUT /:id`, `PATCH /:id/visibility`, `DELETE /:id`, `POST /:id/songs`, `POST /:id/tracks`, `POST /:id/upload-track`, `DELETE /:id/songs/:songId`, `DELETE /:id/tracks/:songId`, `DELETE /:id/songs`, `DELETE /:id/tracks`, `PATCH /:id/songs/reorder`, `PATCH /:id/tracks/reorder` |
 | **Likes** | `/api/likes` | User Session | `POST /`, `DELETE /`, `GET /me` |
-| **Recently Played** | `/api/recently-played` | Mixed | `POST /` with optional auth, `GET /` with user session |
+| **Recently Played** | `/api/recently-played` | User Session | `POST /`, `GET /` |
 | **Follows** | `/api/follow` | Mixed | `GET /following`, `GET /status/:artistId`, `POST /:userId`, `DELETE /:userId`, `GET /list/:userId/followers`, `GET /list/:userId/following` |
 | **Feed** | `/api/feed` | User Session | `GET /` |
 | **Search** | `/api/search` | Mixed | `GET /`, `GET /suggestions`, `GET /recent`, `DELETE /recent`, `DELETE /recent/:id`, `GET /trending` |
@@ -508,14 +499,36 @@ All routes are mounted under `/api`. Paths below are relative to each module bas
 
 ## 🧪 Testing Status
 
-Automated end-to-end and unit tests are planned but not fully implemented yet. 
+Automated tests cover backend security/API behavior, frontend player/auth/API
+state, and Playwright browser flows against a dedicated PostgreSQL test database.
+The Cloudinary integration test verifies real upload cleanup after an intentional
+database failure when private credentials are available. Manual cases in
+`TEST_PLAN.md` remain marked as not run until individually verified.
 
-Manual validation is documented in [TEST_PLAN.md](file:///E:/music/TEST_PLAN.md), covering:
-- [x] Session Cycles & JWT validation
-- [x] Cloud uploads & database integrity checks
-- [x] Real-time audio queue manipulation
-- [x] Admin console user control tests (banning/role configuration)
-- [x] Layout responsive checks across mobile viewports
+```bash
+npm run lint
+npm test
+npm run test:cloudinary
+
+cd frontend
+npm test
+npm run test:e2e
+npm run lint
+npm run build
+```
+
+Run the complete local verification sequence from the repository root with
+`npm run verify`.
+
+## Current Limitations and Roadmap
+
+- Cloudinary network-outage simulation and the full manual CRUD/SSE matrix remain
+  outstanding; valid upload plus DB-failure cleanup has been verified.
+- Chromium mobile overflow and basic accessibility are automated; broader
+  browser/device/assistive-technology cases remain manual.
+- Legacy `/uploads` assets still require persistent server storage.
+- Search and waveform caching should be benchmarked with production-like data
+  before introducing another cache layer.
 
 ---
 

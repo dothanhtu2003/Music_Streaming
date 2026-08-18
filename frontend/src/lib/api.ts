@@ -1628,6 +1628,29 @@ export async function getFeedRequest(accessToken: string, page = 1, limit = 9) {
   };
 }
 
+export async function getDiscoverFeedRequest(
+  accessToken?: string | null,
+  page = 1,
+  limit = 10,
+  excludeIds: string[] = [],
+) {
+  const query: Record<string, string | number> = { page, limit };
+  if (excludeIds.length > 0) {
+    query.exclude_ids = excludeIds.join(",");
+  }
+
+  const response = await apiRequest<Song[]>(
+    `/feed/discover${buildQuery(query)}`,
+    accessToken ? { accessToken } : undefined,
+  );
+
+  return {
+    items: normalizeSongs(response.data ?? []),
+    pagination: getPagination(response, page, limit),
+  };
+}
+
+
 export async function getStudioOverviewRequest(accessToken: string) {
   const response = await apiRequest<StudioOverview>("/studio/overview", {
     accessToken,

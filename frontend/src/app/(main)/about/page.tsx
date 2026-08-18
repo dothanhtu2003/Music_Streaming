@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { getSongsRequest, resolveApiAssetUrl } from "@/lib/api";
 import { usePlayerStore } from "@/stores/player-store";
 import {
@@ -804,9 +805,12 @@ export default function AboutPage() {
           {/* phone mock */}
           <div className="lg:col-span-5 flex justify-center py-4 relative">
             <div className="absolute inset-0 bg-orange-500/10 rounded-3xl blur-3xl pointer-events-none transform rotate-12" />
-            <img
+            <Image
               src="https://images.unsplash.com/photo-1546435770-a3e426bf472b?q=80&w=800"
               alt="Never Stop Listening"
+              width={800}
+              height={600}
+              unoptimized
               className="w-full max-w-[340px] aspect-[4/3] object-cover rounded-2xl border border-zinc-800 shadow-2xl relative z-10 transition duration-500 hover:scale-[1.02] hover:rotate-1"
             />
           </div>

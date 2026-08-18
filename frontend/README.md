@@ -44,11 +44,17 @@ Open `http://localhost:3000` in your web browser.
 
 ---
 
-## Build and Lint
+## Test, Build and Lint
 
 Verify code quality and build target:
 
 ```bash
+# Run Vitest unit tests
+npm test
+
+# Seed the dedicated test DB and run Playwright Chromium E2E
+npm run test:e2e
+
 # Run ESLint validation
 npm run lint
 

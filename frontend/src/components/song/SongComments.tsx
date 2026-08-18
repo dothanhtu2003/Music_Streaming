@@ -267,23 +267,28 @@ export function SongComments({
 
   if (minimal) {
     return (
-      <div id="comments" className="space-y-3 pt-1">
-        {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
-            {error}
-          </div>
-        )}
-        {loading ? (
-          <CommentSkeleton />
-        ) : (
-          <CommentList
-            comments={displayedComments}
-            songId={songId}
-            songOwnerId={songOwnerId}
-            onCommentDeleted={handleCommentDeleted}
-            onReplyAdded={handleReplyAdded}
-          />
-        )}
+      <div id="comments" className="flex flex-col h-full overflow-hidden">
+        <div className="flex-1 overflow-y-auto space-y-3 pr-1 pb-2">
+          {error && (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
+              {error}
+            </div>
+          )}
+          {loading ? (
+            <CommentSkeleton />
+          ) : (
+            <CommentList
+              comments={displayedComments}
+              songId={songId}
+              songOwnerId={songOwnerId}
+              onCommentDeleted={handleCommentDeleted}
+              onReplyAdded={handleReplyAdded}
+            />
+          )}
+        </div>
+        <div className="pt-2 border-t border-zinc-800 bg-zinc-950 shrink-0">
+          <CommentComposer songId={songId} onCommentAdded={handleCommentAdded} />
+        </div>
       </div>
     );
   }

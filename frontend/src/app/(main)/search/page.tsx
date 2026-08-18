@@ -11,7 +11,6 @@ import { usePlayerStore } from "@/stores/player-store";
 import {
   clearRecentSearchesRequest,
   deleteRecentSearchRequest,
-  getGenresRequest,
   getSongRequest,
   getSearchSuggestionsRequest,
   resolveApiAssetUrl,
@@ -25,7 +24,6 @@ import {
 } from "@/lib/search-storage";
 import { cn } from "@/lib/utils";
 import type {
-  GenreRecord,
   SearchHistoryItem,
   UniversalSearchItem,
   UniversalSearchResponse,
@@ -401,18 +399,9 @@ function SearchPageContent() {
   const [guestRecent, setGuestRecent] = useState<SearchHistoryItem[]>(() =>
     getGuestRecentSearches(),
   );
-  const [fetchedGenres, setFetchedGenres] = useState<GenreRecord[]>([]);
   const [activeTab, setActiveTab] = useState<SearchTab>("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    void getGenresRequest(1, 12)
-      .then((data) => {
-        if (data?.items) setFetchedGenres(data.items);
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();

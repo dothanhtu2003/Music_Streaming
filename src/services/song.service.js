@@ -240,16 +240,6 @@ const validateWaveformPeaks = (peaks) => {
   });
 };
 
-const slugifyGenreName = (name) => {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 120);
-};
-
 const getUserArtistName = async (user = {}) => {
   const nameFromToken = validateOptionalString(
     user.display_name || user.username,
@@ -361,55 +351,6 @@ const findOrCreateArtistForUser = async (user = {}) => {
       if (artistId) {
         return artistId;
       }
-    }
-
-    throw error;
-  }
-};
-
-const findOrCreateGenreByName = async (genreName) => {
-  const name = validateOptionalString(genreName, "genre", 100);
-
-  if (!name) {
-    return null;
-  }
-
-  const result = await pool.query(
-    `SELECT id
-     FROM genres
-     WHERE LOWER(name) = LOWER($1)
-     ORDER BY created_at ASC
-     LIMIT 1`,
-    [name]
-  );
-
-  if (result.rows[0]) {
-    return result.rows[0].id;
-  }
-
-  const baseSlug = slugifyGenreName(name);
-  const slug = baseSlug || `genre-${Date.now()}`;
-
-  try {
-    const insertResult = await pool.query(
-      `INSERT INTO genres (name, slug)
-       VALUES ($1, $2)
-       RETURNING id`,
-      [name, slug]
-    );
-
-    return insertResult.rows[0].id;
-  } catch (error) {
-    if (error.code === "23505" && error.constraint === "genres_slug_key") {
-      const fallbackSlug = `${slug.slice(0, 100)}-${Date.now()}`;
-      const fallbackResult = await pool.query(
-        `INSERT INTO genres (name, slug)
-         VALUES ($1, $2)
-         RETURNING id`,
-        [name, fallbackSlug]
-      );
-
-      return fallbackResult.rows[0].id;
     }
 
     throw error;

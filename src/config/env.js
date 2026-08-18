@@ -4,6 +4,15 @@ dotenv.config({ quiet: true });
 
 const defaultDevOrigins = ["http://localhost:3000", "http://127.0.0.1:3000"];
 const defaultDevAccessSecret = "change_this_access_secret";
+const MAX_ACCESS_TOKEN_SECONDS = 60 * 60;
+
+const parseDurationSeconds = (value) => {
+  const match = String(value || "").trim().match(/^(\d+)(s|m|h)$/i);
+  if (!match) return null;
+
+  const multipliers = { s: 1, m: 60, h: 3600 };
+  return Number(match[1]) * multipliers[match[2].toLowerCase()];
+};
 
 const parseList = (value, fallback = []) => {
   const source = value ? value.split(",") : fallback;
@@ -39,6 +48,14 @@ const getAllowedOrigins = (nodeEnv) => {
 };
 
 const nodeEnv = process.env.NODE_ENV || "development";
+const accessExpiresIn = process.env.JWT_ACCESS_EXPIRES_IN || "15m";
+const accessTokenSeconds = parseDurationSeconds(accessExpiresIn);
+
+if (!accessTokenSeconds || accessTokenSeconds > MAX_ACCESS_TOKEN_SECONDS) {
+  throw new Error(
+    "JWT_ACCESS_EXPIRES_IN must be a duration between 1 second and 1 hour (for example, 15m)"
+  );
+}
 
 const env = {
   nodeEnv,
@@ -57,7 +74,7 @@ const env = {
   },
   jwt: {
     accessSecret: getJwtAccessSecret(nodeEnv),
-    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
+    accessExpiresIn,
     refreshTokenExpiresDays:
       Number(process.env.JWT_REFRESH_TOKEN_EXPIRES_DAYS) || 7,
   },

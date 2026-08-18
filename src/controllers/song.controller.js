@@ -100,15 +100,19 @@ const uploadSong = async (req, res, next) => {
       req.user
     );
 
-    await notificationService.createNotification({
-      userId: req.user.id,
-      actorId: req.user.id,
-      type: "UPLOAD_SUCCESS",
-      entityType: "song",
-      entityId: song.id,
-      title: "Upload thành công",
-      message: "Bài hát của bạn đã được đăng thành công",
-    });
+    await notificationService
+      .createNotification({
+        userId: req.user.id,
+        actorId: req.user.id,
+        type: "UPLOAD_SUCCESS",
+        entityType: "song",
+        entityId: song.id,
+        title: "Upload thành công",
+        message: "Bài hát của bạn đã được đăng thành công",
+      })
+      .catch((error) => {
+        console.warn("Upload notification could not be created:", error.message);
+      });
 
     return successResponse(res, "Song uploaded successfully", song, 201);
   } catch (error) {

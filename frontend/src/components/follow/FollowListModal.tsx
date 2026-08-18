@@ -78,23 +78,43 @@ export function FollowListModal({
     };
   }, [onClose]);
 
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleDismiss = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 250);
+  };
+
   const getFallbackLetter = (name: string) => {
     return name.trim().slice(0, 1).toUpperCase() || "U";
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 px-4 backdrop-blur-sm animate-fade-in">
+    <div
+      onClick={handleDismiss}
+      className={cn(
+        "fixed inset-0 z-50 grid place-items-center bg-black/75 px-4 backdrop-blur-xs transition-opacity duration-250",
+        isClosing ? "opacity-0 pointer-events-none" : "animate-in fade-in duration-250",
+      )}
+    >
       <div
         ref={modalRef}
-        className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl animate-scale-up flex flex-col max-h-[80vh]"
+        onClick={(e) => e.stopPropagation()}
+        className={cn(
+          "w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl flex flex-col max-h-[80vh] transition-all duration-250 ease-out",
+          isClosing ? "scale-95 opacity-0" : "animate-in zoom-in-95 duration-250",
+        )}
       >
         {/* Header */}
         <div className="flex items-center justify-between gap-4 pb-4 border-b border-zinc-900">
           <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
           <button
             type="button"
-            onClick={onClose}
-            className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-bold text-zinc-300 transition hover:border-orange-500 hover:text-white"
+            onClick={handleDismiss}
+            className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-bold text-zinc-300 transition hover:border-orange-500 hover:text-white active:scale-95"
           >
             Close
           </button>

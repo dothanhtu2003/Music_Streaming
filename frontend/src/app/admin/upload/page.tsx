@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import {
   useCallback,
   useEffect,
@@ -793,9 +795,12 @@ export default function AdminUploadPage() {
               <div className="flex items-center gap-4">
                 {bulkCoverFile && bulkCoverPreview ? (
                   <div className="relative shrink-0">
-                    <img
+                    <Image
                       src={bulkCoverPreview}
                       alt="Shared cover preview"
+                      width={64}
+                      height={64}
+                      unoptimized
                       className="h-16 w-16 rounded-lg object-cover border border-zinc-800 shadow-md"
                     />
                     <button

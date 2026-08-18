@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { MobileTikTokFeed } from "@/components/feed/MobileTikTokFeed";
 import { SongList } from "@/components/song/SongList";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getFeedRequest } from "@/lib/api";
@@ -134,25 +135,33 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="space-y-6 page-fade-in pb-16">
-      <PageHeader
-        eyebrow="Personalized"
-        title="Your Feed"
-        description="Fresh new songs from the artists and users you follow."
-      />
+    <>
+      {/* Mobile View: TikTok-style Audio Swipe Feed */}
+      <div className="block md:hidden">
+        <MobileTikTokFeed />
+      </div>
 
-      <section className="space-y-4">
-        <SongList
-          songs={songs}
-          loading={loading}
-          error={error}
-          variant="list"
-          emptyMessage="Follow some artists to see their latest songs."
-          canLoadMore={canLoadMore}
-          loadingMore={loadingMore}
-          onLoadMore={handleLoadMore}
+      {/* Desktop/Laptop View: Classic Feed Layout (Untouched) */}
+      <div className="hidden md:block space-y-6 page-fade-in pb-16">
+        <PageHeader
+          eyebrow="Personalized"
+          title="Your Feed"
+          description="Fresh new songs from the artists and users you follow."
         />
-      </section>
-    </div>
+
+        <section className="space-y-4">
+          <SongList
+            songs={songs}
+            loading={loading}
+            error={error}
+            variant="list"
+            emptyMessage="Follow some artists to see their latest songs."
+            canLoadMore={canLoadMore}
+            loadingMore={loadingMore}
+            onLoadMore={handleLoadMore}
+          />
+        </section>
+      </div>
+    </>
   );
 }

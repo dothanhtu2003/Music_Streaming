@@ -24,10 +24,10 @@ Dự án sử dụng mô hình **Decoupled Client-Server**, phân tách rõ ràn
 - **Audio Engine**: HTML5 Audio kết hợp với `wavesurfer.js` để tạo hiệu ứng sóng âm (waveform).
 
 ### Backend
-- **Framework**: Node.js 18+ với Express 5.
+- **Framework**: Node.js 20.9+ với Express 5.
 - **Database Driver**: `pg` (PostgreSQL).
 - **Authentication**: JWT (JSON Web Tokens) với cơ chế Access/Refresh Token.
-- **File Upload**: Multer kết hợp `multer-storage-cloudinary`.
+- **File Upload**: Multer memory storage, kiểm tra chữ ký file, sau đó upload bằng Cloudinary SDK.
 
 ---
 
@@ -41,7 +41,7 @@ Dự án được chia làm 2 thư mục chính ở root: `frontend/` và `src/`
 - `controllers/`: Xử lý Request/Response, validate input, gọi đến Services.
 - `services/`: Chứa core Business Logic (ví dụ: truy vấn DB, transaction).
 - `db/`: Cấu hình PostgreSQL pool (`pool.js`) và chứa file `schema.sql` (toàn bộ cấu trúc database).
-- `middlewares/`: Chứa các custom middleware như xác thực token, kiểm tra quyền admin, xử lý upload.
+- `middlewares/`: Chứa middleware xác thực token, RBAC, rate limit, request ID và xử lý upload.
 
 ### 3.2 Frontend (`/frontend`)
 Sử dụng chuẩn cấu trúc của Next.js App Router:
@@ -59,7 +59,7 @@ Sử dụng chuẩn cấu trúc của Next.js App Router:
 ### 4.1 Authentication & Authorization
 Hệ thống sử dụng **Dual-Token Pattern**:
 - Khi Login, user nhận được `access_token` (sống ngắn hạn, vd: 15p) và `refresh_token` (sống dài hạn, vd: 7 ngày).
-- `refresh_token` được hash (bcrypt) và lưu trong DB table `refresh_tokens`. Điều này cho phép Admin có thể thu hồi (revoke) token từ xa khi Ban user.
+- `refresh_token` ngẫu nhiên được hash SHA-256 trước khi lưu trong `refresh_tokens`; token không được lưu dạng rõ. Khi Admin ban user, session được revoke trong cùng transaction.
 - Các API nhạy cảm được bảo vệ bởi middleware kiểm tra `access_token` và kiểm tra Role (`user` vs `admin`).
 
 ### 4.2 Audio Player & Global State
@@ -74,7 +74,7 @@ Hệ thống sử dụng **Dual-Token Pattern**:
 
 ### 4.4 File Upload
 - Khi Admin/User upload nhạc hoặc cover, Request sẽ đi qua middleware của Multer.
-- Multer đẩy file stream thẳng lên **Cloudinary** (thông qua `multer-storage-cloudinary`), sau đó trả về URL an toàn (HTTPS). 
+- Multer giới hạn số file/dung lượng, kiểm tra MIME, extension và magic bytes trong memory trước khi gọi **Cloudinary SDK**, sau đó trả về URL HTTPS.
 - Controller chỉ việc lưu chuỗi URL này vào database, giúp Backend không bị quá tải về dung lượng ổ cứng.
 
 ---
@@ -82,12 +82,12 @@ Hệ thống sử dụng **Dual-Token Pattern**:
 ## 5. Quy trình cho Developer Mới (Getting Started)
 
 1. **Clone & Install**: Chạy `npm install` ở cả thư mục gốc (backend) và `/frontend`.
-2. **Database Setup**: Tạo DB PostgreSQL và chạy lệnh `psql -d music_streaming -f src/db/schema.sql` để khởi tạo bảng.
+2. **Database Setup**: Tạo DB PostgreSQL, chạy `npm run db:setup` rồi `npm run db:migrate`. Migration đã chạy được ghi trong `schema_migrations`.
 3. **Environment**: Copy `.env.example` thành `.env` ở root và `frontend/.env.local`. Cập nhật thông tin DB và Cloudinary.
 4. **Run Servers**: 
    - Terminal 1 (Backend): `npm run dev` (cổng 5000).
    - Terminal 2 (Frontend): `cd frontend && npm run dev` (cổng 3000).
-5. **Testing**: Các rule test thủ công được liệt kê chi tiết trong file `TEST_PLAN.md`.
+5. **Testing**: Chạy `npm test` ở root; chạy `npm test`, `npm run lint`, `npm run build` trong `frontend`. Test thủ công vẫn được liệt kê trong `TEST_PLAN.md`.
 
 > [!TIP]
 > Khi code thêm tính năng mới, hãy luôn tuân thủ nguyên tắc:

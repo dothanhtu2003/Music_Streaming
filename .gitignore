@@ -13,6 +13,9 @@ frontend/.next/
 frontend/out/
 frontend/build/
 frontend/dev-server*.log
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
 
 # logs
 *.log

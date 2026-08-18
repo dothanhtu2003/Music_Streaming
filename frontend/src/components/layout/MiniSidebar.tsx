@@ -55,6 +55,12 @@ export function MiniSidebar() {
             key={item.href}
             href={item.href}
             aria-label={item.label}
+            onClick={(e) => {
+              if (isActive && item.href === "/feed") {
+                e.preventDefault();
+                window.dispatchEvent(new Event("REFRESH_MOBILE_FEED"));
+              }
+            }}
             className={cn(
               "relative flex flex-1 flex-col items-center justify-center gap-1 py-1.5 px-1 rounded-xl transition-all duration-200 active:scale-90 touch-target",
               isActive

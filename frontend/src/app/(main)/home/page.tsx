@@ -6,6 +6,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { NowPlayingHero } from "@/components/NowPlayingHero";
 import { HorizontalSongCarousel } from "@/components/song/HorizontalSongCarousel";
 import { RecentlyPlayedList } from "@/components/song/RecentlyPlayedList";
+import { PlayIcon } from "@/components/ui/Icons";
 import {
   getGenresRequest,
   getRecentlyPlayed,
@@ -28,7 +29,7 @@ import type {
   SongPagination,
 } from "@/types/music";
 
-const RECENTLY_PLAYED_DISPLAY_LIMIT = 5;
+const RECENTLY_PLAYED_DISPLAY_LIMIT = 6;
 const GENRE_LIMIT = 12;
 const GENRE_EXPANDED_DISPLAY_LIMIT = 10;
 const GENRE_FETCH_LIMIT = GENRE_EXPANDED_DISPLAY_LIMIT;
@@ -48,6 +49,7 @@ function HomeContent() {
   const { accessToken, isLoading: authLoading } = useAuth();
   const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const playSong = usePlayerStore((state) => state.playSong);
   
   const [recentlyPlayed, setRecentlyPlayed] = useState<RecentlyPlayedEntry[]>([]);
   const [genreRows, setGenreRows] = useState<GenreSongRow[]>([]);
@@ -197,6 +199,14 @@ function HomeContent() {
     };
   }, [accessToken, authLoading]);
 
+  const handleShufflePlay = () => {
+    const allSongs = genreRows.flatMap((row) => row.songs);
+    if (allSongs.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * allSongs.length);
+    const randomSong = allSongs[randomIndex];
+    playSong(randomSong, allSongs);
+  };
+
   return (
     <div className="space-y-10 page-fade-in relative pb-10">
       {/* Dynamic Background Glow representing the Vibe */}
@@ -229,23 +239,34 @@ function HomeContent() {
             )}
         </div>
       ) : (
-        <section className="hero-fade-in relative overflow-hidden rounded-2xl md:rounded-[2rem] border border-zinc-900 bg-[#09090b]/80 p-5 sm:p-10 shadow-2xl backdrop-blur-sm">
+        <section className="hero-fade-in relative overflow-hidden rounded-2xl md:rounded-[2rem] border border-zinc-900 bg-[#09090b]/80 p-4 sm:p-10 shadow-2xl backdrop-blur-sm">
           <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(circle at top right, rgba(249,115,22,0.08), transparent 50%)" }} />
           {/* Cyber scanline backplate overlay */}
           <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.002)_50%,rgba(0,0,0,0.1)_50%)] bg-[size:100%_4px] pointer-events-none" />
 
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-2xl space-y-3 sm:space-y-4">
+          <div className="relative flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl space-y-2.5 sm:space-y-4">
               <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-0.5 sm:px-3.5 sm:py-1 text-[9px] font-black uppercase tracking-[0.2em] shadow-sm text-orange-500 border-orange-500/20 bg-orange-500/10">
                 <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
                 VIBE CHANNEL: ACTIVE
               </span>
-              <h1 className="text-2xl font-black tracking-tight text-white sm:text-5xl uppercase italic text-stroke-cyber hover:text-white transition-all duration-300">
+              <h1 className="text-xl font-black tracking-tight text-white sm:text-5xl uppercase italic text-stroke-cyber hover:text-white transition-all duration-300">
                 Listen to your favorite tracks
               </h1>
-              <p className="max-w-xl text-xs sm:text-sm leading-relaxed text-zinc-400 font-medium">
+              <p className="hidden max-w-xl text-xs sm:text-sm leading-relaxed text-zinc-400 font-medium sm:block">
                 Discover, play, and save your music. Browse songs from the catalog, create playlists, and build your personal collection.
               </p>
+
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={handleShufflePlay}
+                  className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-black text-black shadow-lg shadow-orange-500/20 transition-all hover:bg-orange-400 active:scale-95"
+                >
+                  <PlayIcon size={14} className="fill-current" />
+                  <span>Phát ngẫu nhiên</span>
+                </button>
+              </div>
             </div>
 
             {/* Dynamic visual monitor block inside Hero - Visible on Desktop only */}

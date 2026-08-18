@@ -5,6 +5,7 @@ const {
   optionalAuthMiddleware,
 } = require("../middlewares/auth.middleware");
 const { uploadTrack } = require("../middlewares/upload.middleware");
+const { uploadLimiter } = require("../middlewares/rate-limit.middleware");
 
 const router = express.Router();
 
@@ -28,6 +29,7 @@ router.post("/:id/songs", playlistController.addSongToPlaylist);
 router.post("/:id/tracks", playlistController.addSongToPlaylist);
 router.post(
   "/:id/upload-track",
+  uploadLimiter,
   uploadTrack,
   playlistController.uploadTrackToPlaylist
 );

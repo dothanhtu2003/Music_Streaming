@@ -67,27 +67,6 @@ function formatPostedAt(value: string | null | undefined) {
   });
 }
 
-async function sharePath(path: string, title: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const url = `${window.location.origin}${path}`;
-
-  try {
-    if (navigator.share) {
-      await navigator.share({ title, url });
-      return;
-    }
-
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(url);
-    }
-  } catch {
-    // Sharing is optional UI sugar. Ignore denied clipboard/share requests.
-  }
-}
-
 function WaveformPreview({
   seed,
   isActive,
