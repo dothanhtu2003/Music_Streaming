@@ -44,12 +44,16 @@ export function AuthForm({
     }
 
     if (isRegister) {
-      if (password.length < 8 || password.length > 128) {
-        return "Mật khẩu khi đăng ký phải từ 8 đến 128 ký tự.";
+      if (password.length < 1 || password.length > 20) {
+        return "Mật khẩu phải có từ 1 đến 20 ký tự.";
       }
     } else {
-      if (!password || password.length > 128) {
+      if (!password) {
         return "Vui lòng nhập mật khẩu.";
+      }
+
+      if (password.length > 20) {
+        return "Mật khẩu không được vượt quá 20 ký tự.";
       }
     }
 
@@ -197,7 +201,10 @@ export function AuthForm({
                   pattern="[a-zA-Z0-9_]{3,30}"
                   required
                   value={username}
-                  onChange={(event) => setUsername(event.target.value)}
+                  onChange={(event) => {
+                    setUsername(event.target.value);
+                    setError(null);
+                  }}
                   className="mt-1.5 w-full rounded-xl border border-slate-800 bg-slate-900/80 px-3.5 py-2.5 text-base text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 sm:py-3 sm:text-sm"
                   placeholder="demo_user"
                 />
@@ -220,7 +227,10 @@ export function AuthForm({
                 type="email"
                 required
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setError(null);
+                }}
                 className="mt-1.5 w-full rounded-xl border border-slate-800 bg-slate-900/80 px-3.5 py-2.5 text-base text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 sm:py-3 sm:text-sm"
                 placeholder="you@example.com"
               />
@@ -237,13 +247,16 @@ export function AuthForm({
                 id="password"
                 name="password"
                 type="password"
-                minLength={isRegister ? 8 : 1}
-                maxLength={128}
+                minLength={1}
+                maxLength={20}
                 required
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setError(null);
+                }}
                 className="mt-1.5 w-full rounded-xl border border-slate-800 bg-slate-900/80 px-3.5 py-2.5 text-base text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 sm:py-3 sm:text-sm"
-                placeholder={isRegister ? "Từ 8 - 128 ký tự" : "Nhập mật khẩu của bạn"}
+                placeholder={isRegister ? "Từ 1 - 20 ký tự" : "Nhập mật khẩu của bạn"}
               />
             </div>
 

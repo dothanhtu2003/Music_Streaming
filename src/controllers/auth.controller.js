@@ -29,7 +29,7 @@ const removeOldAvatar = async (avatarUrl) => {
 
 const register = async (req, res, next) => {
   try {
-    const user = await authService.register(req.body);
+    const user = await authService.register(req.body ?? {});
 
     return successResponse(res, "Register successful", { user }, 201);
   } catch (error) {
@@ -39,7 +39,7 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const result = await authService.login(req.body);
+    const result = await authService.login(req.body ?? {});
 
     return successResponse(res, "Login successful", result);
   } catch (error) {
@@ -49,7 +49,7 @@ const login = async (req, res, next) => {
 
 const refresh = async (req, res, next) => {
   try {
-    const result = await authService.refresh(req.body.refreshToken);
+    const result = await authService.refresh(req.body?.refreshToken);
 
     return successResponse(res, "Refresh token successful", result);
   } catch (error) {
@@ -59,7 +59,7 @@ const refresh = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
   try {
-    await authService.logout(req.body.refreshToken);
+    await authService.logout(req.body?.refreshToken);
 
     return successResponse(res, "Logout successful");
   } catch (error) {

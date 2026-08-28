@@ -142,14 +142,123 @@ test("banned users are rejected even with a valid access token", async () => {
     .expect(403);
 });
 
-test("registration validates password length before querying the database", async () => {
+test("registration rejects an empty password before querying the database", async () => {
   pool.query = async () => {
     throw new Error("database should not be queried");
   };
   await request(app)
     .post("/api/auth/register")
-    .send({ email: "new@example.com", username: "new_user", password: "short" })
+    .send({ email: "new@example.com", username: "new_user", password: "" })
     .expect(400);
+});
+
+test("registration accepts passwords from 1 through 20 characters", async (t) => {
+  const passwords = [
+    ["one character", "a"],
+    ["20 ASCII characters", "a".repeat(20)],
+    ["20 two-byte characters", "\u00e9".repeat(20)],
+    ["10 four-byte emoji (20 UTF-16 code units)", "\u{1F600}".repeat(10)],
+  ];
+
+  for (const [label, password] of passwords) {
+    await t.test(label, async () => {
+      let insertedPasswordHash;
+      pool.query = async (sql, params) => {
+        if (String(sql).includes("SELECT email, username")) return { rows: [] };
+        if (String(sql).includes("INSERT INTO users")) {
+          insertedPasswordHash = params[2];
+          return {
+            rows: [
+              {
+                id: USER_ID,
+                email: params[0],
+                username: params[1],
+                role: "user",
+                is_verified: false,
+                is_banned: false,
+              },
+            ],
+          };
+        }
+        throw new Error("Unexpected query");
+      };
+
+      assert.ok(password.length >= 1 && password.length <= 20);
+      assert.ok(Buffer.byteLength(password, "utf8") <= 72);
+      await request(app)
+        .post("/api/auth/register")
+        .send({ email: "new@example.com", username: "new_user", password })
+        .expect(201);
+      assert.equal(await bcrypt.compare(password, insertedPasswordHash), true);
+    });
+  }
+});
+
+test("registration rejects passwords longer than 20 characters", async (t) => {
+  pool.query = async () => {
+    throw new Error("database should not be queried");
+  };
+
+  const passwords = [
+    ["ASCII", "a".repeat(21)],
+    ["two-byte characters", "\u00e9".repeat(21)],
+    ["four-byte emoji", `${"\u{1F600}".repeat(10)}a`],
+  ];
+
+  for (const [label, password] of passwords) {
+    await t.test(label, async () => {
+      assert.equal(password.length, 21);
+      await request(app)
+        .post("/api/auth/register")
+        .send({ email: "new@example.com", username: "new_user", password })
+        .expect(400);
+    });
+  }
+});
+
+test("login rejects passwords longer than 20 characters before querying", async (t) => {
+  pool.query = async () => {
+    throw new Error("database should not be queried");
+  };
+
+  const passwords = [
+    ["ASCII", "a".repeat(21)],
+    ["two-byte characters", "\u00e9".repeat(21)],
+    ["four-byte emoji", `${"\u{1F600}".repeat(10)}a`],
+  ];
+
+  for (const [label, password] of passwords) {
+    await t.test(label, async () => {
+      const response = await request(app)
+        .post("/api/auth/login")
+        .send({ email: "user@example.com", password })
+        .expect(400);
+
+      assert.equal(
+        response.body.message,
+        "Password must be between 1 and 20 characters"
+      );
+    });
+  }
+});
+
+test("auth endpoints return 400 when the request body is missing", async (t) => {
+  const cases = [
+    ["/api/auth/register", "Invalid email"],
+    ["/api/auth/login", "Invalid email"],
+    ["/api/auth/refresh", "Refresh token is required"],
+    ["/api/auth/logout", "Refresh token is required"],
+  ];
+
+  for (const [path, expectedMessage] of cases) {
+    await t.test(path, async () => {
+      const response = await request(app).post(path).expect(400);
+      assert.equal(response.body.success, false);
+      assert.equal(response.body.message, expectedMessage);
+      assert.equal(response.body.errors, undefined);
+      assert.equal(response.body.stack, undefined);
+    });
+  }
 });
 
 test("registration hashes passwords and never returns password_hash", async () => {

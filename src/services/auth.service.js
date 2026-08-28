@@ -40,13 +40,19 @@ const validateUsername = (username) => {
 const validatePassword = (password) => {
   return (
     typeof password === "string" &&
-    password.length >= 8 &&
-    password.length <= 128
+    password.length >= 1 &&
+    password.length <= 20 &&
+    Buffer.byteLength(password, "utf8") <= 72
   );
 };
 
 const validateLoginPassword = (password) => {
-  return typeof password === "string" && password.length > 0 && password.length <= 128;
+  return (
+    typeof password === "string" &&
+    password.length > 0 &&
+    password.length <= 20 &&
+    Buffer.byteLength(password, "utf8") <= 72
+  );
 };
 
 const normalizeOptionalString = (value) => {
@@ -90,7 +96,10 @@ const validateRegisterInput = ({ email, username, password }) => {
   }
 
   if (!validatePassword(password)) {
-    throw new AppError("Password must be between 8 and 128 characters", 400);
+    throw new AppError(
+      "Password must be between 1 and 20 characters",
+      400
+    );
   }
 };
 
@@ -99,8 +108,15 @@ const validateLoginInput = ({ email, password }) => {
     throw new AppError("Invalid email", 400);
   }
 
+  if (typeof password !== "string" || password.length === 0) {
+    throw new AppError("Password is required", 400);
+  }
+
   if (!validateLoginPassword(password)) {
-    throw new AppError("Password is required and must be at most 128 characters", 400);
+    throw new AppError(
+      "Password must be between 1 and 20 characters",
+      400
+    );
   }
 };
 
@@ -162,7 +178,7 @@ const createTokenPair = async (user, client = pool) => {
   };
 };
 
-const register = async ({ email, username, password }) => {
+const register = async ({ email, username, password } = {}) => {
   const normalizedEmail = normalizeEmail(email);
   const normalizedUsername = normalizeUsername(username);
 
@@ -214,7 +230,7 @@ const register = async ({ email, username, password }) => {
   }
 };
 
-const login = async ({ email, password }) => {
+const login = async ({ email, password } = {}) => {
   const normalizedEmail = normalizeEmail(email);
 
   validateLoginInput({
