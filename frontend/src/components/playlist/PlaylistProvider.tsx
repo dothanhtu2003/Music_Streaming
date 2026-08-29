@@ -23,6 +23,7 @@ import {
   deletePlaylistRequest,
 } from "@/lib/api";
 import type { Pagination, Song, UserPlaylist } from "@/types/music";
+import { getSongCoverUrl, getArtistDisplayName } from "@/lib/song-format";
 import { cn } from "@/lib/utils";
 
 type PlaylistNotice = {
@@ -127,6 +128,22 @@ function PlaylistAvatar({ playlist }: { playlist: UserPlaylist }) {
   );
 }
 
+function CoverThumbImage({ url, fallback }: { url: string | null; fallback: string }) {
+  if (url) {
+    return (
+      <div
+        className="h-10 w-10 shrink-0 rounded-lg bg-cover bg-center border border-zinc-700/80 shadow-sm"
+        style={{ backgroundImage: `url(${url})` }}
+      />
+    );
+  }
+  return (
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-zinc-900 text-xs font-black text-white uppercase shadow-sm">
+      {fallback.slice(0, 2)}
+    </div>
+  );
+}
+
 function AddSongModal() {
   const {
     playlists,
@@ -137,7 +154,7 @@ function AddSongModal() {
     createPlaylist,
     addSongToPlaylist,
   } = usePlaylists();
-  const [form, setForm] = useState<PlaylistFormPayload>(emptyPlaylistForm);
+  const [newTitle, setNewTitle] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
 
@@ -151,51 +168,38 @@ function AddSongModal() {
     setTimeout(() => {
       closeAddSongModal();
       setIsClosing(false);
+      setNewTitle("");
+      setFormError(null);
     }, 250);
-  };
-
-  const updateForm = (
-    key: keyof PlaylistFormPayload,
-    value: string | boolean,
-  ) => {
-    setForm((currentForm) => ({
-      ...currentForm,
-      [key]: value,
-    }));
   };
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const trimmedTitle = newTitle.trim();
 
-    if (form.title.trim().length < 2) {
-      setFormError("Playlist title must be at least 2 characters.");
+    if (trimmedTitle.length < 2) {
+      setFormError("Playlist name must be at least 2 characters.");
       return;
-    }
-
-    if (form.coverUrl && form.coverUrl.trim()) {
-      const trimmedUrl = form.coverUrl.trim();
-      const isValid = /^(https?:|data:|blob:|\/)/i.test(trimmedUrl);
-      if (!isValid) {
-        setFormError(
-          "Cover URL must be a valid URL (starting with http://, https://) or a path (starting with /).",
-        );
-        return;
-      }
     }
 
     setFormError(null);
 
-    const playlist = await createPlaylist(form);
+    const playlist = await createPlaylist({
+      title: trimmedTitle,
+      isPublic: true,
+    });
 
     if (playlist) {
       const added = await addSongToPlaylist(playlist.id, selectedSong);
-
       if (added) {
-        setForm(emptyPlaylistForm);
+        setNewTitle("");
         handleClose();
       }
     }
   };
+
+  const coverUrl = getSongCoverUrl(selectedSong);
+  const artistName = getArtistDisplayName(selectedSong.artist);
 
   return (
     <div
@@ -208,122 +212,120 @@ function AddSongModal() {
       <div
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl transition-all duration-250 ease-out",
+          "w-full max-w-md rounded-2xl border border-zinc-800/90 bg-zinc-950 p-5 shadow-2xl transition-all duration-250 ease-out space-y-4",
           isClosing ? "scale-95 opacity-0" : "animate-in zoom-in-95 duration-250",
         )}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-orange-400">
-              Add to playlist
-            </p>
-            <h2 className="mt-2 text-xl font-semibold text-white">
-              {selectedSong.title}
-            </h2>
-            <p className="mt-1 text-sm text-zinc-400">
-              Choose an existing playlist or create a new one.
-            </p>
+        {/* Header: Track Info & Close Button */}
+        <div className="flex items-center justify-between pb-3 border-b border-zinc-800/80">
+          <div className="flex items-center gap-3 min-w-0 pr-2">
+            <CoverThumbImage url={coverUrl} fallback={selectedSong.title} />
+            <div className="min-w-0">
+              <span className="block text-[10px] font-extrabold uppercase tracking-wider text-orange-400">
+                Save to Playlist
+              </span>
+              <h3 className="truncate text-sm font-bold text-white">
+                {selectedSong.title}
+              </h3>
+              <p className="truncate text-xs font-medium text-zinc-400">
+                {artistName}
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-orange-500 hover:text-white active:scale-95"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-white transition active:scale-95 shrink-0 cursor-pointer text-xs"
+            aria-label="Close modal"
           >
-            Close
+            ✕
           </button>
         </div>
 
-        <div className="mt-5 space-y-2">
-          {isLoading && <p className="text-sm text-zinc-500">Loading...</p>}
+        {/* Existing Playlists Section */}
+        <div className="space-y-2">
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-500 px-0.5">
+            Your Playlists
+          </p>
 
-          {!isLoading && playlists.length === 0 && (
-            <div className="rounded-lg border border-zinc-800 bg-black p-4 text-sm text-zinc-400">
-              You do not have playlists yet. Create one below.
-            </div>
-          )}
+          <div className="max-h-52 overflow-y-auto space-y-2 dark-scrollbar pr-1">
+            {isLoading && (
+              <p className="text-xs text-zinc-500 py-3 text-center font-medium">Loading playlists...</p>
+            )}
 
-          {playlists.map((playlist) => (
-            <button
-              key={playlist.id}
-              type="button"
-              disabled={actionId === playlist.id}
-              onClick={() => {
-                void addSongToPlaylist(playlist.id, selectedSong);
+            {!isLoading && playlists.length === 0 && (
+              <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-3 text-center text-xs text-zinc-400">
+                No playlists yet. Create your first one below!
+              </div>
+            )}
+
+            {playlists.map((playlist) => {
+              const isAdding = actionId === playlist.id;
+              return (
+                <button
+                  key={playlist.id}
+                  type="button"
+                  disabled={isAdding}
+                  onClick={() => {
+                    void addSongToPlaylist(playlist.id, selectedSong);
+                  }}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-2.5 text-left transition hover:border-orange-500/60 hover:bg-zinc-900/90 active:scale-[0.99] cursor-pointer group disabled:opacity-60"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <PlaylistAvatar playlist={playlist} />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-bold text-white group-hover:text-orange-400 transition">
+                        {playlist.title}
+                      </p>
+                      <p className="text-[11px] font-semibold text-zinc-500">
+                        {playlist.track_count} tracks
+                      </p>
+                    </div>
+                  </div>
+                  <span
+                    className={cn(
+                      "px-3 py-1 text-xs font-bold rounded-full transition shrink-0",
+                      isAdding
+                        ? "bg-zinc-800 text-zinc-400"
+                        : "bg-orange-500/10 text-orange-400 border border-orange-500/30 group-hover:bg-orange-500 group-hover:text-black font-extrabold"
+                    )}
+                  >
+                    {isAdding ? "Adding..." : "+ Add"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Create New Playlist Section (Clean 1-line inline form) */}
+        <form onSubmit={handleCreate} className="pt-3 border-t border-zinc-800/80 space-y-2">
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-500 px-0.5">
+            Create New Playlist
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={newTitle}
+              onChange={(e) => {
+                setNewTitle(e.target.value);
+                if (formError) setFormError(null);
               }}
-              className="flex w-full items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-black px-4 py-3 text-left transition hover:border-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <span className="flex min-w-0 items-center gap-3">
-                <PlaylistAvatar playlist={playlist} />
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-semibold text-white">
-                    {playlist.title}
-                  </span>
-                  <span className="block text-xs text-zinc-500">
-                    {playlist.track_count} tracks
-                  </span>
-                </span>
-              </span>
-              <span className="text-xs font-semibold text-orange-400">
-                {actionId === playlist.id ? "Adding..." : "Add"}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <form
-          onSubmit={handleCreate}
-          className="mt-5 grid gap-3 border-t border-zinc-800 pt-5 md:grid-cols-2"
-        >
-          <label className="block text-sm font-medium text-zinc-300">
-            Create new playlist
-            <input
-              value={form.title}
-              onChange={(event) => updateForm("title", event.target.value)}
               maxLength={150}
-              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500"
-              placeholder="My Favorite Set"
+              placeholder="Playlist name..."
+              className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900/90 px-3 py-2 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-orange-500/80 transition font-medium"
             />
-          </label>
-          <label className="block text-sm font-medium text-zinc-300">
-            Cover URL
-            <input
-              value={form.coverUrl}
-              onChange={(event) => updateForm("coverUrl", event.target.value)}
-              maxLength={1000}
-              className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500"
-              placeholder="Optional"
-            />
-          </label>
-          <label className="block text-sm font-medium text-zinc-300 md:col-span-2">
-            Description
-            <textarea
-              value={form.description}
-              onChange={(event) => updateForm("description", event.target.value)}
-              rows={3}
-              maxLength={5000}
-              className="mt-2 w-full resize-none rounded-lg border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500"
-              placeholder="Short note about this set"
-            />
-          </label>
-          <label className="flex items-center gap-2 text-sm text-zinc-400">
-            <input
-              type="checkbox"
-              checked={Boolean(form.isPublic)}
-              onChange={(event) => updateForm("isPublic", event.target.checked)}
-              className="accent-orange-500"
-            />
-            Public playlist
-          </label>
+            <button
+              type="submit"
+              disabled={actionId === "create" || !newTitle.trim()}
+              className="px-4 py-2 text-xs font-extrabold rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-black hover:from-orange-400 hover:to-amber-400 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0 shadow-md shadow-orange-500/10"
+            >
+              {actionId === "create" ? "Creating..." : "Create & Add"}
+            </button>
+          </div>
           {formError && (
-            <p className="text-sm text-red-300 md:col-span-2">{formError}</p>
+            <p className="text-[11px] font-semibold text-red-400 px-1">{formError}</p>
           )}
-          <button
-            type="submit"
-            disabled={actionId === "create"}
-            className="rounded-lg bg-orange-500 px-4 py-3 text-sm font-semibold text-orange-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 md:w-fit"
-          >
-            {actionId === "create" ? "Creating..." : "Create and add"}
-          </button>
         </form>
       </div>
     </div>

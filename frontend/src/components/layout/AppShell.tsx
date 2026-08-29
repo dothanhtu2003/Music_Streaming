@@ -22,41 +22,37 @@ export function AppShell({ children }: AppShellProps) {
     pathname.startsWith("/studio") ||
     pathname.startsWith("/about") ||
     pathname.startsWith("/popular") ||
-    pathname.startsWith("/search");
+    pathname.startsWith("/search") ||
+    pathname.startsWith("/songs") ||
+    pathname.startsWith("/playlists") ||
+    pathname.startsWith("/liked");
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-black text-zinc-100">
-      <div
-        className={cn(
-          "min-h-screen transition-all duration-300",
-          isFeedPage
-            ? "pb-16 md:pb-28"
-            : currentSong
-            ? "pb-40 md:pb-28"
-            : "pb-24 md:pb-8",
-        )}
-      >
-        <div className={cn(pathname !== "/home" && "hidden md:block")}>
-          <AppHeader />
-        </div>
+    <div className="relative min-h-screen md:h-screen md:overflow-hidden bg-black text-zinc-100 flex flex-col">
+      <div className={cn("shrink-0 z-30", pathname !== "/home" && "hidden md:block")}>
+        <AppHeader />
+      </div>
+      <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col">
         {pathname === "/" || pathname === "/about" ? (
-          <main className="w-full">{children}</main>
+          <main className="flex-1 min-h-0 w-full overflow-y-auto no-scrollbar">{children}</main>
         ) : (
           <div
             className={cn(
-              "mx-auto flex w-full max-w-7xl gap-6",
+              "mx-auto flex w-full max-w-7xl flex-1 min-h-0 gap-6",
               isFeedPage
                 ? "p-0 sm:px-6 lg:px-8 py-0 sm:py-5"
-                : "px-4 py-5 sm:px-6 lg:px-8",
+                : "px-4 py-4 sm:px-6 lg:px-8",
             )}
           >
-            <main className="min-w-0 flex-1">{children}</main>
+            <main className="min-w-0 flex-1 h-full overflow-y-auto no-scrollbar pb-24">
+              {children}
+            </main>
             {!isFullWidthPage && <RightSidebar />}
           </div>
         )}
       </div>
       <MiniSidebar />
-      <div className={cn(isFeedPage && "hidden md:block")}>
+      <div className={cn("shrink-0 z-40", isFeedPage && "hidden md:block")}>
         <BottomPlayer />
       </div>
     </div>

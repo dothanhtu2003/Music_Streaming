@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
 import { useLikes } from "@/components/like/LikeProvider";
@@ -7,11 +8,27 @@ import { SongList } from "@/components/song/SongList";
 import { HeartIcon } from "@/components/ui/Icons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { usePlayerStore } from "@/stores/player-store";
+import type { Song } from "@/types/music";
 
 export default function LikedPage() {
   const { likedSongs, isLoading, error } = useLikes();
   const { accessToken, isLoading: authLoading } = useAuth();
   const playSong = usePlayerStore((state) => state.playSong);
+  const playerQueue = usePlayerStore((state) => state.queue);
+  const setPlayerQueue = usePlayerStore((state) => state.setQueue);
+  const [songOrderIds, setSongOrderIds] = useState<string[] | null>(null);
+
+  const likedSongsById = new Map(likedSongs.map((song) => [song.id, song]));
+  const orderedSongs = songOrderIds
+    ?.map((songId) => likedSongsById.get(songId))
+    .filter((song): song is Song => Boolean(song));
+  const orderedSongIds = new Set(orderedSongs?.map((song) => song.id));
+  const newlyLikedSongs = likedSongs.filter(
+    (song) => !orderedSongIds.has(song.id),
+  );
+  const displayedSongs = orderedSongs
+    ? [...orderedSongs, ...newlyLikedSongs]
+    : likedSongs;
 
   const isLoggedIn = Boolean(accessToken);
   const songCountText = authLoading
@@ -21,8 +38,21 @@ export default function LikedPage() {
       : "Login required";
 
   const handlePlayAll = () => {
-    if (likedSongs.length > 0) {
-      playSong(likedSongs[0], likedSongs);
+    if (displayedSongs.length > 0) {
+      playSong(displayedSongs[0], displayedSongs);
+    }
+  };
+
+  const handleReorder = (songs: Song[]) => {
+    setSongOrderIds(songs.map((song) => song.id));
+
+    const likedSongIds = new Set(likedSongs.map((song) => song.id));
+    const isPlayingLikedSongsQueue =
+      playerQueue.length === likedSongs.length &&
+      playerQueue.every((song) => likedSongIds.has(song.id));
+
+    if (isPlayingLikedSongsQueue) {
+      setPlayerQueue(songs);
     }
   };
 
@@ -61,7 +91,7 @@ export default function LikedPage() {
                 <button
                   type="button"
                   onClick={handlePlayAll}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-orange-950 transition-all duration-200 hover:bg-orange-400 hover:scale-105 active:scale-95 shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 sm:px-6 sm:py-3"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2 text-xs font-extrabold text-black transition-all duration-200 hover:from-orange-400 hover:to-amber-400 hover:scale-105 active:scale-95 shadow-lg shadow-orange-500/25 sm:px-6 sm:py-2.5 cursor-pointer"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                   Play All
@@ -89,10 +119,12 @@ export default function LikedPage() {
 
         {!authLoading && isLoggedIn && (
           <SongList
-            songs={likedSongs}
+            songs={displayedSongs}
             loading={isLoading}
             error={error}
             variant="list"
+            reorderable
+            onReorder={handleReorder}
             emptyMessage="No liked songs yet"
             emptyDescription="Browse the library and start liking songs to populate your collection!"
           />

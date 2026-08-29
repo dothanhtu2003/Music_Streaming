@@ -474,10 +474,10 @@ export function RightSidebar() {
   }
 
   return (
-    <aside className="hidden w-72 shrink-0 xl:block" aria-label="Discovery">
+    <aside className="hidden w-72 shrink-0 xl:block h-full overflow-hidden" aria-label="Discovery">
       <div
         data-right-sidebar-scroll
-        className="sticky top-20 space-y-5 pb-[120px]"
+        className="h-full overflow-y-auto no-scrollbar space-y-5 pb-24"
       >
         {!isSearchPage && artists.length > 0 && (
           <SidebarSection title="Artists you should follow">

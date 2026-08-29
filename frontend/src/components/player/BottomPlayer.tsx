@@ -301,15 +301,13 @@ export function BottomPlayer() {
 
           {/* Top Bar Section (Floating Black Badges) */}
           <div className="relative z-10 flex items-start justify-between px-4 pt-10 pb-2 pointer-events-auto">
-            {/* Left: Floating Title & Artist Badges */}
+            {/* Left: Floating Combined Title & Artist Badge */}
             <div className="min-w-0 flex-1 pr-4 space-y-1.5">
-              <div className="inline-block rounded-lg bg-black/65 backdrop-blur-md border border-white/10 px-3 py-1.5 shadow-xl max-w-full">
+              <div className="inline-flex flex-col gap-1 rounded-xl bg-black/65 backdrop-blur-md border border-white/10 px-3 py-2 shadow-xl max-w-full">
                 <h2 className="line-clamp-2 text-base font-extrabold text-white leading-tight tracking-tight">
                   {currentSong.title}
                 </h2>
-              </div>
-              <div>
-                <span className="inline-block rounded-md bg-black/65 backdrop-blur-md border border-white/10 px-2.5 py-1 text-xs font-bold text-zinc-300">
+                <span className="text-xs font-bold text-zinc-300">
                   {currentArtistName}
                 </span>
               </div>

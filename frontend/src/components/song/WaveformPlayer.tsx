@@ -552,9 +552,9 @@ export function WaveformPlayer({
             <button
               type="button"
               onClick={() => openAddSongModal(song)}
-              className="hidden md:flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold text-zinc-200 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-900 hover:text-white active:scale-95 shadow-md"
+              className="hidden md:flex items-center gap-1.5 rounded-full border border-zinc-800/80 bg-zinc-900/40 px-3 py-1 text-[11px] font-medium text-zinc-300 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-900 hover:text-white active:scale-95 shadow-sm"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
               Add to playlist
             </button>
           </div>

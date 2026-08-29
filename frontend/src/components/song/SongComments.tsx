@@ -294,54 +294,53 @@ export function SongComments({
   }
 
   return (
-    <div id="comments" className="space-y-6 pt-2">
-      {/* Composer Input Area */}
-      <div className="py-2">
-        <CommentComposer songId={songId} onCommentAdded={handleCommentAdded} />
-      </div>
-
-      {/* Action Bar & Stats (SoundCloud Style) */}
-      <div className="flex items-center justify-between border-b border-zinc-900 pb-3 text-sm">
-        <div className="flex items-center gap-3">
-          {/* Like button */}
+    <div id="comments" className="space-y-5 pt-1">
+      {/* Integrated Action Toolbar with Comment Input (SoundCloud Style) */}
+      <div className="flex items-center justify-between gap-3 border-b border-zinc-900 pb-3">
+        {/* Left: Like & Add to Playlist */}
+        <div className="flex items-center gap-2 shrink-0">
           {song && (
             <button
               type="button"
               disabled={togglingLike}
               onClick={handleToggleLike}
               className={cn(
-                "flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs font-semibold transition cursor-pointer select-none active:scale-95",
+                "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition cursor-pointer select-none active:scale-95 shadow-xs",
                 liked
-                  ? "border-[#ff5500] bg-[#ff5500]/10 text-[#ff5500]"
-                  : "border-zinc-800 bg-transparent text-zinc-300 hover:border-zinc-700 hover:text-white"
+                  ? "border-orange-500/60 bg-orange-500/10 text-orange-400 font-semibold"
+                  : "border-zinc-800/80 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
               )}
             >
-              <HeartIcon size={14} className={liked ? "fill-current" : ""} />
+              <HeartIcon size={13} className={liked ? "fill-orange-400 text-orange-400" : "text-zinc-400"} />
               <span>{liked ? "Liked" : "Like"}</span>
             </button>
           )}
 
-          {/* Add to Playlist button */}
           {song && (
             <button
               type="button"
               onClick={() => openAddSongModal(song)}
-              className="flex items-center gap-1.5 rounded border border-zinc-800 bg-transparent px-3 py-1.5 text-xs font-semibold text-zinc-300 transition hover:border-zinc-700 hover:text-white cursor-pointer select-none active:scale-95"
+              className="flex items-center gap-1.5 rounded-full border border-zinc-800/80 bg-zinc-900/40 px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition hover:border-zinc-700 hover:text-zinc-200 cursor-pointer select-none active:scale-95 shadow-xs"
             >
-              <PlaylistIcon size={14} />
+              <PlaylistIcon size={13} className="text-zinc-400" />
               <span>Add to playlist</span>
             </button>
           )}
         </div>
 
-        {/* Play & Like stats counts */}
-        <div className="flex items-center gap-4 text-xs font-semibold text-zinc-500 select-none">
+        {/* Center: Integrated Comment Input */}
+        <div className="min-w-0 flex-1 px-1">
+          <CommentComposer songId={songId} onCommentAdded={handleCommentAdded} />
+        </div>
+
+        {/* Right: Play & Like stats */}
+        <div className="flex items-center gap-3 text-xs font-semibold text-zinc-500 shrink-0 select-none">
           <span className="flex items-center gap-1.5" title="Plays">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
               fill="currentColor"
-              className="h-3.5 w-3.5 text-zinc-600"
+              className="h-3.5 w-3.5 text-zinc-500"
             >
               <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.324-5.89a1.5 1.5 0 000-2.538L6.3 2.84Z" />
             </svg>
@@ -353,7 +352,7 @@ export function SongComments({
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
               fill="currentColor"
-              className="h-3.5 w-3.5 text-zinc-600"
+              className="h-3.5 w-3.5 text-zinc-500"
             >
               <path d="M9.653 16.915l-.005-.003-.019-.01a20.759 20.759 0 01-1.162-.682 22.045 22.045 0 01-2.582-1.9C4.045 12.733 2 10.352 2 7.5a4.5 4.5 0 018-2.828A4.5 4.5 0 0118 7.5c0 2.852-2.044 5.233-3.885 6.82a22.049 22.049 0 01-3.744 2.582l-.019.01-.005.003h-.002a.739.739 0 01-.69.001z" />
             </svg>
@@ -362,33 +361,32 @@ export function SongComments({
         </div>
       </div>
 
-      {/* Layout for Artist & Comments */}
-      <div className="grid grid-cols-12 gap-6 md:gap-8 items-start">
-        {/* Artist Profile info */}
+      {/* Main Grid: Artist Info on Left | Comments on Right */}
+      <div className="grid grid-cols-12 gap-6 md:gap-8 items-start pt-1">
         {artist && (
           <div className="col-span-12 md:col-span-4 lg:col-span-3">
-            {/* Mobile Artist Card (Horizontal Layout) */}
-            <div className="flex items-center justify-between rounded-2xl bg-zinc-900/60 border border-zinc-800/80 p-3.5 shadow-lg md:hidden">
-              <div className="flex items-center gap-3">
+            {/* Mobile Artist Info */}
+            <div className="flex items-center justify-between rounded-xl bg-zinc-900/50 border border-zinc-800/80 p-3 md:hidden">
+              <div className="flex items-center gap-2.5">
                 <Link href={`/artists/${artist.id}`}>
                   {artistAvatar ? (
                     <div
-                      className="h-12 w-12 rounded-full bg-cover bg-center border border-zinc-700 shadow-md"
+                      className="h-10 w-10 rounded-full bg-cover bg-center border border-zinc-700"
                       style={{ backgroundImage: `url(${artistAvatar})` }}
                     />
                   ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-zinc-900 border border-zinc-700 text-sm font-black text-white uppercase">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-black uppercase">
                       {artistName.slice(0, 2)}
                     </div>
                   )}
                 </Link>
                 <div className="min-w-0">
                   <Link href={`/artists/${artist.id}`}>
-                    <h4 className="truncate text-sm font-bold text-white hover:text-orange-400 transition">
+                    <h4 className="truncate text-xs font-bold text-white hover:text-orange-400 transition">
                       {artistName}
                     </h4>
                   </Link>
-                  <div className="flex items-center gap-2 text-[11px] font-semibold text-zinc-400 mt-0.5">
+                  <div className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-400">
                     <span>{getFollowersCount()} followers</span>
                     <span>•</span>
                     <span>{getTracksCount()} tracks</span>
@@ -402,78 +400,62 @@ export function SongComments({
                   disabled={followLoading}
                   onClick={() => void toggleFollow(artist.id, artistName)}
                   className={cn(
-                    "rounded-full px-4 py-1.5 text-xs font-bold transition active:scale-95 shrink-0",
+                    "rounded-full px-3 py-1 text-xs font-bold transition active:scale-95 shrink-0",
                     isArtistFollowed
-                      ? "border border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-red-500/50 hover:text-red-400"
-                      : "bg-orange-500 text-black hover:bg-orange-400 shadow-md shadow-orange-500/20"
+                      ? "border border-zinc-700 bg-zinc-800 text-zinc-300"
+                      : "bg-orange-500 text-black hover:bg-orange-400 font-extrabold"
                   )}
                 >
-                  {followLoading
-                    ? "..."
-                    : isArtistFollowed
-                      ? "Following"
-                      : "Follow"}
+                  {followLoading ? "..." : isArtistFollowed ? "Following" : "Follow"}
                 </button>
               )}
             </div>
 
-            {/* Desktop Artist Column (Vertical Layout) */}
-            <div className="hidden md:flex flex-col items-stretch text-left border-r border-zinc-900/60 pr-8 space-y-4">
-              <div className="flex flex-col items-center">
-                {/* Big Avatar */}
-                <Link href={`/artists/${artist.id}`}>
-                  {artistAvatar ? (
-                    <div
-                      className="h-28 w-28 rounded-full bg-cover bg-center border-2 border-zinc-800 transition duration-300 hover:scale-105 shadow-lg shadow-black/40 cursor-pointer"
-                      style={{ backgroundImage: `url(${artistAvatar})` }}
-                    />
-                  ) : (
-                    <div className="flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-zinc-900 border-2 border-zinc-800 text-3xl font-black text-white transition duration-300 hover:scale-105 shadow-lg shadow-black/40 cursor-pointer uppercase">
-                      {artistName.slice(0, 2)}
-                    </div>
-                  )}
-                </Link>
+            {/* Desktop Artist Section (Borderless SoundCloud Style) */}
+            <div className="hidden md:flex flex-col items-center text-center space-y-3 pt-1 border-r border-zinc-900/80 pr-6">
+              <Link href={`/artists/${artist.id}`}>
+                {artistAvatar ? (
+                  <div
+                    className="h-24 w-24 rounded-full bg-cover bg-center border border-zinc-800 hover:scale-105 transition cursor-pointer shadow-md"
+                    style={{ backgroundImage: `url(${artistAvatar})` }}
+                  />
+                ) : (
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-zinc-900 border border-zinc-800 text-xl font-black text-white uppercase cursor-pointer shadow-md">
+                    {artistName.slice(0, 2)}
+                  </div>
+                )}
+              </Link>
 
-                {/* Artist Name */}
+              <div className="space-y-1">
                 <Link href={`/artists/${artist.id}`}>
-                  <h4 className="mt-3 text-base font-bold text-zinc-200 hover:text-white cursor-pointer transition">
-                    {artistName}
+                  <h4 className="text-sm font-bold text-white hover:text-orange-400 transition cursor-pointer flex items-center justify-center gap-1">
+                    <span>{artistName}</span>
+                    <span className="text-orange-400 text-xs" title="Verified Artist">✓</span>
                   </h4>
                 </Link>
 
-                {/* Stats */}
-                <div className="mt-2.5 flex items-center gap-4 text-xs font-semibold text-zinc-500 select-none">
-                  <span className="flex items-center gap-1.5" title="Followers">
-                    <FollowersIcon className="text-zinc-600" />
-                    <span>{getFollowersCount()}</span>
-                  </span>
-                  <span className="flex items-center gap-1.5" title="Tracks">
-                    <TrackIcon className="text-zinc-600" />
-                    <span>{getTracksCount()}</span>
-                  </span>
+                <div className="flex items-center justify-center gap-2 text-[11px] font-semibold text-zinc-500">
+                  <span>{getFollowersCount()} followers</span>
+                  <span>•</span>
+                  <span>{getTracksCount()} tracks</span>
                 </div>
-
-                {/* Follow Button */}
-                {user && !isSelf && (
-                  <button
-                    type="button"
-                    disabled={followLoading}
-                    onClick={() => void toggleFollow(artist.id, artistName)}
-                    className={cn(
-                      "mt-4 w-28 rounded px-4 py-1.5 text-xs font-bold transition duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer border shadow-sm",
-                      isArtistFollowed
-                        ? "border-zinc-700 bg-transparent text-zinc-300 hover:border-zinc-500 hover:text-white"
-                        : "bg-white text-zinc-950 border-white hover:bg-zinc-200"
-                    )}
-                  >
-                    {followLoading
-                      ? "Loading..."
-                      : isArtistFollowed
-                        ? "Following"
-                        : "Follow"}
-                  </button>
-                )}
               </div>
+
+              {user && !isSelf && (
+                <button
+                  type="button"
+                  disabled={followLoading}
+                  onClick={() => void toggleFollow(artist.id, artistName)}
+                  className={cn(
+                    "mt-1 px-5 py-1.5 text-xs font-bold rounded-full transition active:scale-95 cursor-pointer shadow-sm",
+                    isArtistFollowed
+                      ? "border border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-red-500/50 hover:text-red-400"
+                      : "bg-orange-500 text-black hover:bg-orange-400 font-extrabold"
+                  )}
+                >
+                  {followLoading ? "..." : isArtistFollowed ? "Following" : "Follow"}
+                </button>
+              )}
             </div>
           </div>
         )}

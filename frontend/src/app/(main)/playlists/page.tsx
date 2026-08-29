@@ -88,7 +88,7 @@ function PlaylistModal({
       const isValid = /^(https?:|data:|blob:|\/)/i.test(trimmedUrl);
       if (!isValid) {
         setFormError(
-          "Cover URL must be a valid URL (starting with http://, https://) or a path (starting with /).",
+          "Cover URL must start with http://, https://, or /.",
         );
         return;
       }
@@ -99,28 +99,38 @@ function PlaylistModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 px-4">
-      <div className="w-full max-w-2xl rounded-lg border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl font-semibold text-white">{title}</h2>
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 grid place-items-center bg-black/80 px-4 backdrop-blur-xs animate-in fade-in duration-200"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-2xl border border-zinc-800/90 bg-zinc-950 p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200"
+      >
+        <div className="flex items-center justify-between pb-3 border-b border-zinc-800/80">
+          <h2 className="text-base font-extrabold text-white">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-orange-500 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-white transition active:scale-95 text-xs cursor-pointer"
+            aria-label="Close modal"
           >
-            Close
+            ✕
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <PlaylistForm form={form} onChange={setForm} />
-          {formError && <p className="text-sm text-red-300">{formError}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-lg bg-orange-500 px-4 py-3 text-sm font-semibold text-orange-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
-          >
-            {loading ? "Saving..." : submitLabel}
-          </button>
+          {formError && <p className="text-xs font-semibold text-red-400 pl-1">{formError}</p>}
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={loading || !form.title.trim()}
+              className="w-full rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 py-2.5 text-xs font-extrabold text-black transition hover:from-orange-400 hover:to-amber-400 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer shadow-lg shadow-orange-500/10"
+            >
+              {loading ? "Saving..." : submitLabel}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -164,11 +174,11 @@ function PlaylistCard({
 
   return (
     <article
-      className="group relative rounded-xl bg-zinc-900/40 p-4 transition-all duration-300 hover:bg-zinc-900 border border-zinc-900/10 hover:border-zinc-800 shadow-lg flex flex-col justify-between"
+      className="group relative rounded-2xl bg-zinc-900/30 p-3.5 transition-all duration-300 hover:bg-zinc-900/80 border border-zinc-800/40 hover:border-zinc-700/60 shadow-md flex flex-col justify-between"
     >
-      <div className="relative">
+      <div>
         {/* Cover image wrapper */}
-        <div className="relative aspect-square w-full overflow-hidden rounded-lg shadow-md">
+        <div className="relative aspect-square w-full overflow-hidden rounded-xl shadow-md border border-zinc-800/50">
           <Link href={`/playlists/${playlist.id}`} className="block w-full h-full">
             <PlaylistCover playlist={playlist} />
           </Link>
@@ -180,28 +190,28 @@ function PlaylistCard({
                 e.stopPropagation();
                 onPlay(playlist);
               }}
-              className="absolute bottom-3 right-3 flex h-10 w-10 translate-y-2 items-center justify-center rounded-full bg-orange-500 text-orange-950 opacity-0 shadow-xl transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 hover:scale-105 hover:bg-orange-400 focus:outline-none"
+              className="absolute bottom-3 right-3 flex h-10 w-10 translate-y-2 items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-black opacity-0 shadow-xl transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 hover:scale-105 active:scale-95 focus:outline-none cursor-pointer"
               title="Play playlist"
             >
-              <PlayIcon size={16} className="ml-0.5" />
+              <PlayIcon size={16} className="ml-0.5 text-black" />
             </button>
           )}
         </div>
 
         {/* Playlist metadata */}
-        <div className="mt-4 min-w-0">
-          <h3 className="truncate text-sm font-bold text-white hover:text-orange-400 transition">
+        <div className="mt-3 min-w-0">
+          <h3 className="truncate text-sm font-extrabold text-white hover:text-orange-400 transition">
             <Link href={`/playlists/${playlist.id}`}>{playlist.title}</Link>
           </h3>
-          <p className="mt-1 truncate text-xs text-zinc-400">
+          <p className="mt-0.5 truncate text-xs font-semibold text-zinc-400">
             By {ownerName}
           </p>
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-zinc-900 pt-3">
-        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-          {playlist.track_count} tracks • {playlist.is_public ? "Public" : "Private"}
+      <div className="mt-3 flex items-center justify-between border-t border-zinc-800/60 pt-2.5">
+        <span className="text-[10px] font-extrabold text-zinc-500 uppercase tracking-wider">
+          {playlist.track_count} {playlist.track_count === 1 ? "track" : "tracks"} • {playlist.is_public ? "Public" : "Private"}
         </span>
 
         {/* 3-dots actions dropdown menu */}
@@ -209,7 +219,7 @@ function PlaylistCard({
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
-            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition focus:outline-none"
+            className="rounded-full p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition focus:outline-none cursor-pointer"
             title="Playlist Actions"
           >
             <MoreIcon size={14} />
@@ -359,9 +369,9 @@ export default function PlaylistsPage() {
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="w-fit rounded-lg bg-orange-500 px-4 py-3 text-sm font-semibold text-orange-950 transition hover:bg-orange-400"
+          className="w-fit rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2.5 text-xs font-extrabold text-black transition hover:from-orange-400 hover:to-amber-400 active:scale-95 cursor-pointer shadow-lg shadow-orange-500/10 shrink-0"
         >
-          Create playlist
+          + Create playlist
         </button>
       </div>
 

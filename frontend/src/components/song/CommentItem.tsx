@@ -86,17 +86,17 @@ export function CommentItem({
   const avatarUrl = resolveApiAssetUrl(comment.user.avatar_url);
 
   return (
-    <div className="space-y-3">
-      <div className="group flex items-start gap-4 py-3 border-b border-zinc-900/60 last:border-b-0 transition duration-200">
+    <div className="space-y-2">
+      <div className="group flex items-start gap-3 py-3 border-b border-zinc-900/80 last:border-b-0 transition duration-150">
         {/* Avatar */}
         <Link href={`/users/${comment.user.id}`} className="shrink-0 hover:opacity-90 transition">
           {avatarUrl ? (
             <div
-              className="h-10 w-10 shrink-0 rounded-full bg-cover bg-center border border-zinc-800 shadow-sm"
+              className="h-10 w-10 shrink-0 rounded-full bg-cover bg-center border border-zinc-700/80 shadow-md ring-1 ring-zinc-800"
               style={{ backgroundImage: `url(${avatarUrl})` }}
             />
           ) : (
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-xs font-bold text-zinc-400 uppercase tracking-wider">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/20 to-zinc-800 border border-zinc-700 text-xs font-bold text-zinc-300 uppercase tracking-wider shadow-md">
               {comment.user.username.slice(0, 2)}
             </div>
           )}
@@ -106,42 +106,42 @@ export function CommentItem({
         <div className="min-w-0 flex-1 space-y-1">
           {/* Metadata Row */}
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <Link
                 href={`/users/${comment.user.id}`}
-                className="text-xs sm:text-sm font-bold text-zinc-100 hover:text-orange-400 transition cursor-pointer"
+                className="text-xs sm:text-sm font-extrabold text-zinc-100 hover:text-orange-400 transition cursor-pointer"
               >
                 {comment.user.username}
               </Link>
 
-              <span className="rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.2 text-[10px] font-mono font-semibold">
+              <span className="rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 text-[10px] font-mono font-bold shadow-xs">
                 at 0:00
               </span>
 
               {comment.isArtist && (
-                <span className="rounded bg-orange-500 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider text-orange-950">
-                  Artist
+                <span className="rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-black shadow-sm">
+                  ARTIST
                 </span>
               )}
 
-              <span className="text-[10px] text-zinc-500">
+              <span className="text-[10px] font-semibold text-zinc-500">
                 • {timeAgo(comment.created_at)}
               </span>
             </div>
           </div>
 
           {/* Comment text */}
-          <p className="text-[13px] text-zinc-300 break-words leading-relaxed whitespace-pre-wrap">
+          <p className="text-xs sm:text-[13px] text-zinc-200 break-words leading-relaxed whitespace-pre-wrap font-normal">
             {comment.content}
           </p>
 
           {/* Action Row */}
-          <div className="pt-1 flex items-center gap-3 text-xs font-medium text-zinc-500 opacity-80 group-hover:opacity-100 transition-opacity">
+          <div className="pt-1 flex items-center gap-3 text-xs font-semibold text-zinc-400 transition-opacity">
             {!isReply && user && (
               <button
                 type="button"
                 onClick={() => setShowReplyForm(!showReplyForm)}
-                className="hover:text-zinc-200 transition cursor-pointer text-[11px]"
+                className="hover:text-orange-400 transition cursor-pointer text-[11px]"
               >
                 Reply
               </button>
@@ -152,7 +152,7 @@ export function CommentItem({
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting}
-                className="hover:text-red-500 transition disabled:opacity-50 cursor-pointer text-[11px]"
+                className="hover:text-red-400 transition disabled:opacity-50 cursor-pointer text-[11px]"
               >
                 Delete
               </button>

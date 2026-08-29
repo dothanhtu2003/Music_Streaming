@@ -1,10 +1,17 @@
 "use client";
 
+import { useRef, useState, type DragEvent, type PointerEvent } from "react";
 import { SongCard } from "@/components/song/SongCard";
 import { SongListItem } from "@/components/song/SongListItem";
 import { SongCardSkeleton, ListItemSkeleton } from "@/components/ui/Skeletons";
 import type { Song } from "@/types/music";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { cn } from "@/lib/utils";
+
+type DropTarget = {
+  songId: string;
+  edge: "before" | "after";
+};
 
 type SongListProps = {
   songs: Song[];
@@ -16,7 +23,37 @@ type SongListProps = {
   loadingMore?: boolean;
   onLoadMore?: () => void;
   variant?: "grid" | "list";
+  reorderable?: boolean;
+  onReorder?: (songs: Song[]) => void;
 };
+
+export function reorderSongs(
+  songs: Song[],
+  draggedSongId: string,
+  target: DropTarget,
+) {
+  if (draggedSongId === target.songId) {
+    return songs;
+  }
+
+  const draggedIndex = songs.findIndex((song) => song.id === draggedSongId);
+
+  if (draggedIndex === -1) {
+    return songs;
+  }
+
+  const nextSongs = [...songs];
+  const [draggedSong] = nextSongs.splice(draggedIndex, 1);
+  const targetIndex = nextSongs.findIndex((song) => song.id === target.songId);
+
+  if (!draggedSong || targetIndex === -1) {
+    return songs;
+  }
+
+  const insertIndex = target.edge === "after" ? targetIndex + 1 : targetIndex;
+  nextSongs.splice(insertIndex, 0, draggedSong);
+  return nextSongs;
+}
 
 export function SongList({
   songs,
@@ -28,7 +65,76 @@ export function SongList({
   loadingMore = false,
   onLoadMore,
   variant = "grid",
+  reorderable = false,
+  onReorder,
 }: SongListProps) {
+  const [draggedSongId, setDraggedSongId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
+  const canStartDragRef = useRef(true);
+
+  const resetDragState = () => {
+    setDraggedSongId(null);
+    setDropTarget(null);
+    canStartDragRef.current = true;
+  };
+
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    canStartDragRef.current = !target.closest(
+      "button, input, select, textarea, [role='button'], [data-no-drag]",
+    );
+  };
+
+  const handleDragStart = (
+    event: DragEvent<HTMLDivElement>,
+    songId: string,
+  ) => {
+    if (!reorderable || !canStartDragRef.current) {
+      event.preventDefault();
+      return;
+    }
+
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", songId);
+    setDraggedSongId(songId);
+  };
+
+  const handleDragOver = (
+    event: DragEvent<HTMLDivElement>,
+    songId: string,
+  ) => {
+    if (!reorderable || !draggedSongId || draggedSongId === songId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const edge = event.clientY < bounds.top + bounds.height / 2
+      ? "before"
+      : "after";
+
+    setDropTarget((currentTarget) =>
+      currentTarget?.songId === songId && currentTarget.edge === edge
+        ? currentTarget
+        : { songId, edge },
+    );
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+
+    const sourceSongId =
+      draggedSongId || event.dataTransfer.getData("text/plain");
+
+    if (sourceSongId && dropTarget && onReorder) {
+      onReorder(reorderSongs(songs, sourceSongId, dropTarget));
+    }
+
+    resetDragState();
+  };
+
   if (loading) {
     if (variant === "list") {
       return (
@@ -87,14 +193,44 @@ export function SongList({
 
           {/* List items */}
           <div className="space-y-1.5">
-            {songs.map((song, index) => (
-              <SongListItem
-                key={song.id}
-                song={song}
-                queue={songs}
-                index={index}
-              />
-            ))}
+            {songs.map((song, index) => {
+              const showDropLine = dropTarget?.songId === song.id;
+
+              return (
+                <div
+                  key={song.id}
+                  draggable={reorderable}
+                  onPointerDownCapture={handlePointerDown}
+                  onDragStart={(event) => handleDragStart(event, song.id)}
+                  onDragOver={(event) => handleDragOver(event, song.id)}
+                  onDrop={handleDrop}
+                  onDragEnd={resetDragState}
+                  title={
+                    reorderable ? "Hold and drag to change play order" : undefined
+                  }
+                  className={cn(
+                    "relative",
+                    reorderable && "cursor-grab select-none active:cursor-grabbing",
+                    draggedSongId === song.id && "opacity-45",
+                  )}
+                >
+                  {showDropLine && (
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "pointer-events-none absolute inset-x-2 z-20 h-0.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)]",
+                        dropTarget.edge === "before" ? "-top-1" : "-bottom-1",
+                      )}
+                    />
+                  )}
+                  <SongListItem
+                    song={song}
+                    queue={songs}
+                    index={index}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : (
