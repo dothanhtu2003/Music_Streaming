@@ -42,6 +42,7 @@ describe("authentication refresh edge cases", () => {
   it("rejects refresh immediately when no refresh token is stored", async () => {
     await expect(refreshAuthSession()).rejects.toEqual(
       expect.objectContaining<ApiRequestError>({
+        name: "ApiRequestError",
         statusCode: 401,
         message: "Refresh token is missing.",
       }),
