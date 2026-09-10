@@ -176,12 +176,16 @@ export function MobileTikTokFeed() {
 
   // Initial load when tab changes or if not loaded yet
   useEffect(() => {
-    if (!hasLoaded) {
-      void loadSongs(1, true);
-    } else {
-      setLoading(false);
+    if (hasLoaded) {
+      return;
     }
-  }, [activeTab, hasLoaded]);
+
+    const frameId = window.requestAnimationFrame(() => {
+      void loadSongs(1, true);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [hasLoaded, loadSongs]);
 
   // Listen for active tab click on /feed in bottom navigation to refresh feed
   useEffect(() => {
