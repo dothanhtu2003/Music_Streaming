@@ -13,7 +13,7 @@ A premium, full-stack, responsive music streaming application built as a portfol
 [![Zustand](https://img.shields.io/badge/Zustand-State-black?style=for-the-badge)](https://zustand-demo.pmnd.rs/)
 [![WaveSurfer.js](https://img.shields.io/badge/WaveSurfer.js-Waveform-637CDB?style=for-the-badge)](https://wavesurfer.xyz/)
 
-[![Node.js 18](https://img.shields.io/badge/Node.js-18-339933?style=for-the-badge&logo=nodedotjs)](https://nodejs.org/)
+[![Node.js 20](https://img.shields.io/badge/Node.js-20-339933?style=for-the-badge&logo=nodedotjs)](https://nodejs.org/)
 [![Express 5](https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express)](https://expressjs.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-4169E1?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
 [![Cloudinary](https://img.shields.io/badge/Cloudinary-Media-F15A24?style=for-the-badge&logo=cloudinary)](https://cloudinary.com/)
@@ -45,7 +45,7 @@ This **Music Streaming Web App** is a portfolio-ready, full-stack streaming plat
 
 ### 💬 Social & Engagement
 
-- **Song Comments**: Threaded comment system on individual song pages, supporting nested replies, comment deletion by owner, and artist verification badges.
+- **Song Comments**: Threaded comment system on individual song pages, supporting one level of replies, comment deletion by the comment author, song owner, or an administrator, and artist verification badges.
 - **Likes & Library**: Users can like/unlike songs and access a dedicated Liked Songs collection page with Play All functionality.
 - **Public User Profiles**: SoundCloud-style profile pages (`/users/:id`) displaying a user's uploaded tracks, public playlists, and follower/following lists with interactive modals.
 - **Follow System**: Users can follow/unfollow other users and artists, with public follower/following list browsing for any user profile.
@@ -57,9 +57,9 @@ This **Music Streaming Web App** is a portfolio-ready, full-stack streaming plat
 
 ### 🛡️ Platform Security & Session Management
 
-- **Dual-Token Auth**: Secure user session cycles utilizing short-lived JWT Access Tokens and database-stored, bcrypt-hashed Refresh Tokens.
+- **Dual-Token Auth**: Secure user session cycles utilizing short-lived JWT access tokens and database-stored, SHA-256-hashed refresh tokens. User passwords are hashed separately with bcrypt.
 - **Access Control & Permissions**: Strict role-based middleware guarding user profiles, playlists, uploads, and administrative actions.
-- **User Ban Control**: Administrative user ban immediately invalidates and purges all active refresh tokens, forcing an immediate session termination.
+- **User Ban Control**: Administrative user bans revoke all active refresh tokens, while protected requests also reject access tokens belonging to banned users.
 
 ### 📊 Admin Panel Dashboard
 
@@ -85,7 +85,7 @@ graph TD
     subgraph Backend [Express API Gateway]
         Express[Express Router]
         AuthMD[Auth Middleware]
-        UploadMD[Multer & CloudinaryStorage]
+        UploadMD[Multer Memory Storage & Cloudinary Upload Stream]
         Controller[Controllers]
         Service[Business Logic Services]
     end
@@ -335,7 +335,7 @@ erDiagram
 │       │   ├── register/     # Registration page
 │       │   ├── (main)/       # Main app pages
 │       │   │   ├── home/     # Home page with song and genre sections
-│       │   │   ├── search/   # Multi-tab search (songs, artists, genres)
+│       │   │   ├── search/   # Multi-tab search (songs, artists, playlists)
 │       │   │   ├── feed/     # Personalized feed from followed artists
 │       │   │   ├── liked/    # Liked songs collection
 │       │   │   ├── playlists/# Playlist management & detail views
@@ -482,7 +482,7 @@ All routes are mounted under `/api`. Paths below are relative to each module bas
 | **Likes** | `/api/likes` | User Session | `POST /`, `DELETE /`, `GET /me` |
 | **Recently Played** | `/api/recently-played` | User Session | `POST /`, `GET /` |
 | **Follows** | `/api/follow` | Mixed | `GET /following`, `GET /status/:artistId`, `POST /:userId`, `DELETE /:userId`, `GET /list/:userId/followers`, `GET /list/:userId/following` |
-| **Feed** | `/api/feed` | User Session | `GET /` |
+| **Feed** | `/api/feed` | Mixed | `GET /discover` (optional session), `GET /` (user session) |
 | **Search** | `/api/search` | Mixed | `GET /`, `GET /suggestions`, `GET /recent`, `DELETE /recent`, `DELETE /recent/:id`, `GET /trending` |
 | **History** | `/api/history` | User Session | `GET /me`, `DELETE /me` |
 | **Notifications** | `/api/notifications` | User Session | `GET /`, `GET /unread-count`, `GET /stream`, `PATCH /read-all`, `PATCH /:id/read` |
@@ -517,8 +517,10 @@ npm run lint
 npm run build
 ```
 
-Run the complete local verification sequence from the repository root with
-`npm run verify`.
+Run the standard local verification sequence (backend/frontend lint and unit
+tests, plus the frontend production build) from the repository root with
+`npm run verify`. Cloudinary integration and Playwright E2E tests remain
+separate because they require external credentials and a dedicated test database.
 
 ## Current Limitations and Roadmap
 
