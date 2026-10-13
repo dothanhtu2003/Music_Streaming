@@ -309,8 +309,8 @@ export function WaveformVisualizer({
 
       const nextWaveSurfer = WaveSurfer.create({
         container: containerRef.current,
-        media: mediaElement,
-        ...(mediaUrl ? { url: mediaUrl } : {}),
+        // Render peaks only. PlayerProvider exclusively owns the playing audio;
+        // initializing or destroying a waveform must never reset its source.
         peaks: nextPeaks,
         duration: renderDuration,
         ...getWaveSurferBarOptions({ height }),

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { usePlaylists } from "@/components/playlist/PlaylistProvider";
 import { PauseIcon, PlayIcon, VerifiedBadge } from "@/components/ui/Icons";
 import {
   getSongWaveformRequest,
@@ -16,6 +15,7 @@ import {
   getSongCoverUrl,
   getGenreName,
   formatPlayCount,
+  getArtistAvatarUrl,
 } from "@/lib/song-format";
 import {
   getWaveSurferBarOptions,
@@ -115,7 +115,6 @@ export function WaveformPlayer({
   recentlyPlayedContext = null,
 }: WaveformPlayerProps) {
   const { user } = useAuth();
-  const { openAddSongModal } = usePlaylists();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const currentSongIdRef = useRef<string | null>(null);
@@ -383,23 +382,101 @@ export function WaveformPlayer({
   };
 
   if (variant === "soundcloud") {
-    return (
-      <div className="relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900/60 p-6 shadow-2xl sm:p-8">
-        {/* Background glow gradient */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,85,0,0.05),transparent_55%)] pointer-events-none" />
+    const coverUrl = getSongCoverUrl(song);
+    const artistAvatar = getArtistAvatarUrl(song.artist);
 
-        <div className="relative flex flex-col-reverse gap-6 md:flex-row md:items-stretch justify-between h-full">
-          {/* LEFT COLUMN: Controls, metadata & waveform */}
-          <div className="flex flex-col justify-between flex-1 min-w-0">
-            {/* Top Row: Play button + Title/Artist/Tags */}
-            <div className="flex items-start gap-4">
+    return (
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 p-6 shadow-2xl sm:p-8">
+        {/* Subtle Ambient background glow from cover */}
+        {coverUrl ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center blur-3xl opacity-20 scale-125 pointer-events-none transition-opacity duration-700"
+            style={{ backgroundImage: `url(${coverUrl})` }}
+            aria-hidden="true"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,85,0,0.12),transparent_60%)] pointer-events-none" />
+        )}
+
+        {/* Dark contrast gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/85 to-zinc-950/60 pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row items-center md:items-stretch gap-6 lg:gap-8">
+          {/* LEFT COLUMN: Large Cover Image with Depth & Glow */}
+          <div className="relative group shrink-0 self-center md:self-auto">
+            {coverUrl && (
+              <div
+                className="absolute -inset-1.5 rounded-2xl bg-cover bg-center blur-xl opacity-40 group-hover:opacity-60 transition duration-500"
+                style={{ backgroundImage: `url(${coverUrl})` }}
+                aria-hidden="true"
+              />
+            )}
+
+            <div className="relative h-52 w-52 sm:h-56 sm:w-56 md:h-60 md:w-60 lg:h-64 lg:w-64 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20 border border-white/10 transition-transform duration-300 group-hover:scale-[1.02]">
+              {coverUrl ? (
+                <div
+                  className="h-full w-full bg-cover bg-center"
+                  style={{ backgroundImage: `url(${coverUrl})` }}
+                  aria-label={`${song.title} cover`}
+                />
+              ) : (
+                <div className="grid h-full w-full place-items-center bg-gradient-to-br from-orange-500 to-zinc-900 text-6xl font-black text-white/90">
+                  {song.title.slice(0, 1).toUpperCase()}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Metadata & Playback Area */}
+          <div className="flex flex-col justify-between flex-1 min-w-0 w-full space-y-5">
+            {/* Top section: Badges + Title + Artist */}
+            <div className="space-y-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-md bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-orange-400 border border-orange-500/25 backdrop-blur-sm">
+                  {getGenreName(song) || "Track"}
+                </span>
+                <span className="rounded-md bg-zinc-900/80 border border-white/10 px-2.5 py-0.5 text-[10px] font-medium text-zinc-300 backdrop-blur-sm">
+                  {song.album ? song.album.title : "Single"}
+                </span>
+              </div>
+
+              <h1 className="text-2xl font-black text-white sm:text-3xl lg:text-4xl tracking-tight leading-tight line-clamp-2">
+                {song.title}
+              </h1>
+
+              <div className="flex flex-wrap items-center gap-2.5 text-xs text-zinc-400 pt-0.5">
+                <Link
+                  href={`/artists/${song.artist.id}`}
+                  className="font-bold text-zinc-200 hover:text-orange-400 transition-colors inline-flex items-center gap-1.5 text-sm"
+                >
+                  {artistAvatar && (
+                    <span
+                      className="h-5 w-5 rounded-full bg-cover bg-center ring-1 ring-white/20 inline-block"
+                      style={{ backgroundImage: `url(${artistAvatar})` }}
+                    />
+                  )}
+                  <span>{song.artist.name}</span>
+                  {song.artist.is_verified && <VerifiedBadge size={13} />}
+                </Link>
+                {user && (user.id === song.artist.user_id || user.username?.toLowerCase() === song.artist.name?.toLowerCase()) && (
+                  <span className="inline-flex items-center rounded bg-orange-500/15 px-1.5 py-0.5 text-[9px] font-bold text-orange-400 border border-orange-500/25" title="This is you">
+                    Bạn
+                  </span>
+                )}
+                <span className="text-zinc-700">•</span>
+                <span className="text-zinc-400 font-medium">{formatPlayCount(song.play_count)} plays</span>
+              </div>
+            </div>
+
+            {/* Bottom section: Play Button + Waveform side-by-side */}
+            <div className="flex items-center gap-4 pt-2">
               {/* Circular Play Button */}
               <button
                 type="button"
                 onClick={handleTogglePlay}
                 disabled={!safeAudioUrl}
                 className={cn(
-                  "flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-orange-500 text-orange-950 transition-all duration-200 hover:bg-orange-400 hover:scale-105 active:scale-95 shadow-lg shadow-orange-500/20 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 sm:h-16 sm:w-16",
+                  "flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-orange-500 text-orange-950 transition-all duration-200 hover:bg-orange-400 hover:scale-105 active:scale-95 shadow-lg shadow-orange-500/25 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 sm:h-16 sm:w-16",
                   isWaveformPlaying && "bg-white text-black hover:bg-zinc-200",
                 )}
                 aria-label={isWaveformPlaying ? "Pause" : "Play"}
@@ -407,156 +484,98 @@ export function WaveformPlayer({
                 {isWaveformPlaying ? (
                   <PauseIcon size={22} />
                 ) : (
-                  <PlayIcon size={22} className="ml-1" />
+                  <PlayIcon size={22} className="ml-0.5" />
                 )}
               </button>
 
-              {/* Metadata (Title, Artist, Tags) */}
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded bg-orange-500/10 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-orange-400 border border-orange-500/20">
-                    {getGenreName(song) || "Track"}
-                  </span>
-                  <span className="rounded bg-zinc-900 border border-zinc-800 px-2.5 py-0.5 text-[10px] font-medium text-zinc-400">
-                    {song.album ? song.album.title : "Single"}
-                  </span>
-                </div>
-
-                <h1 className="truncate text-2xl font-black text-white sm:text-3xl lg:text-4xl tracking-tight leading-tight">
-                  {song.title}
-                </h1>
-
-                <div className="flex items-center gap-2 text-xs text-zinc-400">
-                  <Link href={`/artists/${song.artist.id}`} className="font-bold text-zinc-200 hover:text-orange-400 transition-colors inline-flex items-center gap-1 text-sm">
-                    <span>{song.artist.name}</span>
-                    {song.artist.is_verified && <VerifiedBadge size={13} />}
-                  </Link>
-                  {user && (user.id === song.artist.user_id || user.username?.toLowerCase() === song.artist.name?.toLowerCase()) && (
-                    <span className="inline-flex items-center rounded bg-orange-500/10 px-1.5 py-0.5 text-[9px] font-bold text-orange-400 border border-orange-500/20" title="This is you">
-                      Bạn
-                    </span>
-                  )}
-                  <span className="text-zinc-700">•</span>
-                  <span className="text-zinc-500 font-semibold">{formatPlayCount(song.play_count)} plays</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Row: Waveform container */}
-            <div className="relative mt-4 md:mt-8">
-              {/* Loading/Error overlays */}
-              {status !== "ready" && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-zinc-950/60 rounded-xl backdrop-blur-sm">
-                  {status === "loading" && (
-                    <span className="text-xs font-medium text-zinc-400 animate-pulse">
-                      Loading Waveform{loadProgress > 0 ? ` ${loadProgress}%` : "..."}
-                    </span>
-                  )}
-                  {status === "error" && (
-                    <span className="text-xs font-semibold text-red-400">
-                      {errorMessage ?? "Waveform load failed"}
-                    </span>
-                  )}
-                  {status === "empty" && (
-                    <span className="text-xs font-semibold text-zinc-500">
-                      Audio is not available.
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Waveform visualizer container (Visible on all screens) */}
-              <div
-                className={cn(
-                  "relative overflow-hidden rounded-xl py-1",
-                  status === "ready" && "cursor-pointer",
-                )}
-                aria-busy={status === "loading"}
-              >
-                <div
-                  ref={containerRef}
-                  className="h-16 w-full md:h-20"
-                  style={height ? { height } : undefined}
-                />
-
-                {/* Float markers */}
-                {visibleMarkers.length > 0 && (
-                  <div className="pointer-events-none absolute inset-x-2 top-2 bottom-2 z-10">
-                    {visibleMarkers.map(({ marker, percent, time }) => {
-                      const avatarUrl = getMarkerAvatar(marker);
-
-                      return (
-                        <div
-                          key={marker.id}
-                          className="group pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
-                          style={{ left: `${percent}%` }}
-                        >
-                          {avatarUrl ? (
-                            <span
-                              className="block h-6 w-6 rounded-full border-2 border-orange-400 bg-zinc-950 bg-cover bg-center shadow-lg"
-                              style={{ backgroundImage: `url(${avatarUrl})` }}
-                              aria-label={marker.username ?? marker.label ?? "Marker"}
-                            />
-                          ) : (
-                            <span className="block h-3 w-3 rounded-full border-2 border-orange-300 bg-orange-500 shadow-lg shadow-orange-500/30" />
-                          )}
-
-                          <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-max max-w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-left text-xs text-zinc-200 opacity-0 shadow-xl transition group-hover:opacity-100">
-                            <span className="block font-semibold text-white">
-                              {marker.username ?? marker.label ?? "Marker"}
-                            </span>
-                            <span className="mt-1 block text-zinc-400">
-                              {formatDuration(time)}
-                            </span>
-                            {marker.content && (
-                              <span className="mt-1 block whitespace-normal text-zinc-300">
-                                {marker.content}
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      );
-                    })}
+              {/* Waveform Player */}
+              <div className="relative flex-1 min-w-0">
+                {/* Loading/Error overlays */}
+                {status !== "ready" && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-zinc-950/70 rounded-xl backdrop-blur-sm">
+                    {status === "loading" && (
+                      <span className="text-xs font-medium text-zinc-400 animate-pulse">
+                        Loading Waveform{loadProgress > 0 ? ` ${loadProgress}%` : "..."}
+                      </span>
+                    )}
+                    {status === "error" && (
+                      <span className="text-xs font-semibold text-red-400">
+                        {errorMessage ?? "Waveform load failed"}
+                      </span>
+                    )}
+                    {status === "empty" && (
+                      <span className="text-xs font-semibold text-zinc-500">
+                        Audio is not available.
+                      </span>
+                    )}
                   </div>
                 )}
 
-                {/* Timestamps absolute overlay */}
-                <div className="absolute left-0 bottom-[25%] z-10 rounded-sm bg-black/80 backdrop-blur-sm px-1.5 py-0.5 text-[9px] font-bold text-orange-500 font-mono select-none">
-                  {formatDuration(displayCurrentTime)}
-                </div>
-                <div className="absolute right-0 bottom-[25%] z-10 rounded-sm bg-black/80 backdrop-blur-sm px-1.5 py-0.5 text-[9px] font-bold text-zinc-400 font-mono select-none">
-                  {formatDuration(displayDuration)}
+                {/* Waveform visualizer container */}
+                <div
+                  className={cn(
+                    "relative overflow-hidden rounded-xl py-1 bg-zinc-900/30 border border-white/5 px-2",
+                    status === "ready" && "cursor-pointer",
+                  )}
+                  aria-busy={status === "loading"}
+                >
+                  <div
+                    ref={containerRef}
+                    className="h-16 w-full md:h-20 min-h-[64px]"
+                    style={height ? { height } : undefined}
+                  />
+
+                  {/* Float markers */}
+                  {visibleMarkers.length > 0 && (
+                    <div className="pointer-events-none absolute inset-x-2 top-2 bottom-2 z-10">
+                      {visibleMarkers.map(({ marker, percent, time }) => {
+                        const avatarUrl = getMarkerAvatar(marker);
+
+                        return (
+                          <div
+                            key={marker.id}
+                            className="group pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
+                            style={{ left: `${percent}%` }}
+                          >
+                            {avatarUrl ? (
+                              <span
+                                className="block h-6 w-6 rounded-full border-2 border-orange-400 bg-zinc-950 bg-cover bg-center shadow-lg"
+                                style={{ backgroundImage: `url(${avatarUrl})` }}
+                                aria-label={marker.username ?? marker.label ?? "Marker"}
+                              />
+                            ) : (
+                              <span className="block h-3 w-3 rounded-full border-2 border-orange-300 bg-orange-500 shadow-lg shadow-orange-500/30" />
+                            )}
+
+                            <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-max max-w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-left text-xs text-zinc-200 opacity-0 shadow-xl transition group-hover:opacity-100">
+                              <span className="block font-semibold text-white">
+                                {marker.username ?? marker.label ?? "Marker"}
+                              </span>
+                              <span className="mt-1 block text-zinc-400">
+                                {formatDuration(time)}
+                              </span>
+                              {marker.content && (
+                                <span className="mt-1 block whitespace-normal text-zinc-300">
+                                  {marker.content}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Timestamps */}
+                  <div className="absolute left-2 bottom-1 z-10 rounded bg-black/80 backdrop-blur-md px-1.5 py-0.5 text-[9px] font-bold text-orange-400 font-mono select-none border border-white/5">
+                    {formatDuration(displayCurrentTime)}
+                  </div>
+                  <div className="absolute right-2 bottom-1 z-10 rounded bg-black/80 backdrop-blur-md px-1.5 py-0.5 text-[9px] font-bold text-zinc-400 font-mono select-none border border-white/5">
+                    {formatDuration(displayDuration)}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* RIGHT COLUMN: Cover Image & Action Buttons */}
-          <div className="flex flex-col items-center md:items-end justify-between shrink-0 gap-4">
-            {/* Cover image wrapper */}
-            <div className="relative h-48 w-48 sm:h-44 sm:w-44 rounded-2xl overflow-hidden shadow-2xl shadow-orange-500/10 border border-zinc-800 transition-transform duration-300 hover:scale-[1.02]">
-              {getSongCoverUrl(song) ? (
-                <div
-                  className="h-full w-full bg-cover bg-center"
-                  style={{ backgroundImage: `url(${getSongCoverUrl(song)})` }}
-                  aria-label={`${song.title} cover`}
-                />
-              ) : (
-                <div className="grid h-full w-full place-items-center bg-gradient-to-br from-orange-500 to-zinc-900 text-5xl font-black text-white/90">
-                  {song.title.slice(0, 1).toUpperCase()}
-                </div>
-              )}
-            </div>
-
-            {/* Add to playlist action button (Desktop only, mobile uses bottom action bar) */}
-            <button
-              type="button"
-              onClick={() => openAddSongModal(song)}
-              className="hidden md:flex items-center gap-1.5 rounded-full border border-zinc-800/80 bg-zinc-900/40 px-3 py-1 text-[11px] font-medium text-zinc-300 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-900 hover:text-white active:scale-95 shadow-sm"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-              Add to playlist
-            </button>
           </div>
         </div>
       </div>

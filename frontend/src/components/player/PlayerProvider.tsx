@@ -59,6 +59,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const { accessToken } = useAuth();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isPlayingRef = useRef(false);
+  const playbackAttemptRef = useRef(0);
   const listenedSongIdRef = useRef<string | null>(null);
 
   const currentSong = usePlayerStore((state) => state.currentSong);
@@ -137,11 +138,18 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
 
     setPlayerError(null);
 
-    void audio.play().catch(() => {
-      if (audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-        setIsPlaying(false);
-        setPlayerError("Could not play this audio file.");
-      }
+    const attempt = ++playbackAttemptRef.current;
+    void audio.play().catch((error: unknown) => {
+      // A cancelled request from the previous track must not stop the new one.
+      if (attempt !== playbackAttemptRef.current || !isPlayingRef.current) return;
+      if (error instanceof DOMException && error.name === "AbortError") return;
+
+      setIsPlaying(false);
+      setPlayerError(
+        error instanceof DOMException && error.name === "NotAllowedError"
+          ? "Playback was blocked by your browser. Press Play to try again."
+          : "Could not play this audio file. Please try again.",
+      );
     });
   }, [audioSrc, setIsPlaying, setPlayerError]);
 
@@ -159,10 +167,11 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
 
     if (isPlaying) {
       attemptPlayback();
-      return;
+      return () => { playbackAttemptRef.current += 1; };
     }
 
     audio.pause();
+    return () => { playbackAttemptRef.current += 1; };
   }, [audioSrc, attemptPlayback, isPlaying]);
 
   useEffect(() => {

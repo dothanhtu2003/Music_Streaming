@@ -225,7 +225,7 @@ export function MobileTikTokFeed() {
               if (song) {
                 // Auto play track on swipe snap focus
                 if (currentSong?.id !== song.id) {
-                  playSong(song);
+                  playSong(song, songs);
                 }
               }
 
@@ -417,7 +417,7 @@ export function MobileTikTokFeed() {
                     if (currentSong?.id === song.id) {
                       togglePlay();
                     } else {
-                      playSong(song);
+                      playSong(song, songs);
                     }
                   }}
                   className="relative z-20 my-auto flex flex-col items-center justify-center cursor-pointer group"
@@ -555,7 +555,7 @@ export function MobileTikTokFeed() {
                         if (currentSong?.id === song.id) {
                           togglePlay();
                         } else {
-                          playSong(song);
+                          playSong(song, songs);
                         }
                       }}
                       className={cn(

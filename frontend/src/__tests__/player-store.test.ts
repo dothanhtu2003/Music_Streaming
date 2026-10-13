@@ -57,11 +57,44 @@ describe("player state", () => {
     expect(usePlayerStore.getState().currentSong?.id).toBe("one");
   });
 
+  it("uses the catalog for next after a one-song queue is hydrated", () => {
+    const songs = [song("one"), song("two")];
+    usePlayerStore.getState().playSong(songs[0]);
+    usePlayerStore.getState().setAllCatalogSongs(songs);
+
+    usePlayerStore.getState().nextSong();
+
+    expect(usePlayerStore.getState().currentSong?.id).toBe("two");
+  });
+
   it("stops at queue end when repeat-all is disabled", () => {
     const songs = [song("one"), song("two")];
     usePlayerStore.getState().playSong(songs[1], songs);
     usePlayerStore.getState().nextSongAfterEnd();
     expect(usePlayerStore.getState().isPlaying).toBe(false);
+  });
+
+  it("moves to the previous song without wrapping", () => {
+    const songs = [song("one"), song("two")];
+    usePlayerStore.getState().playSong(songs[1], songs);
+    usePlayerStore.getState().previousSong();
+
+    expect(usePlayerStore.getState().currentSong?.id).toBe("one");
+  });
+
+  it("seeks to the start when previous is used on the first song", () => {
+    const songs = [song("one"), song("two")];
+    usePlayerStore.getState().playSong(songs[0], songs);
+    usePlayerStore.getState().seek(45);
+    const previousSeekVersion = usePlayerStore.getState().seekVersion;
+
+    usePlayerStore.getState().previousSong();
+
+    const state = usePlayerStore.getState();
+    expect(state.currentSong?.id).toBe("one");
+    expect(state.currentTime).toBe(0);
+    expect(state.seekTarget).toBe(0);
+    expect(state.seekVersion).toBe(previousSeekVersion + 1);
   });
 
   it("clamps volume and seek position", () => {

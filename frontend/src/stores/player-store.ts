@@ -279,9 +279,12 @@ function getPreviousSong(state: PlayerStore) {
   }
 
   const currentIndex = pool.findIndex((song) => song.id === currentSong.id);
-  const previousIndex = currentIndex <= 0 ? pool.length - 1 : currentIndex - 1;
 
-  return pool[previousIndex] ?? null;
+  if (currentIndex <= 0) {
+    return null;
+  }
+
+  return pool[currentIndex - 1] ?? null;
 }
 
 export const usePlayerStore = create<PlayerStore>((set, get) => ({
@@ -411,6 +414,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
           shuffleOrder: position.order,
           shuffleIndex: previousIndex,
         });
+      } else {
+        set({
+          currentTime: 0,
+          seekTarget: 0,
+          seekVersion: state.seekVersion + 1,
+        });
       }
 
       return;
@@ -420,7 +429,14 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 
     if (previousSong) {
       set(selectSong(previousSong));
+      return;
     }
+
+    set({
+      currentTime: 0,
+      seekTarget: 0,
+      seekVersion: state.seekVersion + 1,
+    });
   },
 
   setQueue: (queue) => {

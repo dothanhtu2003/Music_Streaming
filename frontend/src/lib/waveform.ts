@@ -220,9 +220,13 @@ export function preparePeaks(peaks: number[][]): number[][] {
 }
 
 function getCanvasPixelRatio(canvas: HTMLCanvasElement) {
+  if (typeof window !== "undefined" && window.devicePixelRatio) {
+    return window.devicePixelRatio;
+  }
+
   const styleWidth = parseFloat(canvas.style.width);
 
-  if (!styleWidth || !canvas.width) {
+  if (!styleWidth || !canvas.width || canvas.style.width.endsWith("%")) {
     return 1;
   }
 

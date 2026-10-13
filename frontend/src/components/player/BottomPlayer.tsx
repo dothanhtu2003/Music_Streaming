@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import type { SongComment } from "@/types/music";
 
 const QUICK_COMMENTS = ["🔥", "👏", "🥺"] as const;
+const MOBILE_SWIPE_THRESHOLD = 40;
 
 function CoverThumb() {
   const currentSong = usePlayerStore((state) => state.currentSong);
@@ -168,7 +169,6 @@ export function BottomPlayer() {
         comment: newComment,
       });
       setCommentContent("");
-      setCommentFeedback({ type: "success", message: "Comment posted." });
     } catch (error) {
       setCommentFeedback({
         type: "error",
@@ -205,26 +205,90 @@ export function BottomPlayer() {
     }, 280);
   };
 
-  const touchStartXRef = useRef<number | null>(null);
-  const touchStartYRef = useRef<number | null>(null);
+  const pointerStartXRef = useRef<number | null>(null);
+  const pointerStartYRef = useRef<number | null>(null);
+  const isWaveformGestureRef = useRef(false);
+  const hasClaimedSwipeRef = useRef(false);
+  const suppressClickRef = useRef(false);
+  const suppressClickTimerRef = useRef<number | null>(null);
 
-  const handleTouchStart = (event: React.TouchEvent) => {
-    touchStartXRef.current = event.touches[0].clientX;
-    touchStartYRef.current = event.touches[0].clientY;
+  const resetPointerGesture = () => {
+    pointerStartXRef.current = null;
+    pointerStartYRef.current = null;
+    isWaveformGestureRef.current = false;
+    hasClaimedSwipeRef.current = false;
   };
 
-  const handleTouchEnd = (event: React.TouchEvent) => {
-    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
-    const touchEndX = event.changedTouches[0].clientX;
-    const touchEndY = event.changedTouches[0].clientY;
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!event.isPrimary) return;
 
-    const deltaX = touchEndX - touchStartXRef.current;
-    const deltaY = touchEndY - touchStartYRef.current;
+    const target = event.target;
+    isWaveformGestureRef.current =
+      target instanceof Element &&
+      Boolean(target.closest("[data-mobile-waveform]"));
 
-    touchStartXRef.current = null;
-    touchStartYRef.current = null;
+    if (isWaveformGestureRef.current) {
+      pointerStartXRef.current = null;
+      pointerStartYRef.current = null;
+      return;
+    }
 
-    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY)) {
+    pointerStartXRef.current = event.clientX;
+    pointerStartYRef.current = event.clientY;
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (
+      pointerStartXRef.current === null ||
+      pointerStartYRef.current === null ||
+      isWaveformGestureRef.current
+    ) {
+      return;
+    }
+
+    const deltaX = event.clientX - pointerStartXRef.current;
+    const deltaY = event.clientY - pointerStartYRef.current;
+
+    if (
+      Math.abs(deltaX) >= MOBILE_SWIPE_THRESHOLD &&
+      Math.abs(deltaX) > Math.abs(deltaY) &&
+      !event.currentTarget.hasPointerCapture(event.pointerId)
+    ) {
+      hasClaimedSwipeRef.current = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    }
+  };
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (isWaveformGestureRef.current) {
+      resetPointerGesture();
+      return;
+    }
+
+    if (pointerStartXRef.current === null || pointerStartYRef.current === null) {
+      return;
+    }
+
+    const deltaX = event.clientX - pointerStartXRef.current;
+    const deltaY = event.clientY - pointerStartYRef.current;
+    const isHorizontalSwipe =
+      hasClaimedSwipeRef.current ||
+      (Math.abs(deltaX) >= MOBILE_SWIPE_THRESHOLD &&
+        Math.abs(deltaX) > Math.abs(deltaY));
+
+    resetPointerGesture();
+
+    if (isHorizontalSwipe) {
+      suppressClickRef.current = true;
+      if (suppressClickTimerRef.current !== null) {
+        window.clearTimeout(suppressClickTimerRef.current);
+      }
+      suppressClickTimerRef.current = window.setTimeout(() => {
+        suppressClickRef.current = false;
+        suppressClickTimerRef.current = null;
+      }, 400);
+
       if (deltaX < 0) {
         // Swiped Left -> Next Song
         nextSong();
@@ -235,15 +299,31 @@ export function BottomPlayer() {
     }
   };
 
+  const handleClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!suppressClickRef.current) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    suppressClickRef.current = false;
+    if (suppressClickTimerRef.current !== null) {
+      window.clearTimeout(suppressClickTimerRef.current);
+      suppressClickTimerRef.current = null;
+    }
+  };
+
   return (
     <>
       {/* MOBILE FULLSCREEN SOUNDCLOUD PLAYER SHEET */}
       {isMobileExpanded && currentSong && (
         <div
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
+          data-mobile-player
+          onPointerDownCapture={handlePointerDown}
+          onPointerMoveCapture={handlePointerMove}
+          onPointerUpCapture={handlePointerUp}
+          onPointerCancelCapture={resetPointerGesture}
+          onClickCapture={handleClickCapture}
           className={cn(
-            "fixed inset-0 z-50 flex flex-col justify-between bg-black text-white md:hidden overflow-hidden transition-all duration-300 ease-out",
+            "fixed inset-0 z-50 flex flex-col justify-between bg-black text-white md:hidden overflow-hidden touch-none transition-all duration-300 ease-out",
             isClosingMobilePlayer
               ? "translate-y-full opacity-0 pointer-events-none"
               : "animate-in fade-in slide-in-from-bottom duration-300 ease-out translate-y-0 opacity-100",
@@ -260,6 +340,7 @@ export function BottomPlayer() {
               <img
                 src={getSongCoverUrl(currentSong)!}
                 alt={currentSong.title}
+                draggable={false}
                 className="h-full min-w-[135%] max-w-none object-cover brightness-100"
                 style={{
                   transform: `translate3d(${-(progressPercent / 100) * 25}%, 0, 0)`,
@@ -337,7 +418,8 @@ export function BottomPlayer() {
           >
             {/* SoundCloud-Style Interactive Waveform Overlay (Fully Transparent) */}
             <div
-              className="relative px-1 py-1 space-y-2"
+              data-mobile-waveform
+              className="relative px-1 py-1 space-y-2 touch-none"
               onClick={(event) => event.stopPropagation()}
             >
               <WaveformVisualizer

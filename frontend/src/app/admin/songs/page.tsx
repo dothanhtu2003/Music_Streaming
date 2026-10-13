@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   AdminNotice,
   type AdminNoticeValue,
@@ -115,6 +115,7 @@ export default function AdminSongsPage() {
   const [artists, setArtists] = useState<ArtistRecord[]>([]);
   const [albums, setAlbums] = useState<AlbumRecord[]>([]);
   const [genres, setGenres] = useState<GenreRecord[]>([]);
+  const editDialogRef = useRef<HTMLDialogElement>(null);
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [form, setForm] = useState<SongFormState>(emptyForm);
   const [loading, setLoading] = useState(true);
@@ -168,6 +169,22 @@ export default function AdminSongsPage() {
     };
   }, [loadSongs]);
 
+  useEffect(() => {
+    if (!editingSong) return;
+
+    const dialog = editDialogRef.current;
+    const previouslyFocused = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    dialog?.showModal();
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      dialog?.close();
+      document.body.style.overflow = previousOverflow;
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
+    };
+  }, [editingSong]);
+
   const startEdit = (song: Song) => {
     setEditingSong(song);
     setForm(songToForm(song));
@@ -218,8 +235,7 @@ export default function AdminSongsPage() {
           song.id === updatedSong.id ? updatedSong : song,
         ),
       );
-      setEditingSong(updatedSong);
-      setForm(songToForm(updatedSong));
+      cancelEdit();
       setNotice({ type: "success", text: "Song updated successfully." });
     } catch (updateError) {
       setFormError(getErrorMessage(updateError, "Could not update song."));
@@ -316,7 +332,7 @@ export default function AdminSongsPage() {
               Songs Management
             </h1>
             <p className="mt-2 text-sm text-zinc-400 max-w-2xl leading-relaxed">
-              Manage, edit, hide or publish active songs from the backend API database.
+              Manage your songs. Use Edit to update details or Hide to remove a song from public view.
             </p>
           </div>
           
@@ -391,7 +407,7 @@ export default function AdminSongsPage() {
         </div>
       </div>
 
-      <section className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
+      <section className="min-w-0">
         {/* Songs List Table */}
         <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-950 shadow-inner">
           <div className="overflow-x-auto">
@@ -406,7 +422,7 @@ export default function AdminSongsPage() {
                   <th scope="col" className="px-5 py-4 font-bold">Genre</th>
                   <th scope="col" className="px-5 py-4 font-bold">Duration</th>
                   <th scope="col" className="px-5 py-4 font-bold">Created</th>
-                  <th scope="col" className="px-5 py-4 font-bold text-center">Actions</th>
+                  <th scope="col" className="sticky right-0 z-10 bg-zinc-900 px-3 py-4 font-bold text-center shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.8)]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-900/65">
@@ -486,11 +502,12 @@ export default function AdminSongsPage() {
                       </td>
                       <td className="px-5 py-3 text-xs font-mono text-zinc-400">{formatDuration(song.duration_sec)}</td>
                       <td className="px-5 py-3 text-xs text-zinc-550">{formatDate(song.created_at)}</td>
-                      <td className="px-5 py-3 text-center">
+                      <td className="sticky right-0 z-10 bg-zinc-950 px-3 py-3 text-center shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.8)]">
                         <div className="flex items-center justify-center gap-2">
                           <button
                             type="button"
                             onClick={() => startEdit(song)}
+                            aria-label={`Edit ${song.title}`}
                             className="rounded-lg border border-zinc-800 bg-zinc-900/20 hover:bg-zinc-900 hover:border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition active:scale-[0.97] cursor-pointer"
                           >
                             Edit
@@ -498,6 +515,7 @@ export default function AdminSongsPage() {
                           <button
                             type="button"
                             onClick={() => void handleHideSong(song)}
+                            aria-label={`Hide ${song.title}`}
                             disabled={actionId === song.id}
                             className="rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-1.5 text-xs font-semibold text-rose-450 transition hover:bg-rose-500/20 hover:border-rose-500/50 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.97] cursor-pointer"
                           >
@@ -513,34 +531,29 @@ export default function AdminSongsPage() {
           </div>
         </div>
 
-        {/* Form Panel Right */}
-        <div className="flex flex-col">
-          {!editingSong ? (
-            <div className="flex flex-col items-center justify-center text-center rounded-xl border border-dashed border-zinc-800 bg-zinc-900/10 p-8 h-[500px] shadow-sm">
-              <div className="mb-4 rounded-full bg-zinc-900 p-3.5 text-zinc-500 border border-zinc-800 shadow-inner">
-                <svg className="h-6 w-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </div>
-              <h3 className="text-sm font-semibold text-zinc-200">Select a song to edit</h3>
-              <p className="mt-1 text-xs text-zinc-500 max-w-xs leading-relaxed">
-                Choose any track from the list on the left to modify its metadata, audio files, and album cover layouts.
-              </p>
-            </div>
-          ) : (
+        {editingSong && (
+          <dialog
+            ref={editDialogRef}
+            aria-labelledby="edit-song-title"
+            onCancel={(event) => {
+              event.preventDefault();
+              if (!saving) cancelEdit();
+            }}
+            className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-950 p-0 text-white shadow-2xl backdrop:bg-black/75"
+          >
             <form
               onSubmit={handleSubmit}
               className="space-y-5 rounded-xl border border-zinc-800 bg-zinc-950 p-6 shadow-lg"
             >
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">Edit Mode</span>
-                <h3 className="text-base font-bold text-white tracking-tight mt-0.5">Edit Song Details</h3>
+                <h2 id="edit-song-title" className="text-base font-bold text-white tracking-tight mt-0.5">Edit Song Details</h2>
                 <p className="text-xs text-zinc-500 truncate mt-1">
                   Editing: <strong className="text-zinc-300 font-medium">&quot;{editingSong.title}&quot;</strong>
                 </p>
               </div>
 
-              <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-450">
                   Title
                   <input
@@ -639,12 +652,12 @@ export default function AdminSongsPage() {
               </div>
 
               {formError && (
-                <p className="text-xs text-rose-450 font-semibold bg-rose-500/5 border border-rose-500/10 rounded-lg px-3 py-2 animate-shake">
+                <p role="alert" className="text-xs text-rose-450 font-semibold bg-rose-500/5 border border-rose-500/10 rounded-lg px-3 py-2 animate-shake">
                   {formError}
                 </p>
               )}
 
-              <div className="flex gap-2.5 pt-2">
+              <div className="sticky bottom-0 flex gap-2.5 border-t border-zinc-800 bg-zinc-950 py-3">
                 <button
                   type="submit"
                   disabled={saving}
@@ -662,8 +675,8 @@ export default function AdminSongsPage() {
                 </button>
               </div>
             </form>
-          )}
-        </div>
+          </dialog>
+        )}
       </section>
     </div>
   );

@@ -14,17 +14,20 @@ type SongDetailContentProps = {
 
 function DetailSkeleton() {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 md:p-8 animate-pulse">
-      <div className="flex flex-col-reverse gap-6 md:flex-row md:items-stretch justify-between">
-        <div className="flex-1 space-y-6">
+    <div className="rounded-3xl border border-white/10 bg-zinc-950 p-6 sm:p-8 animate-pulse">
+      <div className="flex flex-col md:flex-row items-center md:items-stretch gap-6 lg:gap-8">
+        <div className="h-52 w-52 sm:h-56 sm:w-56 md:h-60 md:w-60 lg:h-64 lg:w-64 rounded-2xl bg-zinc-800 shrink-0 self-center md:self-auto" />
+        <div className="flex flex-col justify-between flex-1 space-y-4 w-full">
           <div className="space-y-3">
             <div className="h-4 w-24 rounded bg-zinc-800" />
             <div className="h-8 w-2/3 rounded bg-zinc-800" />
             <div className="h-4 w-1/2 rounded bg-zinc-800" />
           </div>
-          <div className="h-20 w-full rounded-xl bg-zinc-800 mt-8" />
+          <div className="space-y-3 mt-4">
+            <div className="h-10 w-36 rounded-full bg-zinc-800" />
+            <div className="h-14 md:h-16 w-full rounded-xl bg-zinc-800" />
+          </div>
         </div>
-        <div className="h-40 w-40 md:h-44 md:w-44 rounded-2xl bg-zinc-800 shrink-0" />
       </div>
     </div>
   );
