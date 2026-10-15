@@ -45,9 +45,9 @@ const installAudioRoute = async (page: Page) => {
 
 const login = async (page: Page) => {
   await page.goto("/login");
-  await page.getByLabel("Email address").fill(USER_EMAIL);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Login", exact: true }).click();
+  await page.getByLabel("Địa chỉ Email", { exact: true }).fill(USER_EMAIL);
+  await page.getByLabel("Mật khẩu", { exact: true }).fill(PASSWORD);
+  await page.getByRole("button", { name: "Đăng nhập", exact: true }).last().click();
   await expect(page).toHaveURL(/\/home$/);
 };
 
