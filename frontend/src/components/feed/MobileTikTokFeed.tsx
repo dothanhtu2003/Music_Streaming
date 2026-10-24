@@ -174,14 +174,19 @@ export function MobileTikTokFeed() {
     ],
   );
 
-  // Initial load when tab changes or if not loaded yet
+  // Initial load when tab changes or if not loaded yet.
+  // Deferred to the next tick so loadSongs' synchronous setState calls
+  // do not run inside the effect body (react-hooks/set-state-in-effect).
   useEffect(() => {
-    if (!hasLoaded) {
-      void loadSongs(1, true);
-    } else {
-      setLoading(false);
-    }
-  }, [activeTab, hasLoaded]);
+    const id = window.setTimeout(() => {
+      if (!hasLoaded) {
+        void loadSongs(1, true);
+      } else {
+        setLoading(false);
+      }
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [activeTab, hasLoaded, loadSongs]);
 
   // Listen for active tab click on /feed in bottom navigation to refresh feed
   useEffect(() => {
